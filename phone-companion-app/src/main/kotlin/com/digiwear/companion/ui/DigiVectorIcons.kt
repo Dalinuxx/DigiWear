@@ -99,7 +99,7 @@ fun DigiVectorIcon(
             DigiIconType.VITAMIN, DigiIconType.PROTEIN_TABLET -> drawVitaminIcon(w, h, s, hasCustomTint, tint)
             DigiIconType.TRAIN, DigiIconType.TRAIN_GLOVE -> drawGloveIcon(w, h, s, if (hasCustomTint) tint else Color(0xFFFF7043))
             DigiIconType.BATTLE, DigiIconType.BATTLE_SWORDS -> drawCrossedSwordsIcon(w, h, s, if (hasCustomTint) tint else Color(0xFFFFD54F))
-            DigiIconType.FLUSH, DigiIconType.CLEAN_FLUSH -> drawFlushWaveIcon(w, h, s, if (hasCustomTint) tint else Color(0xFF00E5FF))
+            DigiIconType.FLUSH, DigiIconType.CLEAN_FLUSH -> drawFlushWaveIcon(w, h, s, if (hasCustomTint) tint else Color(0xFF8D5524))
             DigiIconType.LIGHT_ON, DigiIconType.SLEEP_LIGHT -> drawLightOnIcon(w, h, s, if (hasCustomTint) tint else Color(0xFFFFEE58))
             DigiIconType.LIGHT_OFF -> drawLightOffMoonIcon(w, h, s, if (hasCustomTint) tint else Color(0xFF90CAF9))
             DigiIconType.MEDS_BANDAGE, DigiIconType.BANDAGE_CROSS, DigiIconType.BANDAGE, DigiIconType.MEDS_PILL -> drawBandageCrossIcon(w, h, s, hasCustomTint, tint)
@@ -499,10 +499,12 @@ private fun DrawScope.drawCrossedSwordsIcon(w: Float, h: Float, s: Float, color:
 private fun DrawScope.drawFlushWaveIcon(w: Float, h: Float, s: Float, color: Color) {
     // Authentic Bandai Poop / Flush Icon: 3-Tier Coiled Waste on Base Tray
     val stroke = (s * 0.09f).coerceAtLeast(1.2f)
+    val trayColor = Color(0xFF78909C)
+    val poopBrown = if (color == Color(0xFF00E5FF)) Color(0xFF8D5524) else color
 
     // Base plate / tray line
     drawLine(
-        color = color,
+        color = if (color != poopBrown) color else trayColor,
         start = Offset(w * 0.14f, h * 0.84f),
         end = Offset(w * 0.86f, h * 0.84f),
         strokeWidth = stroke * 1.3f,
@@ -510,21 +512,21 @@ private fun DrawScope.drawFlushWaveIcon(w: Float, h: Float, s: Float, color: Col
     )
     // Tier 1 (bottom coil)
     drawRoundRect(
-        color = color,
+        color = poopBrown,
         topLeft = Offset(w * 0.18f, h * 0.62f),
         size = Size(w * 0.64f, h * 0.18f),
         cornerRadius = CornerRadius(s * 0.08f, s * 0.08f)
     )
     // Tier 2 (middle coil)
     drawRoundRect(
-        color = color,
+        color = poopBrown,
         topLeft = Offset(w * 0.26f, h * 0.44f),
         size = Size(w * 0.48f, h * 0.17f),
         cornerRadius = CornerRadius(s * 0.08f, s * 0.08f)
     )
     // Tier 3 (top coil & tip)
     drawRoundRect(
-        color = color,
+        color = poopBrown,
         topLeft = Offset(w * 0.36f, h * 0.26f),
         size = Size(w * 0.28f, h * 0.17f),
         cornerRadius = CornerRadius(s * 0.08f, s * 0.08f)
@@ -535,7 +537,7 @@ private fun DrawScope.drawFlushWaveIcon(w: Float, h: Float, s: Float, color: Col
         lineTo(w * 0.56f, h * 0.28f)
         close()
     }
-    drawPath(tip, color = color)
+    drawPath(tip, color = poopBrown)
 }
 
 private fun DrawScope.drawLightOnIcon(w: Float, h: Float, s: Float, color: Color) {

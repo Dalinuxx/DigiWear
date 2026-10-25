@@ -68,6 +68,7 @@ import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
 import com.digiwear.core.model.BackgroundTheme
 import com.digiwear.core.model.PetSpecies
+import com.digiwear.core.model.PetStage
 import com.digiwear.core.model.PetState
 import com.digiwear.wear.ambient.LocalAmbientState
 import com.digiwear.wear.data.PetRepository
@@ -139,7 +140,13 @@ fun MainPetScreen(
 
     LaunchedEffect(petState.speciesId) {
         if (lastObservedSpeciesId != 0 && petState.speciesId != lastObservedSpeciesId) {
-            evolvingFromSpeciesId = lastObservedSpeciesId
+            val prev = PetSpecies.getById(lastObservedSpeciesId)
+            val curr = PetSpecies.getById(petState.speciesId)
+            // Evolution celebration only fires when advancing forward in stage (e.g. Baby I -> Baby II, Child -> Adult)
+            // Spawning a new egg (Baby I) or swapping partners is NOT an evolution
+            if (curr.stage != PetStage.BABY_I && curr.stage.stageIndex > prev.stage.stageIndex) {
+                evolvingFromSpeciesId = lastObservedSpeciesId
+            }
         }
         lastObservedSpeciesId = petState.speciesId
     }
@@ -469,9 +476,9 @@ fun MainPetScreen(
                     onCancel = { isTrainingActive = false }
                 )
             }
-        } else if (isThreeButtonMode) {
+        } else {
             // ========================================================
-            // Authentic 3-Button V-Pet Display Frame
+            // Authentic V-Pet Display Frame (Always active; supports RIGHT, LEFT, and OFF/Touch modes)
             // ========================================================
             ThreeButtonPetView(
                 species = species,
@@ -526,29 +533,6 @@ fun MainPetScreen(
                         repository.hatchTraitedEgg()
                     }
                 }
-            )
-        } else {
-            // ========================================================
-            // Modern Touch UI Mode (ScalingLazyColumn with touch buttons)
-            // ========================================================
-            ModernTouchPetView(
-                species = species,
-                petState = petState,
-                displayConfig = displayConfig,
-                overrideSpriteFrame = overrideSpriteFrame,
-                actionFeedback = actionFeedback,
-                scope = scope,
-                repository = repository,
-                hapticManager = hapticManager,
-                onNavigateBattle = onNavigateBattle,
-                onNavigateAdventure = onNavigateAdventure,
-                onNavigateStatus = onNavigateStatus,
-                onNavigateSettings = onNavigateSettings,
-                onStartTraining = {
-                    isTrainingActive = true
-                },
-                onSetOverrideFrame = { frame -> overrideSpriteFrame = frame },
-                onSetFeedback = { fb -> actionFeedback = fb }
             )
         }
 
@@ -983,15 +967,73 @@ private fun ThreeButtonPetView(
         )
     }
 
-    Box(
+    val topRail: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .background(Color(0x77091016), RoundedCornerShape(6.dp))
+                .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
+                .padding(horizontal = if (displayConfig.isRound) 4.dp else 2.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 3.dp else 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            for (i in 0..3) {
+                val item = VPetMenu.entries[i]
+                LcdIconCell(
+                    index = i,
+                    item = item,
+                    isSelected = selectedMenuIndex == i,
+                    isCallActive = false,
+                    width = displayConfig.lcdIconWidth,
+                    height = displayConfig.lcdIconHeight,
+                    fontSize = displayConfig.lcdIconFontSize,
+                    onClick = { onSelectIcon(i) }
+                )
+            }
+        }
+    }
+
+    val bottomRail: @Composable () -> Unit = {
+        Row(
+            modifier = Modifier
+                .background(Color(0x77091016), RoundedCornerShape(6.dp))
+                .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
+                .padding(horizontal = if (displayConfig.isRound) 4.dp else 2.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 3.dp else 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            for (i in 4..7) {
+                val item = VPetMenu.entries[i]
+                val isCall = (i == 7 && petState.attentionCallActive)
+                LcdIconCell(
+                    index = i,
+                    item = item,
+                    isSelected = selectedMenuIndex == i,
+                    isCallActive = isCall,
+                    width = displayConfig.lcdIconWidth,
+                    height = displayConfig.lcdIconHeight,
+                    fontSize = displayConfig.lcdIconFontSize,
+                    onClick = { onSelectIcon(i) }
+                )
+            }
+        }
+    }
+
+    Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(displayConfig.contentPadding),
-        contentAlignment = Alignment.Center
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
     ) {
+        // Top Recessed V-Pet LCD Rail (Centered on top circle chord)
+        topRail()
+
+        // Middle Content Row with Center Viewport and Side Button Rail
         Row(
-            modifier = Modifier.fillMaxSize(),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 2.dp else 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Optional Left Button Rail (Southpaw mode)
@@ -999,56 +1041,26 @@ private fun ThreeButtonPetView(
                 buttonRail()
             }
 
-            // Central Recessed V-Pet LCD Console
+            // Central Recessed V-Pet LCD Console Viewport
             Column(
                 modifier = Modifier
                     .weight(1f)
-                    .fillMaxHeight(),
+                    .fillMaxHeight()
+                    .padding(vertical = 1.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.SpaceBetween
             ) {
-                // Top Recessed V-Pet LCD Rail (Icons 0..3: Status, Feed, Train, Battle)
+                // Header telemetry: Name, Attribute badge, Weight, Quest & Settings
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .background(Color(0x77091016), RoundedCornerShape(6.dp))
-                        .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 2.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
+                        .padding(
+                            start = if (displayConfig.isRound) (if (buttonPlacement == "RIGHT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp,
+                            end = if (displayConfig.isRound) (if (buttonPlacement == "LEFT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp
+                        ),
+                    horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    for (i in 0..3) {
-                        val item = VPetMenu.entries[i]
-                        LcdIconCell(
-                            index = i,
-                            item = item,
-                            isSelected = selectedMenuIndex == i,
-                            isCallActive = false,
-                            width = displayConfig.lcdIconWidth,
-                            height = displayConfig.lcdIconHeight,
-                            fontSize = displayConfig.lcdIconFontSize,
-                            onClick = { onSelectIcon(i) }
-                        )
-                    }
-                }
-
-                // Center V-Pet LCD Screen Viewport (Telemetry, Sprite, Prompt)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(vertical = 1.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Header telemetry: Name, Attribute badge, Weight, Quest & Settings
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 text = species.name.take(if (displayConfig.screenWidthDp < 240) 8 else 11),
@@ -1116,7 +1128,10 @@ private fun ThreeButtonPetView(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 4.dp),
+                            .padding(
+                                start = if (displayConfig.isRound) (if (buttonPlacement == "RIGHT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp,
+                                end = if (displayConfig.isRound) (if (buttonPlacement == "LEFT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp
+                            ),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1188,7 +1203,7 @@ private fun ThreeButtonPetView(
                         }
                     }
 
-                    // Center Sprite Viewport (Takes available space, clickable for status)
+                    // Center Sprite Viewport (Takes available space, clickable for status) - NO BORDER OUTLINE
                     Box(
                         modifier = Modifier
                             .weight(1f)
@@ -1198,11 +1213,6 @@ private fun ThreeButtonPetView(
                         Box(
                             modifier = Modifier
                                 .size(displayConfig.mainSpriteSize)
-                                .border(
-                                    width = 0.75.dp,
-                                    color = if (selectedMenuIndex != null) Color(0x88FFD54F) else Color(0x33FFFFFF),
-                                    shape = RoundedCornerShape(6.dp)
-                                )
                                 .clickable { onNavigateStatus() },
                             contentAlignment = Alignment.Center
                         ) {
@@ -1264,40 +1274,16 @@ private fun ThreeButtonPetView(
                     }
                 }
 
-                // Bottom Recessed V-Pet LCD Rail (Icons 4..7: Flush, Light, Meds, Call)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color(0x77091016), RoundedCornerShape(6.dp))
-                        .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
-                        .padding(horizontal = 2.dp, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    for (i in 4..7) {
-                        val item = VPetMenu.entries[i]
-                        val isCall = (i == 7 && petState.attentionCallActive)
-                        LcdIconCell(
-                            index = i,
-                            item = item,
-                            isSelected = selectedMenuIndex == i,
-                            isCallActive = isCall,
-                            width = displayConfig.lcdIconWidth,
-                            height = displayConfig.lcdIconHeight,
-                            fontSize = displayConfig.lcdIconFontSize,
-                            onClick = { onSelectIcon(i) }
-                        )
-                    }
+                // Right Button Rail (Authentic Bandai default)
+                if (buttonPlacement == "RIGHT") {
+                    buttonRail()
                 }
             }
 
-            // Right Button Rail (Authentic Bandai default)
-            if (buttonPlacement == "RIGHT") {
-                buttonRail()
-            }
+            // Bottom Recessed V-Pet LCD Rail (Centered on bottom circle chord)
+            bottomRail()
         }
     }
-}
 
 /**
  * Modern Digivice / Vital Bracelet Touch UI layout with scrollable ScalingLazyColumn,
@@ -1500,14 +1486,12 @@ private fun ModernTouchPetView(
                 }
             }
 
-            // Center Recessed LCD Pet Stage (Interactive, click to inspect status)
+            // Center Recessed LCD Pet Stage (Interactive, click to inspect status) - NO BORDER OUTLINE
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     modifier = Modifier
                         .padding(vertical = 2.dp)
-                        .background(Color(0x44000000), RoundedCornerShape(10.dp))
-                        .border(1.dp, Color(0x5580CBC4), RoundedCornerShape(10.dp))
                         .clickable { onNavigateStatus() }
                         .padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {

@@ -61,44 +61,44 @@ data class WatchDisplayConfig(
             return if (isRound) {
                 // Round watches (Wear OS or Round AOSP Full Android Watches): apply circular insets
                 val horizPad = when {
-                    width >= 300 -> 16.dp
-                    width >= 240 -> 12.dp
+                    width >= 300 -> 14.dp
+                    width >= 240 -> 10.dp
                     else -> 8.dp
                 }
                 val vertPad = when {
-                    height >= 300 -> 18.dp
-                    height >= 240 -> 14.dp
-                    else -> 10.dp
+                    height >= 300 -> 20.dp
+                    height >= 240 -> 18.dp
+                    else -> 16.dp
                 }
                 val rightRail = when {
-                    width >= 300 -> 44.dp
-                    width >= 240 -> 38.dp
-                    else -> 32.dp
+                    width >= 300 -> 40.dp
+                    width >= 240 -> 34.dp
+                    else -> 28.dp
                 }
                 val btnSize = when {
-                    width >= 300 -> 38.dp
-                    width >= 240 -> 34.dp
-                    else -> 30.dp
+                    width >= 300 -> 34.dp
+                    width >= 240 -> 30.dp
+                    else -> 26.dp
                 }
                 val btnSpacing = when {
-                    height >= 300 -> 10.dp
-                    height >= 240 -> 8.dp
-                    else -> 6.dp
+                    height >= 300 -> 8.dp
+                    height >= 240 -> 6.dp
+                    else -> 5.dp
                 }
                 val iconW = when {
-                    width >= 300 -> 32.dp
-                    width >= 240 -> 28.dp
-                    else -> 24.dp
+                    width >= 300 -> 28.dp
+                    width >= 240 -> 25.dp
+                    else -> 22.dp
                 }
                 val iconH = when {
-                    height >= 300 -> 24.dp
-                    height >= 240 -> 22.dp
-                    else -> 19.dp
+                    height >= 300 -> 22.dp
+                    height >= 240 -> 20.dp
+                    else -> 17.dp
                 }
                 val iconFont = when {
-                    width >= 300 -> 13.sp
-                    width >= 240 -> 11.5.sp
-                    else -> 10.sp
+                    width >= 300 -> 12.sp
+                    width >= 240 -> 11.sp
+                    else -> 9.5.sp
                 }
                 val telemetryFont = when {
                     width >= 300 -> 9.sp
@@ -106,9 +106,9 @@ data class WatchDisplayConfig(
                     else -> 7.sp
                 }
                 val spriteSize = when {
-                    width >= 300 -> 108.dp
-                    width >= 240 -> 92.dp
-                    else -> 78.dp
+                    width >= 300 -> 100.dp
+                    width >= 240 -> 86.dp
+                    else -> 74.dp
                 }
 
                 WatchDisplayConfig(

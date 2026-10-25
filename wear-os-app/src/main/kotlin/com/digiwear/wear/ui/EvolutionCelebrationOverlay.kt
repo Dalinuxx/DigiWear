@@ -200,7 +200,7 @@ fun EvolutionCelebrationOverlay(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(8.dp),
+                        .padding(vertical = 16.dp, horizontal = 12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -208,22 +208,22 @@ fun EvolutionCelebrationOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 10.dp, tint = Color(0xFFFFD54F))
+                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
                         Text(
                             text = "EVOLUTION COMPLETE!",
-                            fontSize = 9.sp,
+                            fontSize = 8.5.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = Color(0xFFFFD54F),
                             textAlign = TextAlign.Center
                         )
-                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 10.dp, tint = Color(0xFFFFD54F))
+                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
                     }
 
                     // Portrait viewport
                     Box(
                         modifier = Modifier
-                            .size(100.dp)
+                            .size(90.dp)
                             .background(Color(0xFF0D1822), RoundedCornerShape(12.dp))
                             .border(1.5.dp, Color(0xFF00E5FF), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center

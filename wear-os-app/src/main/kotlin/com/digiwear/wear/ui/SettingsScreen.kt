@@ -416,16 +416,16 @@ fun SettingsScreen(
             ) {
                 Column(modifier = Modifier.weight(1f).padding(end = 4.dp)) {
                     Text(
-                        text = "BUTTON RAIL POSITION",
+                        text = "ON-SCREEN BUTTONS",
                         fontSize = 9.sp,
                         color = Color.White,
                         fontFamily = FontFamily.Monospace
                     )
                     Text(
                         text = when (buttonPlacement) {
-                            "RIGHT" -> "Right (Bandai OG)"
-                            "LEFT" -> "Left (Southpaw)"
-                            else -> "Off (Full Touch)"
+                            "RIGHT" -> "Right (A/B/C)"
+                            "LEFT" -> "Left (A/B/C)"
+                            else -> "Off (Touch & HW Buttons)"
                         },
                         fontSize = 7.5.sp,
                         color = Color.LightGray
