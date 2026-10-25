@@ -20,7 +20,9 @@
 
 # DigiWear Core Models & Wear Data
 -keep class com.digiwear.core.** { *; }
--keep class com.digiwear.wear.data.** { *; }
+-keep class com.digiwear.wear.** { *; }
+-keep class androidx.wear.** { *; }
+-dontwarn androidx.wear.**
 
 # AndroidX Room
 -keep class androidx.room.** { *; }

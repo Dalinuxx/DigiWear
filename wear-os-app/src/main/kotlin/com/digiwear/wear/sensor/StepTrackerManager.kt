@@ -45,42 +45,50 @@ class StepTrackerManager(
     private var isOffBody: Boolean = false
 
     fun startListening() {
-        registerStepSensors(isAmbientMode = false)
+        try {
+            registerStepSensors(isAmbientMode = false)
 
-        // Off-body & Stationary sensors to prevent false steps on nightstands / chargers
-        offBodySensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
-        }
-        stationarySensor?.let {
-            sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            // Off-body & Stationary sensors to prevent false steps on nightstands / chargers
+            offBodySensor?.let {
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            }
+            stationarySensor?.let {
+                sensorManager.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("StepTracker", "Sensors could not be registered (permissions may be pending): ${e.message}")
         }
     }
 
     private fun registerStepSensors(isAmbientMode: Boolean) {
         val maxReportLatencyUs = if (isAmbientMode) 60_000_000 else 10_000_000 // 60s FIFO batching in ambient
-        when {
-            stepCounterSensor != null -> {
-                sensorManager.registerListener(
-                    this,
-                    stepCounterSensor,
-                    SensorManager.SENSOR_DELAY_NORMAL,
-                    maxReportLatencyUs
-                )
-            }
-            stepDetectorSensor != null -> {
-                sensorManager.registerListener(
-                    this,
-                    stepDetectorSensor,
-                    SensorManager.SENSOR_DELAY_NORMAL,
-                    maxReportLatencyUs
-                )
-            }
-            accelerometerSensor != null -> {
-                // Only poll accelerometer when NOT in ambient and NOT off-body
-                if (!isAmbientMode && !isOffBody) {
-                    sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+        try {
+            when {
+                stepCounterSensor != null -> {
+                    sensorManager.registerListener(
+                        this,
+                        stepCounterSensor,
+                        SensorManager.SENSOR_DELAY_NORMAL,
+                        maxReportLatencyUs
+                    )
+                }
+                stepDetectorSensor != null -> {
+                    sensorManager.registerListener(
+                        this,
+                        stepDetectorSensor,
+                        SensorManager.SENSOR_DELAY_NORMAL,
+                        maxReportLatencyUs
+                    )
+                }
+                accelerometerSensor != null -> {
+                    // Only poll accelerometer when NOT in ambient and NOT off-body
+                    if (!isAmbientMode && !isOffBody) {
+                        sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+                    }
                 }
             }
+        } catch (e: Exception) {
+            android.util.Log.w("StepTracker", "Step sensor registration error: ${e.message}")
         }
     }
 
@@ -89,7 +97,9 @@ class StepTrackerManager(
         if (lastHardwareStepCount >= 0) {
             prefs.edit().putInt("last_hardware_step_count", lastHardwareStepCount).apply()
         }
-        sensorManager.unregisterListener(this)
+        try {
+            sensorManager.unregisterListener(this)
+        } catch (_: Exception) {}
     }
 
     /**
@@ -100,18 +110,24 @@ class StepTrackerManager(
         isAmbient = true
         flushPendingSteps()
 
-        // Switch hardware step counter / detector to 60s FIFO batch latency
-        if (stepCounterSensor != null) {
-            sensorManager.unregisterListener(this, stepCounterSensor)
-            sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL, 60_000_000)
-        } else if (stepDetectorSensor != null) {
-            sensorManager.unregisterListener(this, stepDetectorSensor)
-            sensorManager.registerListener(this, stepDetectorSensor, SensorManager.SENSOR_DELAY_NORMAL, 60_000_000)
+        try {
+            // Switch hardware step counter / detector to 60s FIFO batch latency
+            if (stepCounterSensor != null) {
+                sensorManager.unregisterListener(this, stepCounterSensor)
+                sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL, 60_000_000)
+            } else if (stepDetectorSensor != null) {
+                sensorManager.unregisterListener(this, stepDetectorSensor)
+                sensorManager.registerListener(this, stepDetectorSensor, SensorManager.SENSOR_DELAY_NORMAL, 60_000_000)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("StepTracker", "Ambient sensor reconfiguration error: ${e.message}")
         }
 
         // Always pause accelerometer in ambient mode
         if (accelerometerSensor != null) {
-            sensorManager.unregisterListener(this, accelerometerSensor)
+            try {
+                sensorManager.unregisterListener(this, accelerometerSensor)
+            } catch (_: Exception) {}
         }
     }
 
@@ -121,16 +137,20 @@ class StepTrackerManager(
     fun onExitAmbient() {
         isAmbient = false
 
-        if (stepCounterSensor != null) {
-            sensorManager.unregisterListener(this, stepCounterSensor)
-            sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL, 10_000_000)
-        } else if (stepDetectorSensor != null) {
-            sensorManager.unregisterListener(this, stepDetectorSensor)
-            sensorManager.registerListener(this, stepDetectorSensor, SensorManager.SENSOR_DELAY_NORMAL, 10_000_000)
-        }
+        try {
+            if (stepCounterSensor != null) {
+                sensorManager.unregisterListener(this, stepCounterSensor)
+                sensorManager.registerListener(this, stepCounterSensor, SensorManager.SENSOR_DELAY_NORMAL, 10_000_000)
+            } else if (stepDetectorSensor != null) {
+                sensorManager.unregisterListener(this, stepDetectorSensor)
+                sensorManager.registerListener(this, stepDetectorSensor, SensorManager.SENSOR_DELAY_NORMAL, 10_000_000)
+            }
 
-        if (stepCounterSensor == null && accelerometerSensor != null && !isOffBody) {
-            sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+            if (stepCounterSensor == null && accelerometerSensor != null && !isOffBody) {
+                sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
+            }
+        } catch (e: Exception) {
+            android.util.Log.w("StepTracker", "Exit ambient sensor registration error: ${e.message}")
         }
     }
 

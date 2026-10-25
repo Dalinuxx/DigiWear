@@ -666,8 +666,9 @@ class WirelessAdbManager(private val context: Context) {
 
             // Auto-launch if requested
             if (autoLaunch) {
-                log("Launching DigiWear on watch (am start)...")
-                val startOutput = execShell("am start -n com.digiwear.wear/.MainActivity")
+                log("Waking watch screen and launching DigiWear...")
+                execShell("input keyevent 224") // KEYCODE_WAKEUP
+                val startOutput = execShell("am start --user 0 -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10000000 -n com.digiwear.wear/.MainActivity")
                 log("Launch: $startOutput")
             }
 
@@ -691,10 +692,11 @@ class WirelessAdbManager(private val context: Context) {
      */
     suspend fun launchOnWatch(): Boolean = withContext(Dispatchers.IO) {
         if (!isConnected()) return@withContext false
-        log("Executing am start on watch...")
-        val out = execShell("am start -n com.digiwear.wear/.MainActivity")
+        log("Waking watch screen and launching DigiWear...")
+        execShell("input keyevent 224") // KEYCODE_WAKEUP
+        val out = execShell("am start --user 0 -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -f 0x10000000 -n com.digiwear.wear/.MainActivity")
         log("Launch result: $out")
-        out.contains("Starting") || out.contains("Warning: Activity not started")
+        out.contains("Starting") || out.contains("Warning: Activity not started") || out.contains("Status: ok")
     }
 
     /**

@@ -73,24 +73,30 @@ object NfcDuelManager {
         activity: Activity,
         onTagDiscovered: (code: String) -> Unit
     ) {
-        val adapter = NfcAdapter.getDefaultAdapter(activity) ?: return
-        if (!adapter.isEnabled) return
-        val flags = NfcAdapter.FLAG_READER_NFC_A or
-                NfcAdapter.FLAG_READER_NFC_B or
-                NfcAdapter.FLAG_READER_NFC_F or
-                NfcAdapter.FLAG_READER_NFC_V or
-                NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
+        try {
+            val adapter = NfcAdapter.getDefaultAdapter(activity) ?: return
+            if (!adapter.isEnabled) return
+            val flags = NfcAdapter.FLAG_READER_NFC_A or
+                    NfcAdapter.FLAG_READER_NFC_B or
+                    NfcAdapter.FLAG_READER_NFC_F or
+                    NfcAdapter.FLAG_READER_NFC_V or
+                    NfcAdapter.FLAG_READER_NO_PLATFORM_SOUNDS
 
-        adapter.enableReaderMode(activity, { tag ->
-            val code = extractCommCodeFromTag(tag)
-            activity.runOnUiThread {
-                onTagDiscovered(code)
-            }
-        }, flags, null)
+            adapter.enableReaderMode(activity, { tag ->
+                val code = extractCommCodeFromTag(tag)
+                activity.runOnUiThread {
+                    onTagDiscovered(code)
+                }
+            }, flags, null)
+        } catch (e: Exception) {
+            android.util.Log.w("NfcDuel", "NFC enableReaderMode unavailable: ${e.message}")
+        }
     }
 
     fun disableReaderMode(activity: Activity) {
-        val adapter = NfcAdapter.getDefaultAdapter(activity) ?: return
-        adapter.disableReaderMode(activity)
+        try {
+            val adapter = NfcAdapter.getDefaultAdapter(activity) ?: return
+            adapter.disableReaderMode(activity)
+        } catch (_: Exception) {}
     }
 }

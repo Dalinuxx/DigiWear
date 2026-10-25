@@ -73,6 +73,17 @@ class WatchApkSourceManager(private val context: Context) {
     }
 
     /**
+     * Clears all cached/downloaded watch APKs to ensure fresh downloads.
+     */
+    fun clearCache() {
+        try {
+            File(cacheDir, PICKED_FILENAME).delete()
+            File(cacheDir, DOWNLOADED_FILENAME).delete()
+            File(cacheDir, ASSET_FILENAME).delete()
+        } catch (_: Exception) {}
+    }
+
+    /**
      * Copies an APK selected by the user via Storage Access Framework (SAF) URI into local cache.
      */
     suspend fun importApkFromUri(uri: Uri): Result<WatchApkInfo> = withContext(Dispatchers.IO) {

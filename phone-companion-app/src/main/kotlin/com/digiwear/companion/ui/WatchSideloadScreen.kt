@@ -719,6 +719,13 @@ fun WatchSideloadScreen(
                                                     var apkToInstall = selectedApk
                                                     if (apkToInstall == null) {
                                                         apkToInstall = apkSourceManager.getCachedApk() ?: apkSourceManager.getEmbeddedAssetApk()
+                                                        if (apkToInstall == null) {
+                                                            adbManager.log("Downloading latest watch APK from GitHub...")
+                                                            apkSourceManager.downloadReleaseApk().onSuccess { dl ->
+                                                                apkToInstall = dl
+                                                                adbManager.log("Download complete: ${dl.displayName}")
+                                                            }
+                                                        }
                                                         if (apkToInstall != null) selectedApk = apkToInstall
                                                     }
                                                     if (apkToInstall != null) {
@@ -729,7 +736,7 @@ fun WatchSideloadScreen(
                                                             autoLaunch = autoLaunch
                                                         )
                                                     } else {
-                                                        adbManager.log("Ready to install! Tap 'SIDELOAD DIGIWEAR' below.")
+                                                        adbManager.log("Ready to install! Tap 'CONNECT, DOWNLOAD & SIDELOAD' below.")
                                                     }
                                                 } else {
                                                     adbManager.log("✓ Paired successfully! You can now tap 'CONNECT & SIDELOAD' below.")
