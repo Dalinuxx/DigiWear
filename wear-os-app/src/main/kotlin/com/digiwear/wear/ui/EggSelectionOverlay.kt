@@ -27,7 +27,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.wear.compose.foundation.lazy.AutoCenteringParams
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
+import androidx.wear.compose.foundation.lazy.ScalingLazyColumnDefaults
 import androidx.wear.compose.foundation.lazy.items
 import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
@@ -77,6 +79,11 @@ fun EggSelectionOverlay(
     }
 
     val listState = rememberScalingLazyListState()
+    val displayConfig = WatchDisplayConfig.current()
+    val horizPadding = if (displayConfig.isRound) 16.dp else 8.dp
+    val topPadding = if (displayConfig.isRound) 32.dp else 12.dp
+    val bottomPadding = if (displayConfig.isRound) 36.dp else 12.dp
+    val cardWidthFraction = if (displayConfig.isRound) 0.86f else 0.94f
 
     Box(
         modifier = Modifier
@@ -87,14 +94,24 @@ fun EggSelectionOverlay(
         ScalingLazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 28.dp, bottom = 28.dp, start = 12.dp, end = 12.dp),
+            autoCentering = AutoCenteringParams(itemIndex = 1),
+            scalingParams = ScalingLazyColumnDefaults.scalingParams(
+                edgeScale = 1.0f,
+                edgeAlpha = 1.0f
+            ),
+            contentPadding = PaddingValues(
+                top = topPadding,
+                bottom = bottomPadding,
+                start = horizPadding,
+                end = horizPadding
+            ),
             verticalArrangement = Arrangement.spacedBy(5.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(bottom = 4.dp)
+                    modifier = Modifier.padding(bottom = 6.dp)
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
@@ -124,7 +141,7 @@ fun EggSelectionOverlay(
                 val species = remember(egg.speciesId) { PetSpecies.getById(egg.speciesId) }
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(0.92f)
+                        .fillMaxWidth(cardWidthFraction)
                         .background(egg.cardBg, RoundedCornerShape(10.dp))
                         .border(1.dp, egg.eggTint.copy(alpha = 0.5f), RoundedCornerShape(10.dp))
                         .clickable { onSelectEgg(egg.speciesId) }
