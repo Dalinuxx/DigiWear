@@ -297,52 +297,58 @@ private fun DrawScope.drawMedicalPillIcon(w: Float, h: Float, s: Float, hasTint:
     drawBandageCrossIcon(w, h, s, hasTint, tint)
 
 private fun DrawScope.drawMeatIcon(w: Float, h: Float, s: Float, hasTint: Boolean, tint: Color) {
-    // Authentic Bandai Food Icon: Roasted Meat Roast on Bone + Protein Tablet
-    val boneColor = if (hasTint) tint.copy(alpha = 0.85f) else Color(0xFFF5F0E6)
+    // Authentic Bandai Food Icon: Symmetrical Bone-in Roasted Meat Chunk (Manga Meat)
+    val boneColor = if (hasTint) tint.copy(alpha = 0.90f) else Color(0xFFFFFFFF)
     val meatColor = if (hasTint) tint else Color(0xFFD84315)
+    val meatShade = if (hasTint) tint.copy(alpha = 0.75f) else Color(0xFFBF360C)
     val highlightColor = if (hasTint) Color.White.copy(alpha = 0.6f) else Color(0xFFFF8A65)
-    val pillColor = if (hasTint) tint else Color(0xFFFFB300)
 
-    // Bone shaft protruding from left
+    val boneHeight = (s * 0.13f).coerceAtLeast(1.8f)
+    val boneTop = (h - boneHeight) * 0.5f
+    val knobR = s * 0.085f
+
+    // 1. Bone shaft running horizontally through center
     drawRoundRect(
         color = boneColor,
-        topLeft = Offset(w * 0.08f, h * 0.44f),
-        size = Size(w * 0.32f, h * 0.14f),
+        topLeft = Offset(w * 0.08f, boneTop),
+        size = Size(w * 0.84f, boneHeight),
         cornerRadius = CornerRadius(s * 0.04f, s * 0.04f)
     )
-    // Bone knobs on left
-    val knobR = s * 0.09f
-    drawCircle(boneColor, radius = knobR, center = Offset(w * 0.12f, h * 0.40f))
+
+    // 2. White bone knobs on LEFT side
+    drawCircle(boneColor, radius = knobR, center = Offset(w * 0.12f, h * 0.38f))
     drawCircle(boneColor, radius = knobR, center = Offset(w * 0.12f, h * 0.62f))
 
-    // Roasted meat chunk in center
+    // 3. White bone knobs on RIGHT side (Symmetrical!)
+    drawCircle(boneColor, radius = knobR, center = Offset(w * 0.88f, h * 0.38f))
+    drawCircle(boneColor, radius = knobR, center = Offset(w * 0.88f, h * 0.62f))
+
+    // 4. Roasted meat chunk in center (barrel-shaped)
+    val meatLeft = w * 0.22f
+    val meatTop = h * 0.16f
+    val meatWidth = w * 0.56f
+    val meatHeight = h * 0.68f
+
+    // Meat base
     drawRoundRect(
         color = meatColor,
-        topLeft = Offset(w * 0.24f, h * 0.22f),
-        size = Size(w * 0.42f, h * 0.56f),
+        topLeft = Offset(meatLeft, meatTop),
+        size = Size(meatWidth, meatHeight),
+        cornerRadius = CornerRadius(s * 0.22f, s * 0.22f)
+    )
+    // Meat lower shadow
+    drawRoundRect(
+        color = meatShade,
+        topLeft = Offset(meatLeft + w * 0.04f, meatTop + meatHeight * 0.58f),
+        size = Size(meatWidth - w * 0.08f, meatHeight * 0.34f),
         cornerRadius = CornerRadius(s * 0.14f, s * 0.14f)
     )
-    // Meat highlight sheen
+    // Meat upper highlight sheen
     drawRoundRect(
         color = highlightColor,
-        topLeft = Offset(w * 0.30f, h * 0.28f),
-        size = Size(w * 0.30f, h * 0.12f),
-        cornerRadius = CornerRadius(s * 0.04f, s * 0.04f)
-    )
-
-    // Protein Vitamin Capsule on right side
-    drawRoundRect(
-        color = pillColor,
-        topLeft = Offset(w * 0.70f, h * 0.36f),
-        size = Size(w * 0.22f, h * 0.30f),
-        cornerRadius = CornerRadius(s * 0.10f, s * 0.10f)
-    )
-    // Capsule divider seam
-    drawLine(
-        color = Color(0xFF263238),
-        start = Offset(w * 0.81f, h * 0.36f),
-        end = Offset(w * 0.81f, h * 0.66f),
-        strokeWidth = (s * 0.06f).coerceAtLeast(1f)
+        topLeft = Offset(meatLeft + w * 0.08f, meatTop + h * 0.08f),
+        size = Size(meatWidth - w * 0.16f, h * 0.14f),
+        cornerRadius = CornerRadius(s * 0.06f, s * 0.06f)
     )
 }
 

@@ -14,8 +14,8 @@ android {
         applicationId = "com.digiwear.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 13
-        versionName = "2.4.8"
+        versionCode = 14
+        versionName = "2.4.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

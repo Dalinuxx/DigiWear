@@ -952,9 +952,12 @@ fun DigiVaultScreen(
                                     victories = p.victories
                                 )
                             )
+                            db.phoneDao().clearActivePet()
+                            wearableManager.sendRemoteCareCommand("DEPOSIT_VAULT")
+                            activePetForDeposit = null
                             showDepositDialog = false
                             nicknameInput = ""
-                            actionStatusMessage = "${spec.name} safely stored in DigiVault!"
+                            actionStatusMessage = "${spec.name} safely stored in DigiVault! Active partner cleared."
                         }
                     },
                     shape = RoundedCornerShape(6.dp)

@@ -22,6 +22,9 @@ interface PhoneDao {
     @Query("SELECT * FROM synced_pet_history ORDER BY id DESC LIMIT 1")
     suspend fun getLatestSnapshot(): SyncedPetEntity?
 
+    @Query("DELETE FROM synced_pet_history")
+    suspend fun clearActivePet()
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshotInternal(snapshot: SyncedPetEntity)
 

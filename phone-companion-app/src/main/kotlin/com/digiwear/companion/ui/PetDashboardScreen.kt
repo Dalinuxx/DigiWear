@@ -474,7 +474,10 @@ fun PetDashboardScreen(
                                 notes = "Deposited from Dashboard"
                             )
                             db.phoneDao().insertVaultPet(entry)
-                            vaultDepositSuccess = "Stored ${currentSpecies.name} in DigiVault Cryo-Stasis!"
+                            db.phoneDao().clearActivePet()
+                            wearableManager.sendRemoteCareCommand("DEPOSIT_VAULT")
+                            petState = null
+                            vaultDepositSuccess = "Stored ${currentSpecies.name} in DigiVault! Active partner cleared."
                             delay(3000L)
                             vaultDepositSuccess = null
                         }
