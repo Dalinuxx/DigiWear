@@ -125,6 +125,8 @@ fun MainPetScreen(
         buzzerManager.isEnabled = isSoundEnabled
     }
 
+    val hasActiveEgg by repository.hasActiveEggFlow.collectAsState(initial = repository.hasActiveEggFlow.value)
+    var showEggPicker by remember { mutableStateOf(false) }
     var actionFeedback by remember { mutableStateOf<String?>(null) }
     var overrideSpriteFrame by remember { mutableStateOf<SpriteFrame?>(null) }
     var selectedMenuIndex by remember { mutableStateOf<Int?>(null) }
@@ -290,10 +292,11 @@ fun MainPetScreen(
     }
 
     androidx.activity.compose.BackHandler(
-        enabled = isTrainingActive || showTrainingPicker || showLightPicker || evolvingFromSpeciesId != null
+        enabled = isTrainingActive || showTrainingPicker || showLightPicker || evolvingFromSpeciesId != null || (hasActiveEgg && showEggPicker)
     ) {
         buzzerManager.playButtonBeep()
         when {
+            showEggPicker -> showEggPicker = false
             evolvingFromSpeciesId != null -> evolvingFromSpeciesId = null
             showTrainingPicker -> showTrainingPicker = false
             showLightPicker -> showLightPicker = false
@@ -529,9 +532,7 @@ fun MainPetScreen(
                 onNavigateStatus = onNavigateStatus,
                 onNavigateAdventure = onNavigateAdventure,
                 onHatchTraitedEgg = {
-                    scope.launch {
-                        repository.hatchTraitedEgg()
-                    }
+                    showEggPicker = true
                 }
             )
         }
@@ -751,6 +752,22 @@ fun MainPetScreen(
                 buzzerManager = buzzerManager,
                 hapticManager = hapticManager,
                 onDismiss = { evolvingFromSpeciesId = null }
+            )
+        }
+
+        // Digi-Egg Selection Screen (auto-prompted when no active egg exists or on hatch request)
+        if (!hasActiveEgg || showEggPicker) {
+            EggSelectionOverlay(
+                onSelectEgg = { eggId ->
+                    scope.launch {
+                        repository.hatchNewEgg(eggId)
+                        buzzerManager.playVictoryFanfare()
+                        hapticManager.playVictoryFanfare()
+                        showEggPicker = false
+                    }
+                },
+                canDismiss = hasActiveEgg,
+                onDismiss = { showEggPicker = false }
             )
         }
     }

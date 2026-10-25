@@ -83,6 +83,14 @@ class PetRepository private constructor(context: Context) {
         _wallpaperVersionFlow.value++
     }
 
+    init {
+        CoroutineScope(Dispatchers.IO).launch {
+            val exists = dao.getPetState() != null
+            prefs.edit().putBoolean("has_active_egg", exists).apply()
+            _hasActiveEggFlow.value = exists
+        }
+    }
+
     private val _vibrationFlow = MutableStateFlow(
         prefs.getBoolean("vibration_enabled", true)
     )
@@ -175,6 +183,16 @@ class PetRepository private constructor(context: Context) {
         prefs.getString("custom_campaign_json", null) ?: AdventureEngine.DEFAULT_CAMPAIGN_JSON
     )
     val campaignJsonFlow: StateFlow<String> = _campaignJsonFlow.asStateFlow()
+
+    private val _hasActiveEggFlow = MutableStateFlow(
+        prefs.getBoolean("has_active_egg", false)
+    )
+    val hasActiveEggFlow: StateFlow<Boolean> = _hasActiveEggFlow.asStateFlow()
+
+    fun setHasActiveEgg(active: Boolean) {
+        prefs.edit().putBoolean("has_active_egg", active).apply()
+        _hasActiveEggFlow.value = active
+    }
 
     @Volatile
     private var cachedCampaign: Pair<String, CampaignStory>? = null
@@ -436,7 +454,16 @@ class PetRepository private constructor(context: Context) {
 
     suspend fun savePetState(state: PetState) = withContext(Dispatchers.IO) {
         dao.insertOrUpdatePet(PetEntity.fromDomain(state))
+        setHasActiveEgg(true)
         notifySurfaceUpdates()
+    }
+
+    suspend fun clearActivePet() = withContext(Dispatchers.IO) {
+        stateMutex.withLock {
+            dao.deleteActivePet()
+            setHasActiveEgg(false)
+            notifySurfaceUpdates()
+        }
     }
 
     val backupPetStateFlow: Flow<PetState?> = dao.getBackupPetStateFlow().map { entity ->
@@ -569,7 +596,11 @@ class PetRepository private constructor(context: Context) {
     }
 
     private suspend fun processDecayLocked(currentUtc: Long): PetState {
-        val current = getPetState()
+        val entity = dao.getPetState()
+        if (entity == null || !_hasActiveEggFlow.value) {
+            return entity?.toDomain() ?: PetState(speciesId = 101)
+        }
+        val current = entity.toDomain()
         val isCanonical = _lifespanCanonicalEnabledFlow.value
         val localOffset = ZoneId.systemDefault().rules.getOffset(Instant.ofEpochSecond(currentUtc))
         val sleepMode = _sleepScheduleFlow.value

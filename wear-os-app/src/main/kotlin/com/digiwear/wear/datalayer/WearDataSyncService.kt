@@ -132,7 +132,10 @@ class WearDataSyncService : WearableListenerService() {
                             action == "CLEAN_WASTE" || action == "CLEAN" -> repo.cleanWaste()
                             action == "TOGGLE_LIGHTS" -> repo.toggleLights()
                             action == "TOGGLE_COLD_SLEEP" -> repo.toggleColdSleep()
-                            action == "DEPOSIT_VAULT" || action == "FREEZE_AND_DEPOSIT" -> repo.hatchNewEgg(101)
+                            action == "DEPOSIT_VAULT" || action == "FREEZE_AND_DEPOSIT" -> {
+                                repo.clearActivePet()
+                                repo.getPetState()
+                            }
                             action == "CURE_INJURY" -> repo.cureInjury()
                             action == "TRAIN_WIN" -> repo.train(won = true)
                             action.startsWith("HATCH_EGG:") -> {

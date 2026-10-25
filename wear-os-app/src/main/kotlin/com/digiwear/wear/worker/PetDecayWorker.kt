@@ -34,6 +34,9 @@ class PetDecayWorker(
 
     override suspend fun doWork(): Result {
         val repo = PetRepository.getInstance(context)
+        if (!repo.hasActiveEggFlow.value) {
+            return Result.success()
+        }
         val now = System.currentTimeMillis() / 1000L
         val initialPetState = repo.getPetState()
         val initialSpeciesId = initialPetState.speciesId

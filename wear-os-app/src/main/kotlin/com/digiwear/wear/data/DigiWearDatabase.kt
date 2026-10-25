@@ -73,6 +73,9 @@ interface PetDao {
     @Query("SELECT * FROM pet_state WHERE id = 2 LIMIT 1")
     suspend fun getBackupPetState(): PetEntity?
 
+    @Query("DELETE FROM pet_state WHERE id = 1")
+    suspend fun deleteActivePet()
+
     @Query("DELETE FROM pet_state WHERE id = 2")
     suspend fun deleteBackupPet()
 
