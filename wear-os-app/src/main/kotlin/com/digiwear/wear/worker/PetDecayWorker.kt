@@ -48,8 +48,11 @@ class PetDecayWorker(
         DigiWearComplicationService.requestUpdate(context)
         DigiWearTileService.requestUpdate(context)
 
-        // 1. Digital Evolution Detection & Notification
-        if (initialSpeciesId > 0 && finalSpeciesId != initialSpeciesId) {
+        // 1. Digital Evolution Detection & Notification (forward stage advance only; egg swaps never notify)
+        val stageAdvanced = initialSpeciesId > 0 && finalSpeciesId != initialSpeciesId &&
+            com.digiwear.core.model.PetSpecies.getById(finalSpeciesId).stage.stageIndex >
+            com.digiwear.core.model.PetSpecies.getById(initialSpeciesId).stage.stageIndex
+        if (stageAdvanced) {
             val lastNotifiedSpecies = prefs.getInt(KEY_LAST_NOTIFIED_SPECIES_ID, -1)
             if (lastNotifiedSpecies != finalSpeciesId) {
                 prefs.edit().putInt(KEY_LAST_NOTIFIED_SPECIES_ID, finalSpeciesId).apply()

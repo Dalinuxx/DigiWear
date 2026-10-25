@@ -83,6 +83,16 @@ class PetRepository private constructor(context: Context) {
         _wallpaperVersionFlow.value++
     }
 
+    private val _hasActiveEggFlow = MutableStateFlow(
+        prefs.getBoolean("has_active_egg", false)
+    )
+    val hasActiveEggFlow: StateFlow<Boolean> = _hasActiveEggFlow.asStateFlow()
+
+    fun setHasActiveEgg(active: Boolean) {
+        prefs.edit().putBoolean("has_active_egg", active).apply()
+        _hasActiveEggFlow.value = active
+    }
+
     init {
         CoroutineScope(Dispatchers.IO).launch {
             val exists = dao.getPetState() != null
@@ -183,16 +193,6 @@ class PetRepository private constructor(context: Context) {
         prefs.getString("custom_campaign_json", null) ?: AdventureEngine.DEFAULT_CAMPAIGN_JSON
     )
     val campaignJsonFlow: StateFlow<String> = _campaignJsonFlow.asStateFlow()
-
-    private val _hasActiveEggFlow = MutableStateFlow(
-        prefs.getBoolean("has_active_egg", false)
-    )
-    val hasActiveEggFlow: StateFlow<Boolean> = _hasActiveEggFlow.asStateFlow()
-
-    fun setHasActiveEgg(active: Boolean) {
-        prefs.edit().putBoolean("has_active_egg", active).apply()
-        _hasActiveEggFlow.value = active
-    }
 
     @Volatile
     private var cachedCampaign: Pair<String, CampaignStory>? = null

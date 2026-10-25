@@ -63,6 +63,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.digiwear.companion.datalayer.PhoneWearableManager
+import com.digiwear.companion.sideload.ApkSourceType
 import com.digiwear.companion.sideload.SideloadConnectionState
 import com.digiwear.companion.sideload.WatchApkInfo
 import com.digiwear.companion.sideload.WatchApkSourceManager
@@ -717,14 +718,14 @@ fun WatchSideloadScreen(
 
                                                     // Auto-sideload if APK is ready
                                                     var apkToInstall = selectedApk
-                                                    if (apkToInstall == null) {
-                                                        apkToInstall = apkSourceManager.getCachedApk() ?: apkSourceManager.getEmbeddedAssetApk()
+                                                    if (apkToInstall == null || apkToInstall?.sourceType != ApkSourceType.PHONE_STORAGE) {
+                                                        adbManager.log("Downloading latest watch APK from GitHub release_bin...")
+                                                        apkSourceManager.downloadReleaseApk().onSuccess { dl ->
+                                                            apkToInstall = dl
+                                                            adbManager.log("Download complete: ${dl.displayName} ${dl.versionLabel}")
+                                                        }
                                                         if (apkToInstall == null) {
-                                                            adbManager.log("Downloading latest watch APK from GitHub...")
-                                                            apkSourceManager.downloadReleaseApk().onSuccess { dl ->
-                                                                apkToInstall = dl
-                                                                adbManager.log("Download complete: ${dl.displayName}")
-                                                            }
+                                                            apkToInstall = apkSourceManager.getCachedApk() ?: apkSourceManager.getEmbeddedAssetApk()
                                                         }
                                                         if (apkToInstall != null) selectedApk = apkToInstall
                                                     }
@@ -1006,7 +1007,7 @@ fun WatchSideloadScreen(
                                         fontFamily = FontFamily.Monospace
                                     )
                                     Text(
-                                        text = "Size: ${apk.sizeFormatted} • Source: ${apk.sourceType.label}",
+                                        text = "${apk.versionLabel.ifEmpty { "version unknown" }} • ${apk.sizeFormatted} • ${apk.sourceType.label}",
                                         color = Color(0xFF80CBC4),
                                         fontSize = 9.sp,
                                         fontFamily = FontFamily.Monospace
@@ -1092,7 +1093,8 @@ fun WatchSideloadScreen(
 
                     // Step 2: Download APK if not cached
                     var apkToInstall = selectedApk
-                    if (apkToInstall == null) {
+                    // Always refresh from GitHub release_bin unless the user explicitly picked a file from phone storage
+                    if (apkToInstall == null || apkToInstall?.sourceType != ApkSourceType.PHONE_STORAGE) {
                         isDownloading = true
                         downloadProgress = 0f
                         downloadStatusText = "Downloading latest release APK from GitHub..."
@@ -1112,7 +1114,7 @@ fun WatchSideloadScreen(
                             adbManager.log("Download complete: ${info.displayName} (${info.sizeFormatted})")
                         }.onFailure { err ->
                             downloadStatusText = "Download failed: ${err.message}"
-                            adbManager.log("Download failed: ${err.message}")
+                            adbManager.log("Download failed: ${err.message} (using cached APK if available)")
                         }
                         isDownloading = false
                     }
@@ -1120,6 +1122,8 @@ fun WatchSideloadScreen(
                     // Step 3: Stream and install on watch
                     val finalApk = apkToInstall
                     if (finalApk != null) {
+                        val installedName = adbManager.watchDetails.value?.installedVersionName.orEmpty()
+                        adbManager.log("Installing APK ${finalApk.versionLabel.ifEmpty { "(version unknown)" }}; watch currently has ${installedName.ifEmpty { "none" }}")
                         adbManager.sideloadApk(
                             apkFile = finalApk.file,
                             grantPermissions = grantPermissions,

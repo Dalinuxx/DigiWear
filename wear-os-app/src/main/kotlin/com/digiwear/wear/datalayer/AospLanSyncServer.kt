@@ -41,6 +41,34 @@ object AospLanSyncServer {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val json = Json { ignoreUnknownKeys = true }
 
+    /** Maximum bytes accepted for a single request line (path or payload). Prevents memory exhaustion. */
+    private const val MAX_LINE_CHARS = 64 * 1024
+    private const val MAX_CONCURRENT_CLIENTS = 4
+    private val clientPermits = java.util.concurrent.Semaphore(MAX_CONCURRENT_CLIENTS)
+
+    /** Allows loopback, link-local, RFC1918 site-local and CGNAT (100.64.0.0/10, e.g. Tailscale) peers only. */
+    private fun isTrustedLanAddress(address: java.net.InetAddress?): Boolean {
+        if (address == null) return false
+        if (address.isLoopbackAddress || address.isSiteLocalAddress || address.isLinkLocalAddress) return true
+        val raw = address.address
+        return raw.size == 4 && (raw[0].toInt() and 0xFF) == 100 && (raw[1].toInt() and 0xC0) == 0x40
+    }
+
+    /** Reads one line but never more than [MAX_LINE_CHARS]; returns null on EOF, throws on oversize. */
+    private fun readBoundedLine(reader: BufferedReader): String? {
+        val sb = StringBuilder()
+        while (true) {
+            val c = reader.read()
+            if (c == -1) return if (sb.isEmpty()) null else sb.toString()
+            if (c == '\n'.code) return sb.toString()
+            if (c != '\r'.code) sb.append(c.toChar())
+            if (sb.length > MAX_LINE_CHARS) throw java.io.IOException("Request line too long")
+        }
+    }
+
+    private fun isKnownSpecies(speciesId: Int): Boolean =
+        com.digiwear.core.model.PetSpecies.SPECIES_REGISTRY.containsKey(speciesId)
+
     @Volatile
     private var tcpJob: Job? = null
 
@@ -70,7 +98,18 @@ object AospLanSyncServer {
                         } catch (_: Exception) {
                             break
                         }
-                        launch { handleClient(appContext, client) }
+                        // Security: only serve local / private networks and cap concurrent sessions
+                        if (!isTrustedLanAddress(client.inetAddress) || !clientPermits.tryAcquire()) {
+                            try { client.close() } catch (_: Exception) {}
+                            continue
+                        }
+                        launch {
+                            try {
+                                handleClient(appContext, client)
+                            } finally {
+                                clientPermits.release()
+                            }
+                        }
                     }
                 } catch (_: Exception) {
                 }
@@ -163,8 +202,8 @@ object AospLanSyncServer {
             val reader = BufferedReader(InputStreamReader(client.getInputStream(), Charsets.UTF_8))
             val writer = PrintWriter(client.getOutputStream(), true, Charsets.UTF_8)
 
-            val path = reader.readLine()?.trim() ?: return
-            val payload = reader.readLine() ?: ""
+            val path = try { readBoundedLine(reader)?.trim() } catch (_: Exception) { null } ?: return
+            val payload = try { readBoundedLine(reader) } catch (_: Exception) { return } ?: ""
             val repo = PetRepository.getInstance(context)
 
             val response = when (path) {
@@ -175,8 +214,12 @@ object AospLanSyncServer {
                 "/sync/update_pet_state" -> {
                     try {
                         val incoming = json.decodeFromString<PetState>(payload)
-                        repo.savePetState(incoming)
-                        "OK"
+                        if (!isKnownSpecies(incoming.speciesId)) {
+                            "ERR"
+                        } else {
+                            repo.savePetState(incoming)
+                            "OK"
+                        }
                     } catch (_: Exception) {
                         "ERR"
                     }
@@ -229,7 +272,8 @@ object AospLanSyncServer {
                             action == "CURE_INJURY" -> repo.cureInjury()
                             action == "TRAIN_WIN" -> repo.train(won = true)
                             action.startsWith("HATCH_EGG:") -> {
-                                val eggId = action.substringAfter("HATCH_EGG:").toIntOrNull() ?: 101
+                                val eggId = action.substringAfter("HATCH_EGG:").toIntOrNull()
+                                    ?.takeIf { isKnownSpecies(it) } ?: 101
                                 repo.hatchNewEgg(eggId)
                             }
                             else -> repo.getPetState()

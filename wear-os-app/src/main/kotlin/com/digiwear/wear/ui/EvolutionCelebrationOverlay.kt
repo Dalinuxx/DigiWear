@@ -76,7 +76,10 @@ fun EvolutionCelebrationOverlay(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val prevSpecies = remember(previousSpeciesId) { PetSpecies.getById(previousSpeciesId) }
+    val isFromEgg = previousSpeciesId == 0
+    val prevSpecies = remember(previousSpeciesId) {
+        if (isFromEgg) null else PetSpecies.getById(previousSpeciesId)
+    }
     val newSpecies = remember(newSpeciesId) { PetSpecies.getById(newSpeciesId) }
 
     // Phase: 0 = Strobe Alert, 1 = Glitch Alternation, 2 = High-Res Reveal Card
@@ -143,15 +146,15 @@ fun EvolutionCelebrationOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        DigiVectorIcon(type = DigiIconType.BOLT, size = 14.dp, tint = Color.Black)
+                        DigiVectorIcon(type = if (isFromEgg) DigiIconType.EGG else DigiIconType.BOLT, size = 14.dp, tint = Color.Black)
                         Text(
-                            text = "DIGIVOLVING!",
-                            fontSize = 14.sp,
+                            text = if (isFromEgg) "DIGI-EGG HATCHING!" else "DIGIVOLVING!",
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = Color.Black
                         )
-                        DigiVectorIcon(type = DigiIconType.BOLT, size = 14.dp, tint = Color.Black)
+                        DigiVectorIcon(type = if (isFromEgg) DigiIconType.EGG else DigiIconType.BOLT, size = 14.dp, tint = Color.Black)
                     }
                 }
             }
@@ -163,7 +166,7 @@ fun EvolutionCelebrationOverlay(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "DATA STREAM EVOLUTION",
+                        text = if (isFromEgg) "DIGI-EGG INCUBATION STREAM" else "DATA STREAM EVOLUTION",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
@@ -178,16 +181,23 @@ fun EvolutionCelebrationOverlay(
                                 style = Stroke(width = 3.dp.toPx())
                             )
                         }
-                        SpriteCanvasRenderer(
-                            speciesId = glitchFrameSpeciesId,
-                            isAmbient = false,
-                            overrideFrame = SpriteFrame.IDLE_A,
-                            size = 80.dp
-                        )
+                        if (glitchFrameSpeciesId == 0) {
+                            DigiVectorIcon(
+                                type = DigiIconType.EGG,
+                                size = 56.dp
+                            )
+                        } else {
+                            SpriteCanvasRenderer(
+                                speciesId = glitchFrameSpeciesId,
+                                isAmbient = false,
+                                overrideFrame = SpriteFrame.IDLE_A,
+                                size = 80.dp
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "RECONFIGURING DIGICORE...",
+                        text = if (isFromEgg) "HATCHING NEW PARTNER..." else "RECONFIGURING DIGICORE...",
                         fontSize = 7.sp,
                         fontFamily = FontFamily.Monospace,
                         color = Color(0xFFFFD54F)
@@ -208,16 +218,16 @@ fun EvolutionCelebrationOverlay(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
+                        DigiVectorIcon(type = if (isFromEgg) DigiIconType.EGG else DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
                         Text(
-                            text = "EVOLUTION COMPLETE!",
+                            text = if (isFromEgg) "DIGI-EGG HATCHED!" else "EVOLUTION COMPLETE!",
                             fontSize = 8.5.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = Color(0xFFFFD54F),
                             textAlign = TextAlign.Center
                         )
-                        DigiVectorIcon(type = DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
+                        DigiVectorIcon(type = if (isFromEgg) DigiIconType.EGG else DigiIconType.STAR_FULL, size = 9.dp, tint = Color(0xFFFFD54F))
                     }
 
                     // Portrait viewport
@@ -258,8 +268,18 @@ fun EvolutionCelebrationOverlay(
                             color = Color.White
                         )
                         Text(
-                            text = "${newSpecies.stage.displayName} • ${newSpecies.attribute.displayName} • HP ${newSpecies.baseHp}",
+                            text = if (isFromEgg) {
+                                "${newSpecies.stage.displayName} • PRIOR: DIGI-EGG"
+                            } else {
+                                "${newSpecies.stage.displayName} • PRIOR: #${prevSpecies?.id} ${prevSpecies?.name?.uppercase()}"
+                            },
                             fontSize = 7.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFFFFD54F)
+                        )
+                        Text(
+                            text = "${newSpecies.attribute.displayName} • HP ${newSpecies.baseHp}",
+                            fontSize = 6.5.sp,
                             fontFamily = FontFamily.Monospace,
                             color = Color(0xFF80D8FF)
                         )

@@ -44,7 +44,9 @@ class WearDataSyncService : WearableListenerService() {
                     try {
                         val str = String(messageEvent.data, Charsets.UTF_8)
                         val incomingState = json.decodeFromString<PetState>(str)
-                        repo.savePetState(incomingState)
+                        if (com.digiwear.core.model.PetSpecies.SPECIES_REGISTRY.containsKey(incomingState.speciesId)) {
+                            repo.savePetState(incomingState)
+                        }
                     } catch (_: Exception) {}
                 }
             }
@@ -139,7 +141,8 @@ class WearDataSyncService : WearableListenerService() {
                             action == "CURE_INJURY" -> repo.cureInjury()
                             action == "TRAIN_WIN" -> repo.train(won = true)
                             action.startsWith("HATCH_EGG:") -> {
-                                val eggId = action.substringAfter("HATCH_EGG:").toIntOrNull() ?: 101
+                                val eggId = action.substringAfter("HATCH_EGG:").toIntOrNull()
+                                    ?.takeIf { com.digiwear.core.model.PetSpecies.SPECIES_REGISTRY.containsKey(it) } ?: 101
                                 repo.hatchNewEgg(eggId)
                             }
                             else -> repo.getPetState()

@@ -72,7 +72,10 @@ fun EvolutionCelebrationOverlay(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val prevSpecies = remember(previousSpeciesId) { PetSpecies.getById(previousSpeciesId) }
+    val isFromEgg = previousSpeciesId == 0
+    val prevSpecies = remember(previousSpeciesId) {
+        if (isFromEgg) null else PetSpecies.getById(previousSpeciesId)
+    }
     val newSpecies = remember(newSpeciesId) { PetSpecies.getById(newSpeciesId) }
 
     // Phase: 0 = Strobe Alert, 1 = Glitch Alternation, 2 = High-Res Reveal Card
@@ -171,7 +174,7 @@ fun EvolutionCelebrationOverlay(
                     verticalArrangement = Arrangement.Center
                 ) {
                     Text(
-                        text = "EVOLUTION ALERT",
+                        text = if (isFromEgg) "DIGI-EGG HATCH ALERT" else "EVOLUTION ALERT",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFFFFD54F),
@@ -186,15 +189,19 @@ fun EvolutionCelebrationOverlay(
                             .border(2.dp, Color(0xFF00E5FF).copy(alpha = strobeAlpha), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
-                        SpriteCanvasRenderer(
-                            speciesId = glitchFrameSpeciesId,
-                            frame = SpriteFrame.IDLE_A,
-                            size = 96.dp
-                        )
+                        if (glitchFrameSpeciesId == 0) {
+                            DigiVectorIcon(type = DigiIconType.EGG, size = 72.dp)
+                        } else {
+                            SpriteCanvasRenderer(
+                                speciesId = glitchFrameSpeciesId,
+                                frame = SpriteFrame.IDLE_A,
+                                size = 96.dp
+                            )
+                        }
                     }
                     Spacer(modifier = Modifier.height(14.dp))
                     Text(
-                        text = "MUTATING DIGITAL DNA...",
+                        text = if (isFromEgg) "INCUBATING DIGITAL EGG..." else "MUTATING DIGITAL DNA...",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFF80CBC4),
@@ -212,7 +219,7 @@ fun EvolutionCelebrationOverlay(
                         .padding(horizontal = 24.dp)
                 ) {
                     Text(
-                        text = "EVOLUTION COMPLETE",
+                        text = if (isFromEgg) "DIGI-EGG HATCHED" else "EVOLUTION COMPLETE",
                         fontSize = 13.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFF00E5FF),
@@ -265,6 +272,14 @@ fun EvolutionCelebrationOverlay(
                         AttributeBadge(newSpecies.attribute.displayName)
                     }
 
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = if (isFromEgg) "PRIOR PARTNER: DIGI-EGG" else "PRIOR PARTNER: #${prevSpecies?.id} ${prevSpecies?.name?.uppercase()}",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFFFD54F),
+                        fontFamily = FontFamily.Monospace
+                    )
                     Spacer(modifier = Modifier.height(6.dp))
                     Text(
                         text = "HP ${newSpecies.baseHp}  PWR ${newSpecies.basePower}  WT ${newSpecies.baselineWeight}G",

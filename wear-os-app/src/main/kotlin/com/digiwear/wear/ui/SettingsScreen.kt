@@ -53,6 +53,7 @@ fun SettingsScreen(
     hapticManager: HapticManager,
     onBack: () -> Unit
 ) {
+    val context = androidx.compose.ui.platform.LocalContext.current
     val displayConfig = WatchDisplayConfig.current()
     val scope = rememberCoroutineScope()
     val listState = rememberScalingLazyListState()
@@ -137,6 +138,54 @@ fun SettingsScreen(
                 color = Color(0xFF64B5F6),
                 fontFamily = FontFamily.Monospace
             )
+        }
+
+        // ==========================================
+        // 0. Watch Face Replacement
+        // ==========================================
+        item {
+            Button(
+                onClick = {
+                    hapticManager.playStepMilestone()
+                    try {
+                        val intent = android.content.Intent(android.app.WallpaperManager.ACTION_CHANGE_LIVE_WALLPAPER).apply {
+                            putExtra(
+                                android.app.WallpaperManager.EXTRA_LIVE_WALLPAPER_COMPONENT,
+                                android.content.ComponentName(context, com.digiwear.wear.watchface.DigiWatchFaceService::class.java)
+                            )
+                            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                        context.startActivity(intent)
+                    } catch (e: Exception) {
+                        try {
+                            val chooserIntent = android.content.Intent(android.content.Intent.ACTION_SET_WALLPAPER).apply {
+                                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            context.startActivity(chooserIntent)
+                        } catch (_: Exception) {}
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                    .height(30.dp),
+                colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00695C)),
+                shape = RoundedCornerShape(15.dp)
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    DigiVectorIcon(type = DigiIconType.SETTINGS, size = 10.dp, tint = Color(0xFFB9F6CA))
+                    Text(
+                        text = "SET AS ACTIVE WATCH FACE",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color.White
+                    )
+                }
+            }
         }
 
         // ==========================================

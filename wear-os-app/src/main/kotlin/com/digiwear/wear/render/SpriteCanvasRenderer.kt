@@ -19,6 +19,7 @@ import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.coerceIn
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 
@@ -32,7 +33,10 @@ fun SpriteCanvasRenderer(
     flipHorizontal: Boolean = false,
     enableIdleRoaming: Boolean = false,
     modifier: Modifier = Modifier,
-    size: Dp = 128.dp
+    size: Dp = 128.dp,
+    roamAmplitude: Float = 1f,
+    roamLimitLeft: Dp = Dp.Infinity,
+    roamLimitRight: Dp = Dp.Infinity
 ) {
     // 2 Hz V-Pet LCD frame & roaming cycle in Interactive Mode; paused whenever frame is static
     var currentIdleFrame by remember { mutableStateOf(SpriteFrame.IDLE_A) }
@@ -72,7 +76,7 @@ fun SpriteCanvasRenderer(
         else -> currentIdleFrame
     }
 
-    val roamOffsetDp = if (enableIdleRoaming && !isStaticFrame && !isSleeping) {
+    val baseRoamOffsetDp = if (enableIdleRoaming && !isStaticFrame && !isSleeping) {
         when (roamStep) {
             2 -> (-3).dp
             3, 4 -> (-5).dp
@@ -82,6 +86,9 @@ fun SpriteCanvasRenderer(
             else -> 0.dp
         }
     } else 0.dp
+    // Walking range is scaled by roamAmplitude and clamped to the boundaries supplied by the layout
+    // (e.g. the A/B/C button rail on one side), so the pet never walks under controls or off the bezel.
+    val roamOffsetDp = (baseRoamOffsetDp * roamAmplitude).coerceIn(-roamLimitLeft, roamLimitRight)
 
     val effectiveFlip = if (enableIdleRoaming && !isStaticFrame && !isSleeping && roamStep in 5..6) {
         !flipHorizontal

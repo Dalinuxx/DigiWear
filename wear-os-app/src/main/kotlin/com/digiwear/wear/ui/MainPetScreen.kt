@@ -57,6 +57,7 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.coerceAtLeast
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -137,20 +138,25 @@ fun MainPetScreen(
     var showLightPicker by remember { mutableStateOf(false) }
     var flushAnimationProgress by remember { mutableFloatStateOf(-1f) }
     var medsAnimationProgress by remember { mutableFloatStateOf(-1f) }
-    var lastObservedSpeciesId by remember { mutableIntStateOf(petState.speciesId) }
     var evolvingFromSpeciesId by remember { mutableStateOf<Int?>(null) }
 
-    LaunchedEffect(petState.speciesId) {
-        if (lastObservedSpeciesId != 0 && petState.speciesId != lastObservedSpeciesId) {
-            val prev = PetSpecies.getById(lastObservedSpeciesId)
-            val curr = PetSpecies.getById(petState.speciesId)
-            // Evolution celebration only fires when advancing forward in stage (e.g. Baby I -> Baby II, Child -> Adult)
-            // Spawning a new egg (Baby I) or swapping partners is NOT an evolution
-            if (curr.stage != PetStage.BABY_I && curr.stage.stageIndex > prev.stage.stageIndex) {
-                evolvingFromSpeciesId = lastObservedSpeciesId
+    // Evolution celebration is driven directly from the persisted-state flow so the placeholder
+    // PetState() used as the Compose initial value can never be mistaken for a previous species.
+    // The first emission only seeds the baseline, so re-entering this screen never replays it.
+    LaunchedEffect(Unit) {
+        var lastSeenSpeciesId: Int? = null
+        repository.petStateFlow.collect { state ->
+            val previousId = lastSeenSpeciesId
+            if (previousId != null && previousId != state.speciesId) {
+                val prev = PetSpecies.getById(previousId)
+                val curr = PetSpecies.getById(state.speciesId)
+                // Only a forward stage advance is an evolution; hatching an egg (Baby I) or swapping partners is not.
+                if (curr.stage != PetStage.BABY_I && curr.stage.stageIndex > prev.stage.stageIndex) {
+                    evolvingFromSpeciesId = previousId
+                }
             }
+            lastSeenSpeciesId = state.speciesId
         }
-        lastObservedSpeciesId = petState.speciesId
     }
 
     // Periodic time-delta refresh while interactive (strictly paused during Ambient Mode)
@@ -492,6 +498,7 @@ fun MainPetScreen(
                 selectedMenuIndex = selectedMenuIndex,
                 overrideSpriteFrame = overrideSpriteFrame,
                 actionFeedback = actionFeedback,
+                is24h = is24hFormat,
                 onSelectIcon = { index ->
                     if (selectedMenuIndex == index) {
                         selectedMenuIndex = null
@@ -764,6 +771,7 @@ fun MainPetScreen(
                         buzzerManager.playVictoryFanfare()
                         hapticManager.playVictoryFanfare()
                         showEggPicker = false
+                        evolvingFromSpeciesId = 0
                     }
                 },
                 canDismiss = hasActiveEgg,
@@ -915,28 +923,414 @@ private fun LcdIconCell(
     val bgColor = when {
         isSelected -> Color(0xFF00B0FF)
         isCallActive -> Color(0xFFD50000)
-        else -> Color(0x33000000)
+        else -> Color(0x22000000)
     }
     val borderColor = when {
         isSelected -> Color(0xFFFFD54F)
         isCallActive -> Color(0xFFFFD54F)
-        else -> Color(0x4480CBC4)
+        else -> Color(0x3380CBC4)
     }
-    val borderWidth = if (isSelected || isCallActive) 1.5.dp else 0.5.dp
+    val borderWidth = if (isSelected || isCallActive) 1.25.dp else 0.5.dp
+    val cellShape = RoundedCornerShape(8.dp)
 
     Box(
         modifier = Modifier
-            .size(width = if (isSelected || isCallActive) (width + 3.dp) else width, height = height)
-            .background(bgColor, RoundedCornerShape(4.dp))
-            .border(borderWidth, borderColor, RoundedCornerShape(4.dp))
+            .size(width = width, height = height)
+            .background(bgColor, cellShape)
+            .border(borderWidth, borderColor, cellShape)
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        val iconSize = if (isSelected || isCallActive) (height - 3.dp).coerceAtLeast(10.dp) else (height - 5.dp).coerceAtLeast(9.dp)
+        val iconSize = (height - 4.dp).coerceAtLeast(9.dp)
         DigiVectorIcon(
             type = item.iconType,
             size = iconSize
         )
+    }
+}
+
+/** Places [content] centred on the dial centre, shifted by ([x], [y]). */
+@Composable
+private fun androidx.compose.foundation.layout.BoxScope.DialSlot(
+    x: Dp,
+    y: Dp,
+    content: @Composable () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .align(Alignment.Center)
+            .offset(x = x, y = y),
+        contentAlignment = Alignment.Center
+    ) {
+        content()
+    }
+}
+
+/**
+ * Round "V-Pet Dial" layout shared by every round watch size.
+ *
+ * Everything is derived from the display diameter [D] (never fixed dp), so Galaxy Watch, Pixel Watch,
+ * and AOSP round watches all get the same composition:
+ * - the pet always rests on the exact screen centre (regardless of button placement),
+ * - the 8 menu icons sit on arcs near the bezel (4 upper, 4 lower) and can never clip,
+ * - time, name and telemetry sit on chords that are always inside the circle,
+ * - the A/B/C rail (LEFT or RIGHT) follows the bezel and only acts as the pet's walking boundary.
+ */
+@Composable
+private fun RoundDialPetView(
+    species: PetSpecies,
+    petState: PetState,
+    displayConfig: WatchDisplayConfig,
+    buttonPlacement: String,
+    buzzerManager: BuzzerManager,
+    selectedMenuIndex: Int?,
+    overrideSpriteFrame: SpriteFrame?,
+    actionFeedback: String?,
+    is24h: Boolean,
+    onSelectIcon: (Int) -> Unit,
+    onPressA: () -> Unit,
+    onPressB: () -> Unit,
+    onPressC: () -> Unit,
+    onNavigateSettings: () -> Unit,
+    onNavigateStatus: () -> Unit,
+    onNavigateAdventure: () -> Unit,
+    onHatchTraitedEgg: () -> Unit
+) {
+    val attrColor = when (species.attribute.displayName) {
+        "Vaccine" -> Color(0xFF00E5FF)
+        "Data" -> Color(0xFFFFCA28)
+        "Virus" -> Color(0xFFFF5252)
+        else -> Color(0xFF69F0AE)
+    }
+
+    val diameter = minOf(displayConfig.screenWidthDp, displayConfig.screenHeightDp).toFloat()
+    val d = diameter.dp
+    val r = (diameter / 2f).dp
+    val fontBase = (diameter * 0.036f).coerceAtLeast(7f)
+
+    // Live clock
+    var clockText by remember { mutableStateOf("") }
+    LaunchedEffect(is24h) {
+        while (true) {
+            val pattern = if (is24h) "HH:mm" else "h:mm"
+            clockText = SimpleDateFormat(pattern, Locale.getDefault()).format(Date())
+            delay(15_000L)
+        }
+    }
+
+    // Sprite geometry & walking boundaries hugging bezel edge
+    val spriteSize = (diameter * 0.35f).dp
+    val spriteHalf = spriteSize * 0.40f
+    val railBtn = (diameter * 0.125f).dp
+    val railOffsetY = railBtn * 1.30f
+    val railCenterEdge = 0.97f * diameter / 2f
+    // Horizontal centre of a rail button at vertical offset yDp, hugging the bezel
+    fun railX(yDp: Float): Float {
+        val inside = railCenterEdge * railCenterEdge - yDp * yDp
+        return sqrt(inside.coerceAtLeast(0f)) - railBtn.value / 2f
+    }
+    val railInnerEdge = (railX(railOffsetY.value) - railBtn.value / 2f).dp
+    val gap = (diameter * 0.02f).dp
+    val fullSide = r * 0.95f - spriteHalf
+
+    // Quest & Settings side: LEFT when buttons are on RIGHT; moves to RIGHT when buttons disabled ("OFF") or on LEFT
+    val questAndSettingsSide = when (buttonPlacement) {
+        "LEFT" -> 1f
+        "OFF" -> 1f
+        else -> -1f // "RIGHT"
+    }
+
+    val chipSize = (diameter * 0.082f).dp
+    val chipHalf = chipSize * 0.5f
+    val chipR = r * 0.86f
+    val chipOffsetY = r * 0.18f
+    val chipX = chipR * (questAndSettingsSide * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat())
+    val chipInnerEdge = (kotlin.math.abs(chipX.value) - chipHalf.value).dp
+    val roamLimitChips = (chipInnerEdge - spriteHalf - gap).coerceAtLeast(0.dp)
+    val roamLimitRail = (railInnerEdge - spriteHalf - gap).coerceAtLeast(0.dp)
+
+    val roamLeft: Dp
+    val roamRight: Dp
+    when (buttonPlacement) {
+        "RIGHT" -> { roamLeft = roamLimitChips; roamRight = roamLimitRail }
+        "LEFT" -> { roamLeft = roamLimitRail; roamRight = roamLimitChips }
+        else -> { roamLeft = fullSide; roamRight = roamLimitChips }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+
+        // ---- Live Clock (top centre, unobstructed) ----
+        DialSlot(0.dp, -(r * 0.70f)) {
+            Text(
+                text = clockText,
+                fontSize = (diameter * 0.078f).sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFE0F2F1),
+                fontFamily = FontFamily.Monospace
+            )
+        }
+
+        // ---- Quest & Settings utility chips along side boundary (LEFT when buttons RIGHT, moves RIGHT when OFF) ----
+        DialSlot(chipX, -chipOffsetY) {
+            Box(
+                modifier = Modifier
+                    .size(chipSize)
+                    .background(Color(0x66004D40), CircleShape)
+                    .border(0.5.dp, Color(0xFF4DB6AC), CircleShape)
+                    .clickable { onNavigateAdventure() },
+                contentAlignment = Alignment.Center
+            ) {
+                DigiVectorIcon(type = DigiIconType.QUEST, size = chipSize * 0.62f)
+            }
+        }
+        DialSlot(chipX, chipOffsetY) {
+            Box(
+                modifier = Modifier
+                    .size(chipSize)
+                    .background(Color(0x66263238), CircleShape)
+                    .border(0.5.dp, Color(0xFF90A4AE), CircleShape)
+                    .clickable { onNavigateSettings() },
+                contentAlignment = Alignment.Center
+            ) {
+                DigiVectorIcon(type = DigiIconType.SETTINGS, size = chipSize * 0.62f)
+            }
+        }
+
+        // ---- Menu care icons on the SAME OUTSIDE CIRCLE (0.88f * r) hugging face edge ----
+        val ringRadius = 0.88f
+        val iconW = (diameter * 0.098f).dp
+        val iconH = (diameter * 0.078f).dp
+        val angles = floatArrayOf(-42f, -14f, 14f, 42f)
+        for (k in 0..3) {
+            val rad = Math.toRadians(angles[k].toDouble())
+            val x = r * (ringRadius * kotlin.math.sin(rad).toFloat())
+            val y = r * (ringRadius * kotlin.math.cos(rad).toFloat())
+            DialSlot(x, -y) {
+                LcdIconCell(
+                    index = k,
+                    item = VPetMenu.entries[k],
+                    isSelected = selectedMenuIndex == k,
+                    isCallActive = false,
+                    width = iconW,
+                    height = iconH,
+                    fontSize = displayConfig.lcdIconFontSize,
+                    onClick = { onSelectIcon(k) }
+                )
+            }
+            DialSlot(x, y) {
+                val idx = 4 + k
+                LcdIconCell(
+                    index = idx,
+                    item = VPetMenu.entries[idx],
+                    isSelected = selectedMenuIndex == idx,
+                    isCallActive = (idx == 7 && petState.attentionCallActive),
+                    width = iconW,
+                    height = iconH,
+                    fontSize = displayConfig.lcdIconFontSize,
+                    onClick = { onSelectIcon(idx) }
+                )
+            }
+        }
+
+        // ---- Name / attribute / weight (upper chord, condensed under clock) ----
+        DialSlot(0.dp, -(r * 0.53f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = species.name.take(if (diameter < 220f) 8 else 10),
+                    fontSize = fontBase.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color(0xFFB9F6CA),
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1
+                )
+                Spacer(modifier = Modifier.width(3.dp))
+                Box(
+                    modifier = Modifier
+                        .background(attrColor.copy(alpha = 0.22f), RoundedCornerShape(3.dp))
+                        .border(0.5.dp, attrColor, RoundedCornerShape(3.dp))
+                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                ) {
+                    Text(
+                        text = species.attribute.displayName.take(3).uppercase(),
+                        fontSize = (fontBase - 2f).coerceAtLeast(5.5f).sp,
+                        fontWeight = FontWeight.Black,
+                        color = attrColor,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                Spacer(modifier = Modifier.width(3.dp))
+                Text(
+                    text = "${petState.weight}g",
+                    fontSize = (fontBase - 1f).coerceAtLeast(6.5f).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFFE0E0E0),
+                    fontFamily = FontFamily.Monospace,
+                    maxLines = 1
+                )
+            }
+        }
+
+        // ---- Pet (exact screen centre) ----
+        DialSlot(0.dp, 0.dp) {
+            Box(
+                modifier = Modifier
+                    .size(spriteSize)
+                    .clickable { onNavigateStatus() },
+                contentAlignment = Alignment.Center
+            ) {
+                SpriteCanvasRenderer(
+                    speciesId = petState.speciesId,
+                    isAmbient = false,
+                    overrideFrame = overrideSpriteFrame,
+                    isSleeping = petState.isSleeping,
+                    isInjured = petState.isInjured,
+                    enableIdleRoaming = true,
+                    size = spriteSize,
+                    roamAmplitude = 2.2f,
+                    roamLimitLeft = roamLeft,
+                    roamLimitRight = roamRight
+                )
+            }
+        }
+
+        // ---- Prompt / feedback / RIP (just below pet) ----
+        DialSlot(0.dp, r * 0.36f) {
+            if (petState.isDeceased) {
+                Box(
+                    modifier = Modifier
+                        .background(Color(0xD9381216), RoundedCornerShape(4.dp))
+                        .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(4.dp))
+                        .clickable { onHatchTraitedEgg() }
+                        .padding(horizontal = 4.dp, vertical = 1.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        DigiVectorIcon(type = DigiIconType.TOMBSTONE, size = 9.dp)
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = "TAP TO HATCH EGG",
+                            fontSize = (fontBase - 1f).coerceAtLeast(6.5f).sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFFFF8A80),
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            } else {
+                val promptText = if (selectedMenuIndex != null) {
+                    "[ ${VPetMenu.entries[selectedMenuIndex].label} ]"
+                } else if (petState.attentionCallActive) {
+                    "CALL SIGNAL"
+                } else actionFeedback ?: if (petState.isSleeping) "ZZZ... SLEEPING" else null
+
+                if (promptText != null) {
+                    Box(
+                        modifier = Modifier
+                            .background(
+                                if (petState.attentionCallActive && selectedMenuIndex == null) Color(0xCCD50000) else Color(0x66091016),
+                                RoundedCornerShape(4.dp)
+                            )
+                            .padding(horizontal = 4.dp, vertical = 0.5.dp)
+                    ) {
+                        Text(
+                            text = promptText,
+                            fontSize = (fontBase - 0.5f).coerceAtLeast(6.5f).sp,
+                            color = if (selectedMenuIndex != null) Color(0xFFFFD54F) else Color(0xFFB9F6CA),
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
+
+        // ---- Hunger / Waste / Strength (lower chord, condensed toward care rail) ----
+        DialSlot(0.dp, r * 0.54f) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .background(Color(0x55000000), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 3.dp, vertical = 1.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "H:",
+                            fontSize = (fontBase - 0.5f).coerceAtLeast(6.5f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFF5252),
+                            fontFamily = FontFamily.Monospace
+                        )
+                        VPetMeterBar(
+                            count = petState.hunger,
+                            isHeart = true,
+                            iconSize = fontBase.coerceAtLeast(7f).dp
+                        )
+                    }
+                }
+                if (petState.wasteCount > 0) {
+                    VPetWasteRow(
+                        wasteCount = petState.wasteCount,
+                        iconSize = (fontBase + 2f).dp
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .background(Color(0x55000000), RoundedCornerShape(3.dp))
+                        .padding(horizontal = 3.dp, vertical = 1.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "S:",
+                            fontSize = (fontBase - 0.5f).coerceAtLeast(6.5f).sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD700),
+                            fontFamily = FontFamily.Monospace
+                        )
+                        VPetMeterBar(
+                            count = petState.strength,
+                            isHeart = false,
+                            iconSize = fontBase.coerceAtLeast(7f).dp
+                        )
+                    }
+                }
+            }
+        }
+
+        // ---- A / B / C rail following the bezel (LEFT or RIGHT); OFF hides it ----
+        if (buttonPlacement == "RIGHT" || buttonPlacement == "LEFT") {
+            val sign = if (buttonPlacement == "RIGHT") 1f else -1f
+            val specs = listOf(
+                Triple("A", "SEL", -railOffsetY.value),
+                Triple("B", "OK", 0f),
+                Triple("C", "ESC", railOffsetY.value)
+            )
+            for ((label, sub, yOff) in specs) {
+                val x = (railX(yOff) * sign).dp
+                DialSlot(x, yOff.dp) {
+                    when (label) {
+                        "A" -> MoldedCircularButton(
+                            label = "A", subLabel = "SEL", size = railBtn,
+                            rimColor = Color(0xFF80D8FF), baseColor = Color(0xFF162530), textColor = Color.White,
+                            onClick = { buzzerManager.playButtonBeep(); onPressA() }
+                        )
+                        "B" -> MoldedCircularButton(
+                            label = "B", subLabel = "OK", size = railBtn,
+                            rimColor = Color(0xFF69F0AE), baseColor = Color(0xFF142B1A), textColor = Color(0xFFB9F6CA),
+                            onClick = { buzzerManager.playButtonBeep(); onPressB() }
+                        )
+                        else -> MoldedCircularButton(
+                            label = "C", subLabel = "ESC", size = railBtn,
+                            rimColor = Color(0xFFEA80FC), baseColor = Color(0xFF281432), textColor = Color(0xFFF3E5F5),
+                            onClick = { buzzerManager.playButtonBeep(); onPressC() }
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -957,8 +1351,32 @@ private fun ThreeButtonPetView(
     onNavigateSettings: () -> Unit,
     onNavigateStatus: () -> Unit,
     onNavigateAdventure: () -> Unit,
-    onHatchTraitedEgg: () -> Unit = {}
+    onHatchTraitedEgg: () -> Unit = {},
+    is24h: Boolean = false
 ) {
+    if (displayConfig.isRound) {
+        RoundDialPetView(
+            species = species,
+            petState = petState,
+            displayConfig = displayConfig,
+            buttonPlacement = buttonPlacement,
+            buzzerManager = buzzerManager,
+            selectedMenuIndex = selectedMenuIndex,
+            overrideSpriteFrame = overrideSpriteFrame,
+            actionFeedback = actionFeedback,
+            is24h = is24h,
+            onSelectIcon = onSelectIcon,
+            onPressA = onPressA,
+            onPressB = onPressB,
+            onPressC = onPressC,
+            onNavigateSettings = onNavigateSettings,
+            onNavigateStatus = onNavigateStatus,
+            onNavigateAdventure = onNavigateAdventure,
+            onHatchTraitedEgg = onHatchTraitedEgg
+        )
+        return
+    }
+
     val attrColor = when (species.attribute.displayName) {
         "Vaccine" -> Color(0xFF00E5FF)
         "Data" -> Color(0xFFFFCA28)
