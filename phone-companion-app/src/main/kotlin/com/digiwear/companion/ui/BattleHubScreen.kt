@@ -132,6 +132,8 @@ fun BattleHubScreen(
     var beamStatus by remember { mutableStateOf<String?>(null) }
 
     var showQrMatrix by remember { mutableStateOf(false) }
+    var showFighterPicker by remember { mutableStateOf(false) }
+    var showPayloadSpecs by remember { mutableStateOf(false) }
     var isCameraScannerOpen by remember { mutableStateOf(false) }
     var scannerStatusError by remember { mutableStateOf<String?>(null) }
 
@@ -472,7 +474,7 @@ fun BattleHubScreen(
             val battleModes = listOf(
                 Triple(BattleMode.NFC_TAP_DUEL, DigiIconType.NFC_WAVE, "NFC DUEL"),
                 Triple(BattleMode.WILD_SCAN, DigiIconType.RADAR_SCAN, "WILD SCAN"),
-                Triple(BattleMode.ACOM_DCOM_WIFICOM, DigiIconType.GLOBE_NET, "A-COM/WIFI"),
+                Triple(BattleMode.ACOM_DCOM_WIFICOM, DigiIconType.COMM_ANTENNA, "D-COM / WIFI"),
                 Triple(BattleMode.ADVENTURE, DigiIconType.TROPHY_CROWN, "COLOSSEUM")
             )
             Row(
@@ -525,6 +527,8 @@ fun BattleHubScreen(
 
             Spacer(modifier = Modifier.height(12.dp))
 
+            // =========================================================================
+            // FIGHTER RESOLUTION: ACTIVE PARTNER OR VAULT PARTNER (ZERO PRE-LOADED CHEATS)
             // =========================================================================
             // FIGHTER RESOLUTION: ACTIVE PARTNER OR VAULT PARTNER (ZERO PRE-LOADED CHEATS)
             // =========================================================================
@@ -581,7 +585,7 @@ fun BattleHubScreen(
                                         val sp = PetSpecies.getById(watchState.speciesId)
                                         beamStatus = "[SYNC] Pulled live ${sp.name} from Smartwatch!"
                                     } else {
-                                        beamStatus = "Watch offline — ensure DigiWatch is running on your smartwatch."
+                                        beamStatus = "Watch offline â€” ensure DigiWatch is running on your smartwatch."
                                     }
                                 }
                             },
@@ -596,72 +600,6 @@ fun BattleHubScreen(
                 }
                 Spacer(modifier = Modifier.height(16.dp))
             } else {
-                // If multiple legitimate partners are owned (e.g. active + vault), show partner switcher
-                if (availableFighters.size > 1) {
-                    Text(
-                        text = "CHOOSE YOUR FIGHTER (${availableFighters.size} AVAILABLE):",
-                        fontSize = 9.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF90A4AE),
-                        fontFamily = FontFamily.Monospace,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    Spacer(modifier = Modifier.height(6.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .horizontalScroll(rememberScrollState()),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        availableFighters.forEach { fighter ->
-                            val sp = PetSpecies.getById(fighter.speciesId)
-                            val isSelected = ownMonsterId == fighter.speciesId
-                            Row(
-                                modifier = Modifier
-                                    .background(
-                                        if (isSelected) Color(0xFF3E1F29) else DigiWearPalette.CardSurface,
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .border(
-                                        if (isSelected) 1.5.dp else 1.dp,
-                                        if (isSelected) Color(0xFFFF5252) else DigiWearPalette.CardBorder,
-                                        RoundedCornerShape(10.dp)
-                                    )
-                                    .clickable {
-                                        ownMonsterId = fighter.speciesId
-                                        ownVictories = fighter.victories
-                                        ownEffort = fighter.effort
-                                    }
-                                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                SpriteCanvasRenderer(
-                                    speciesId = sp.id,
-                                    frame = SpriteFrame.IDLE_A,
-                                    size = 28.dp
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Column {
-                                    Text(
-                                        text = "${sp.name} [${fighter.label}]",
-                                        fontSize = 10.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isSelected) Color.White else Color(0xFFCFD8DC)
-                                    )
-                                    Text(
-                                        text = "${sp.stage.displayName} • ${sp.basePower}P • ${fighter.victories}W",
-                                        fontSize = 8.sp,
-                                        color = if (isSelected) Color(0xFFFF8A80) else Color(0xFF90A4AE),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(10.dp))
-                }
-
-                // Generator & Active Fighter Formula Card
                 val ownFighterPreview = remember(ownMonsterId, ownVictories, ownEffort, ownSeed) {
                     BattleFighter(
                         id = "player",
@@ -681,274 +619,450 @@ fun BattleHubScreen(
                     DeterministicBattleSolver.computeEffectivePower(ownFighterPreview)
                 }
 
+                // =========================================================================
+                // ACTIVE FIGHTER HEADER CARD (ALWAYS VISIBLE & COMPACT)
+                // =========================================================================
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(14.dp),
                     border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
                 ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
+                    Column(modifier = Modifier.padding(12.dp)) {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            Column {
-                                Text(
-                                    text = "▸ YOUR FIGHTER PACKET (${ownSpecies.name.uppercase()})",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = DigiWearPalette.DigiviceCyan,
-                                    fontFamily = FontFamily.Monospace
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.weight(1f)
+                            ) {
+                                SpriteCanvasRenderer(
+                                    speciesId = ownSpecies.id,
+                                    frame = SpriteFrame.IDLE_A,
+                                    size = 40.dp
                                 )
-                                Text(
-                                    text = "BASE ${ownSpecies.basePower}P -> EFF PWR ${ownEffPower}P • ${ownSpecies.baseHp} HP • ${ownEffort}/4 EFFORT",
-                                    fontSize = 9.5.sp,
-                                    color = Color(0xFF80CBC4),
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                Spacer(modifier = Modifier.width(10.dp))
+                                Column {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Text(
+                                            text = ownSpecies.name.uppercase(),
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.White
+                                        )
+                                        StageBadge(ownSpecies.stage.displayName)
+                                        AttributeBadge(ownSpecies.attribute.displayName)
+                                    }
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "BASE ${ownSpecies.basePower}P (EFF: ${ownEffPower}P) â€¢ ${ownSpecies.baseHp} HP â€¢ ${ownVictories}W â€¢ EFFORT ${ownEffort}/4",
+                                        fontSize = 9.sp,
+                                        color = Color(0xFF80CBC4),
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
                             }
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                StageBadge(ownSpecies.stage.displayName)
-                                AttributeBadge(ownSpecies.attribute.displayName)
+                            if (availableFighters.size > 1) {
+                                OutlinedButton(
+                                    onClick = { showFighterPicker = !showFighterPicker },
+                                    contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                    modifier = Modifier.height(26.dp)
+                                ) {
+                                    Text(
+                                        text = if (showFighterPicker) "DONE" else "SWITCH",
+                                        fontSize = 8.5.sp,
+                                        fontFamily = FontFamily.Monospace,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        // Toggle Bar for QR Matrix vs Text Comm Code
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        if (showFighterPicker && availableFighters.size > 1) {
+                            Spacer(modifier = Modifier.height(8.dp))
                             Text(
-                                text = if (showQrMatrix) "▸ BATTLE QR MATRIX (INSTANT MATCHMAKING)" else "▸ 128-BIT BASE32 & DIGIROM",
-                                fontSize = 9.5.sp,
+                                text = "SELECT BATTLE FIGHTER (${availableFighters.size} AVAILABLE):",
+                                fontSize = 8.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color(0xFF78909C),
+                                color = Color(0xFF90A4AE),
                                 fontFamily = FontFamily.Monospace
                             )
-                            OutlinedButton(
-                                onClick = { showQrMatrix = !showQrMatrix },
-                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
-                                modifier = Modifier.height(26.dp)
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    DigiVectorIcon(
-                                        type = if (showQrMatrix) DigiIconType.COMM_LINK else DigiIconType.QR_MATRIX,
-                                        size = 10.dp,
-                                        tint = if (showQrMatrix) DigiWearPalette.DigiviceCyan else Color(0xFF00E676)
-                                    )
-                                    Text(
-                                        text = if (showQrMatrix) "SHOW TEXT CODE" else "SHOW QR MATRIX",
-                                        fontSize = 8.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        fontFamily = FontFamily.Monospace,
-                                        color = if (showQrMatrix) DigiWearPalette.DigiviceCyan else Color(0xFF00E676)
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        if (showQrMatrix) {
-                            Box(
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .background(DigiWearPalette.CardInner, RoundedCornerShape(10.dp))
-                                    .border(1.dp, Color(0xFF263238), RoundedCornerShape(10.dp))
-                                    .padding(12.dp),
-                                contentAlignment = Alignment.Center
+                                    .horizontalScroll(rememberScrollState()),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    modifier = Modifier.fillMaxWidth()
-                                ) {
-                                    Box(
+                                availableFighters.forEach { fighter ->
+                                    val sp = PetSpecies.getById(fighter.speciesId)
+                                    val isSelected = ownMonsterId == fighter.speciesId
+                                    Row(
                                         modifier = Modifier
-                                            .size(180.dp)
-                                            .background(Color.White, RoundedCornerShape(8.dp))
-                                            .padding(8.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        if (ownQrMatrix != null) {
-                                            QrCodeMatrixView(
-                                                matrix = ownQrMatrix,
-                                                modifier = Modifier.fillMaxSize()
+                                            .background(
+                                                if (isSelected) Color(0xFF3E1F29) else DigiWearPalette.CardInner,
+                                                RoundedCornerShape(8.dp)
                                             )
-                                        } else {
-                                            Text("Generating QR Matrix...", fontSize = 10.sp, color = Color.DarkGray)
+                                            .border(
+                                                if (isSelected) 1.5.dp else 1.dp,
+                                                if (isSelected) Color(0xFFFF5252) else Color(0xFF263238),
+                                                RoundedCornerShape(8.dp)
+                                            )
+                                            .clickable {
+                                                ownMonsterId = fighter.speciesId
+                                                ownVictories = fighter.victories
+                                                ownEffort = fighter.effort
+                                            }
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        SpriteCanvasRenderer(
+                                            speciesId = sp.id,
+                                            frame = SpriteFrame.IDLE_A,
+                                            size = 24.dp
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Column {
+                                            Text(
+                                                text = "${sp.name} [${fighter.label}]",
+                                                fontSize = 9.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isSelected) Color.White else Color(0xFFCFD8DC)
+                                            )
+                                            Text(
+                                                text = "${sp.stage.displayName} â€¢ ${sp.basePower}P â€¢ ${fighter.victories}W",
+                                                fontSize = 8.sp,
+                                                color = if (isSelected) Color(0xFFFF8A80) else Color(0xFF90A4AE),
+                                                fontFamily = FontFamily.Monospace
+                                            )
                                         }
                                     }
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "POINT COMPANION CAMERA SCANNER TO DUEL",
-                                        fontSize = 9.5.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = DigiWearPalette.CrestGold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = CommCodeCodec.formatWithHyphens(generatedCode),
-                                        fontSize = 8.5.sp,
-                                        color = Color(0xFF90A4AE),
-                                        fontFamily = FontFamily.Monospace
-                                    )
                                 }
-                            }
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(DigiWearPalette.CardInner, RoundedCornerShape(10.dp))
-                                    .border(1.dp, Color(0xFF263238), RoundedCornerShape(10.dp))
-                                    .padding(12.dp)
-                            ) {
-                                Column {
-                                    Text(
-                                        text = "128-BIT BASE32 COMM CODE:",
-                                        fontSize = 9.sp,
-                                        color = Color(0xFF78909C),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = CommCodeCodec.formatWithHyphens(generatedCode),
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF00E676),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Spacer(modifier = Modifier.height(6.dp))
-                                    Text(
-                                        text = "A-COM / D-COM / WIFICOM / 0NL1NE DIGIROM:",
-                                        fontSize = 9.sp,
-                                        color = Color(0xFF78909C),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = generatedDigiRom,
-                                        fontSize = 13.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = DigiWearPalette.CrestGold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(10.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    clipboardManager.setText(AnnotatedString(generatedCode))
-                                    Toast.makeText(context, "128-Bit Base32 Code copied!", Toast.LENGTH_SHORT).show()
-                                },
-                                border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = DigiWearPalette.DigiviceCyan),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.COPY, size = 14.dp, tint = DigiWearPalette.DigiviceCyan)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Base32", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    clipboardManager.setText(AnnotatedString(generatedDigiRom))
-                                    Toast.makeText(context, "0nl1ne DigiROM copied!", Toast.LENGTH_SHORT).show()
-                                },
-                                border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = DigiWearPalette.DigiviceCyan),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.COPY, size = 14.dp, tint = DigiWearPalette.DigiviceCyan)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("DigiROM", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    ownSeed = Random.nextInt(0xFFFF)
-                                    val hex = Integer.toHexString(ownSeed).uppercase()
-                                    Toast.makeText(context, "Battle PRNG Seed: 0x$hex (Randomized combat variance)", Toast.LENGTH_SHORT).show()
-                                },
-                                border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = DigiWearPalette.DigiviceCyan),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.BOLT, size = 14.dp, tint = DigiWearPalette.DigiviceCyan)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("Seed", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(6.dp))
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    scope.launch {
-                                        val watchState = wearableManager.requestPetStateFromWatch()
-                                        if (watchState != null) {
-                                            ownMonsterId = watchState.speciesId
-                                            ownVictories = watchState.victories
-                                            ownEffort = watchState.effort
-                                            val sp = PetSpecies.getById(watchState.speciesId)
-                                            beamStatus = "[SYNC] Pulled live ${sp.name} from Smartwatch!"
-                                        } else {
-                                            beamStatus = "Watch offline — tap Watch to Phone via NFC or use local fighter"
-                                        }
-                                    }
-                                },
-                                border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
-                                colors = ButtonDefaults.outlinedButtonColors(contentColor = DigiWearPalette.DigiviceCyan),
-                                shape = RoundedCornerShape(6.dp),
-                                modifier = Modifier.weight(1f)
-                            ) {
-                                Text("PULL FROM WATCH", fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                            }
-
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        val ok = wearableManager.sendCommCodeToWatch(generatedCode)
-                                        beamStatus = if (ok) "Dispatched Comm Code to Watch!" else "Watch not reachable (Offline Mode)"
-                                    }
-                                },
-                                modifier = Modifier.weight(1f),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.BEAM_ANTENNA, size = 14.dp, tint = Color.White)
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text("BEAM TO WATCH", fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                             }
                         }
                     }
                 }
 
                 beamStatus?.let {
-                    Text("▸ $it", fontSize = 11.sp, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace, modifier = Modifier.padding(top = 6.dp))
+                    Text(
+                        text = "â–¸ $it",
+                        fontSize = 10.5.sp,
+                        color = Color(0xFF00E676),
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                }
+
+                // =========================================================================
+                // LIVE ANIMATED FACE-TO-FACE LCD VS ARENA & RESULT (SHOWN DURING/AFTER DUEL)
+                // =========================================================================
+                if (decodedOpponent != null && (isAnimatingBattle || battleResult != null)) {
+                    val opp = decodedOpponent!!
+                    val oppSp = PetSpecies.getById(opp.monsterId)
+                    val ownSp = ownSpecies
+
+                    val activeTurn = if (isAnimatingBattle && battleResult != null) {
+                        battleResult!!.turns.getOrNull(currentTurnIndex)
+                    } else {
+                        battleResult?.turns?.lastOrNull()
+                    }
+
+                    val playerRemHp = when {
+                        battleResult == null -> ownSp.baseHp
+                        !isAnimatingBattle -> battleResult!!.fighterAFinalHp
+                        activeTurn == null -> battleResult!!.fighterA.maxHp
+                        activeTurn.attackerIndex == 1 -> activeTurn.defenderRemainingHp
+                        else -> battleResult!!.turns.take(currentTurnIndex).lastOrNull { it.attackerIndex == 1 }?.defenderRemainingHp ?: battleResult!!.fighterA.maxHp
+                    }
+
+                    val oppRemHp = when {
+                        battleResult == null -> oppSp.baseHp
+                        !isAnimatingBattle -> battleResult!!.fighterBFinalHp
+                        activeTurn == null -> battleResult!!.fighterB.maxHp
+                        activeTurn.attackerIndex == 0 -> activeTurn.defenderRemainingHp
+                        else -> battleResult!!.turns.take(currentTurnIndex).lastOrNull { it.attackerIndex == 0 }?.defenderRemainingHp ?: battleResult!!.fighterB.maxHp
+                    }
+
+                    val playerHpFrac = (playerRemHp.toFloat() / ownSp.baseHp.coerceAtLeast(1)).coerceIn(0f, 1f)
+                    val oppHpFrac = (oppRemHp.toFloat() / oppSp.baseHp.coerceAtLeast(1)).coerceIn(0f, 1f)
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .background(Color(0xFF15221D), RoundedCornerShape(14.dp))
+                            .border(1.5.dp, Color(0xFF4CAF50), RoundedCornerShape(14.dp))
+                            .padding(12.dp)
+                    ) {
+                        EnvironmentParticleCanvas(environmentEffect = selectedEnvironment)
+                        if (isAnimatingBattle && activeTurn != null) {
+                            val attackerSp = if (activeTurn.attackerIndex == 0) ownSp else oppSp
+                            BattleClashFxCanvas(
+                                attackerIndex = activeTurn.attackerIndex,
+                                attribute = attackerSp.attribute,
+                                attackType = activeTurn.attackType,
+                                isCritical = activeTurn.isCritical,
+                                moveName = activeTurn.moveName,
+                                damage = activeTurn.damage,
+                                progress = turnFxProgress
+                            )
+                        }
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text(
+                                text = "${selectedBattleMode.displayName.uppercase()} â€¢ ENV: ${selectedEnvironment.uppercase()}",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = DigiWearPalette.CrestGold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceEvenly,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Player Fighter
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    val playerArenaFrame = when {
+                                        !isAnimatingBattle && battleResult != null ->
+                                            if (battleResult!!.winnerIndex == 0) SpriteFrame.JOY_EAT else SpriteFrame.INJURED
+                                        activeTurn == null -> SpriteFrame.IDLE_A
+                                        activeTurn.attackerIndex == 0 -> when {
+                                            qteActive || turnFxProgress < 0.25f -> SpriteFrame.ATTACK_CHARGE
+                                            turnFxProgress < 0.65f -> SpriteFrame.ATTACK_RELEASE
+                                            else -> SpriteFrame.IDLE_B
+                                        }
+                                        turnFxProgress >= 0.65f -> SpriteFrame.INJURED
+                                        else -> SpriteFrame.IDLE_A
+                                    }
+                                    SpriteCanvasRenderer(
+                                        speciesId = ownSp.id,
+                                        frame = playerArenaFrame,
+                                        size = 64.dp,
+                                        flipHorizontal = true
+                                    )
+                                    Text(ownSp.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF80CBC4))
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(84.dp)
+                                            .height(6.dp)
+                                            .background(Color(0xFF263238), RoundedCornerShape(3.dp))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(playerHpFrac)
+                                                .height(6.dp)
+                                                .background(Color(0xFF00E676), RoundedCornerShape(3.dp))
+                                        )
+                                    }
+                                    Text("$playerRemHp / ${ownSp.baseHp} HP â€¢ ${ownEffPower}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
+                                }
+
+                                // Center Clash
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    Box(
+                                        modifier = Modifier
+                                            .background(Color(0xFF3E1C1C), RoundedCornerShape(6.dp))
+                                            .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 4.dp)
+                                    ) {
+                                        Text(
+                                            text = when {
+                                                activeTurn?.attackType == "MEGA_HIT" -> "[ MEGA HIT ]"
+                                                activeTurn?.attackerIndex == 0 -> "[ ===> ]"
+                                                activeTurn?.attackerIndex == 1 -> "[ <=== ]"
+                                                else -> "VS"
+                                            },
+                                            fontSize = 11.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color(0xFFFFD54F),
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                    activeTurn?.let { turn ->
+                                        Spacer(modifier = Modifier.height(3.dp))
+                                        Text(
+                                            text = "R${turn.round} â€¢ HIT ${turn.hitRatePercent}%",
+                                            fontSize = 8.5.sp,
+                                            color = Color(0xFF90CAF9),
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+
+                                // Opponent Fighter
+                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                    val oppArenaFrame = when {
+                                        !isAnimatingBattle && battleResult != null ->
+                                            if (battleResult!!.winnerIndex == 1) SpriteFrame.JOY_EAT else SpriteFrame.INJURED
+                                        activeTurn == null -> SpriteFrame.IDLE_A
+                                        activeTurn.attackerIndex == 1 -> when {
+                                            turnFxProgress < 0.25f -> SpriteFrame.ATTACK_CHARGE
+                                            turnFxProgress < 0.65f -> SpriteFrame.ATTACK_RELEASE
+                                            else -> SpriteFrame.IDLE_B
+                                        }
+                                        turnFxProgress >= 0.65f -> SpriteFrame.INJURED
+                                        else -> SpriteFrame.IDLE_A
+                                    }
+                                    SpriteCanvasRenderer(
+                                        speciesId = oppSp.id,
+                                        frame = oppArenaFrame,
+                                        size = 64.dp,
+                                        flipHorizontal = false
+                                    )
+                                    Text(oppSp.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF8A80))
+                                    Spacer(modifier = Modifier.height(3.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .width(84.dp)
+                                            .height(6.dp)
+                                            .background(Color(0xFF263238), RoundedCornerShape(3.dp))
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth(oppHpFrac)
+                                                .height(6.dp)
+                                                .background(Color(0xFFFF5252), RoundedCornerShape(3.dp))
+                                        )
+                                    }
+                                    Text("$oppRemHp / ${oppSp.baseHp} HP â€¢ ${opp.basePowerHp}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
+                                }
+                            }
+
+                            if (isAnimatingBattle && activeTurn != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = "${activeTurn.attackerName} [${activeTurn.attackType}] -> -${activeTurn.damage} HP!",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = if (activeTurn.isAdvantage) Color(0xFF00E676) else Color.White,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                if (qteActive) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    Button(
+                                        onClick = {
+                                            critBoostTriggered = true
+                                            qteActive = false
+                                            buzzerManager.playButtonBeep()
+                                        },
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744))
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                                            DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 11.dp, tint = Color.White)
+                                            Text("TAP TO MEGA-BOOST (+25% CRIT)!", fontSize = 10.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
+                                            DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 11.dp, tint = Color.White)
+                                        }
+                                    }
+                                }
+                            }
+
+                            if (!isAnimatingBattle && battleResult != null) {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        battleResult = null
+                                        decodedOpponent = null
+                                        validationError = null
+                                    },
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF37474F)),
+                                    shape = RoundedCornerShape(8.dp),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Text("CLOSE ARENA / READY NEXT DUEL", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                }
+                            }
+                        }
+                    }
+
+                    // Battle Simulation Log Results
+                    battleResult?.let { result ->
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(1.dp, if (result.winnerIndex == 0) Color(0xFF00E676) else Color(0xFFEF5350))
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = "â–¸ COMBAT RESOLUTION LOG (${result.battleMode.displayName.uppercase()})",
+                                    fontSize = 10.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = DigiWearPalette.CrestGold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = "WINNER: ${result.winnerName ?: "DRAW"} (${result.totalRounds} ROUNDS)",
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = if (result.winnerIndex == 0) Color(0xFF00E676) else Color(0xFFFF5252),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = result.formulaSummary,
+                                    fontSize = 9.sp,
+                                    color = Color(0xFF80CBC4),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                for (turn in result.turns) {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 2.dp)
+                                            .background(DigiWearPalette.CardInner, RoundedCornerShape(6.dp))
+                                            .padding(horizontal = 8.dp, vertical = 5.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Text(
+                                            text = "R${turn.round} [${turn.attackType} â€¢ ${turn.hitRatePercent}%]: ${turn.attackerName} -> ${turn.defenderName}",
+                                            fontSize = 9.sp,
+                                            color = Color.White,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                        Text(
+                                            text = "-${turn.damage} HP ${if (turn.isAdvantage) "[1.2x]" else ""} (${turn.defenderRemainingHp}HP)",
+                                            fontSize = 9.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = if (turn.isAdvantage) Color(0xFF00E676) else Color(0xFFFF8A80),
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                validationError?.let {
+                    Text(
+                        text = it,
+                        fontSize = 11.sp,
+                        color = Color(0xFFFF5252),
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
 
                 // =========================================================================
-                // MODE-SPECIFIC SUB-PANEL (1: NFC DUEL, 2: WILD SCAN, 3: A-COM/WIFI, 4: COLOSSEUM)
+                // MODE-SPECIFIC SUB-PANELS (NFC, WILD SCAN, D-COM/WIFI, COLOSSEUM)
                 // =========================================================================
                 when (selectedBattleMode) {
                     BattleMode.NFC_TAP_DUEL -> {
+                        // -----------------------------------------------------------------
+                        // 1. NFC TAP-TO-DUEL
+                        // -----------------------------------------------------------------
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
@@ -972,7 +1086,7 @@ fun BattleHubScreen(
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
                                         Text(
-                                            text = "MODE 1: NFC TAP-TO-DUEL",
+                                            text = "NFC TAP-TO-DUEL TRANSCEIVER",
                                             fontSize = 11.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color(0xFF00E676),
@@ -999,7 +1113,7 @@ fun BattleHubScreen(
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
                                 Text(
-                                    text = "Tap two watches together, tap your watch to this phone, or tap an NFC Battle Card to exchange 128-bit CommCodes!",
+                                    text = "Touch two phones back-to-back, tap your smartwatch to the back of this phone, or tap a physical NFC Battle Card to duel wirelessly!",
                                     fontSize = 10.sp,
                                     color = Color.LightGray
                                 )
@@ -1015,25 +1129,70 @@ fun BattleHubScreen(
                                                 val ok = NfcDuelManager.writeDuelCodeToTag(tag, generatedDigiRom)
                                                 beamStatus = if (ok) "[OK] Wrote ${ownSpecies.name} DigiROM to physical NFC Tag!" else "Tag write failed (Check tag write-lock)"
                                             } else {
-                                                beamStatus = "Hold a physical NFC tag to back of phone, then click Write"
+                                                beamStatus = "Hold physical NFC tag to back of phone, then click Write"
                                             }
                                         },
                                         modifier = Modifier.weight(1f)
                                     ) {
-                                        Text("WRITE TO NFC TAG", fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                                        DigiVectorIcon(type = DigiIconType.NFC_WAVE, size = 12.dp, tint = Color.White)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("WRITE TO TAG", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
                                     }
-                                    if (inputCode.isNotEmpty()) {
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                val ok = wearableManager.sendCommCodeToWatch(generatedCode)
+                                                beamStatus = if (ok) "Dispatched Comm Code to Watch!" else "Watch not reachable (Offline Mode)"
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.BEAM_ANTENNA, size = 12.dp, tint = Color.White)
+                                        Spacer(modifier = Modifier.width(4.dp))
+                                        Text("BEAM TO WATCH", fontSize = 10.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                // Scanned Opponent via NFC Tap
+                                if (decodedOpponent != null && !isAnimatingBattle && battleResult == null) {
+                                    val opp = decodedOpponent!!
+                                    val oppSp = PetSpecies.getById(opp.monsterId)
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(Color(0xFF13261E), RoundedCornerShape(10.dp))
+                                            .border(1.dp, Color(0xFF00E676), RoundedCornerShape(10.dp))
+                                            .padding(10.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            SpriteCanvasRenderer(speciesId = oppSp.id, frame = SpriteFrame.IDLE_A, size = 40.dp)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column {
+                                                Text(
+                                                    text = "SCANNED: ${oppSp.name}",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Black,
+                                                    color = Color(0xFF69F0AE)
+                                                )
+                                                Text(
+                                                    text = "${opp.stage.displayName} â€¢ ${opp.attribute.displayName} â€¢ ${opp.basePowerHp} PWR",
+                                                    fontSize = 9.sp,
+                                                    color = Color.LightGray,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                        }
                                         Button(
                                             onClick = {
-                                                scope.launch {
-                                                    val ok = wearableManager.sendCommCodeToWatch(inputCode)
-                                                    beamStatus = if (ok) "Dispatched scanned opponent to Watch!" else "Watch not reachable"
-                                                }
+                                                launchAnimatedBattle(inputCode, BattleMode.NFC_TAP_DUEL, selectedEnvironment)
                                             },
-                                            modifier = Modifier.weight(1f),
-                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00C853))
                                         ) {
-                                            Text("BEAM OPP TO WATCH", fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                                            Text("START DUEL", fontSize = 10.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
                                         }
                                     }
                                 }
@@ -1042,6 +1201,9 @@ fun BattleHubScreen(
                     }
 
                     BattleMode.WILD_SCAN -> {
+                        // -----------------------------------------------------------------
+                        // 2. WILD BARCODE / QR SCANNER & RADAR
+                        // -----------------------------------------------------------------
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
@@ -1050,7 +1212,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "▸ MODE 2: WILD BARCODE / QR / NFC SCANNER",
+                                    text = "â–¸ WILD BARCODE / QR SCANNER & RADAR",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF69F0AE),
@@ -1058,7 +1220,7 @@ fun BattleHubScreen(
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Text(
-                                    text = "Scan any UPC/EAN-13 product barcode, QR code, or tap any physical NFC card/transit pass/amiibo to discover Wild Digimon tailored to your partner's stage!",
+                                    text = "Scan any product barcode (UPC/EAN-13), QR code, or screen code to encounter wild Digimon scaled to your partner's stage!",
                                     fontSize = 10.sp,
                                     color = Color.LightGray
                                 )
@@ -1106,7 +1268,7 @@ fun BattleHubScreen(
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("SAMPLE BARCODES & ARTIFACTS:", fontSize = 9.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                Text("PRESET BANDAI BARCODES & ARTIFACTS:", fontSize = 9.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
                                 Spacer(modifier = Modifier.height(4.dp))
                                 Row(
                                     modifier = Modifier
@@ -1156,13 +1318,13 @@ fun BattleHubScreen(
                                                     color = if (enc.isRareAnomaly) DigiWearPalette.CrestGold else Color(0xFF69F0AE)
                                                 )
                                                 Text(
-                                                    text = "${enc.habitatZone} • ENV: ${enc.environmentHazard}",
+                                                    text = "${enc.habitatZone} â€¢ ENV: ${enc.environmentHazard}",
                                                     fontSize = 9.5.sp,
                                                     color = Color.LightGray,
                                                     fontFamily = FontFamily.Monospace
                                                 )
                                                 Text(
-                                                    text = "HP ${enc.fighter.maxHp} • PWR ${enc.fighter.basePower} • ${enc.species.attribute.displayName}",
+                                                    text = "HP ${enc.fighter.maxHp} â€¢ PWR ${enc.fighter.basePower} â€¢ ${enc.species.attribute.displayName}",
                                                     fontSize = 9.sp,
                                                     color = Color(0xFF80CBC4),
                                                     fontFamily = FontFamily.Monospace
@@ -1196,29 +1358,572 @@ fun BattleHubScreen(
                     }
 
                     BattleMode.ACOM_DCOM_WIFICOM -> {
+                        // -----------------------------------------------------------------
+                        // 3. D-COM / A-COM / WIFICOM COMM CENTER
+                        // -----------------------------------------------------------------
+                        // Card 1: Your Player Comm Code & DigiROM
                         Card(
                             modifier = Modifier.fillMaxWidth(),
                             colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
                             shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, DigiWearPalette.CrestGold.copy(alpha = 0.6f))
+                            border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan.copy(alpha = 0.6f))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "â–¸ YOUR COMM CODE & DIGIROM PACKET",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = DigiWearPalette.DigiviceCyan,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    OutlinedButton(
+                                        onClick = { showQrMatrix = !showQrMatrix },
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(26.dp)
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            DigiVectorIcon(
+                                                type = if (showQrMatrix) DigiIconType.COMM_LINK else DigiIconType.QR_MATRIX,
+                                                size = 10.dp,
+                                                tint = if (showQrMatrix) DigiWearPalette.DigiviceCyan else Color(0xFF00E676)
+                                            )
+                                            Text(
+                                                text = if (showQrMatrix) "TEXT CODE" else "QR MATRIX",
+                                                fontSize = 8.5.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = if (showQrMatrix) DigiWearPalette.DigiviceCyan else Color(0xFF00E676)
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                if (showQrMatrix) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(DigiWearPalette.CardInner, RoundedCornerShape(10.dp))
+                                            .border(1.dp, Color(0xFF263238), RoundedCornerShape(10.dp))
+                                            .padding(12.dp),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(170.dp)
+                                                    .background(Color.White, RoundedCornerShape(8.dp))
+                                                    .padding(8.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                if (ownQrMatrix != null) {
+                                                    QrCodeMatrixView(
+                                                        matrix = ownQrMatrix,
+                                                        modifier = Modifier.fillMaxSize()
+                                                    )
+                                                } else {
+                                                    Text("Generating QR Matrix...", fontSize = 10.sp, color = Color.DarkGray)
+                                                }
+                                            }
+                                            Spacer(modifier = Modifier.height(6.dp))
+                                            Text(
+                                                text = "POINT COMPANION CAMERA SCANNER TO DUEL",
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = DigiWearPalette.CrestGold,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            Text(
+                                                text = CommCodeCodec.formatWithHyphens(generatedCode),
+                                                fontSize = 8.sp,
+                                                color = Color(0xFF90A4AE),
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                } else {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .background(DigiWearPalette.CardInner, RoundedCornerShape(10.dp))
+                                            .border(1.dp, Color(0xFF263238), RoundedCornerShape(10.dp))
+                                            .padding(10.dp)
+                                    ) {
+                                        Column {
+                                            Text(
+                                                text = "128-BIT BASE32 COMM CODE:",
+                                                fontSize = 8.5.sp,
+                                                color = Color(0xFF78909C),
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            Text(
+                                                text = CommCodeCodec.formatWithHyphens(generatedCode),
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = Color(0xFF00E676),
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = "A-COM / D-COM / WIFICOM DIGIROM:",
+                                                fontSize = 8.5.sp,
+                                                color = Color(0xFF78909C),
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                            Text(
+                                                text = generatedDigiRom,
+                                                fontSize = 12.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = DigiWearPalette.CrestGold,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(generatedCode))
+                                            Toast.makeText(context, "128-Bit Base32 Code copied!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.COPY, size = 12.dp, tint = DigiWearPalette.DigiviceCyan)
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("Base32", fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            clipboardManager.setText(AnnotatedString(generatedDigiRom))
+                                            Toast.makeText(context, "0nl1ne DigiROM copied!", Toast.LENGTH_SHORT).show()
+                                        },
+                                        border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.COPY, size = 12.dp, tint = DigiWearPalette.DigiviceCyan)
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("DigiROM", fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            ownSeed = Random.nextInt(0xFFFF)
+                                            val hex = Integer.toHexString(ownSeed).uppercase()
+                                            Toast.makeText(context, "Battle PRNG Seed: 0x$hex", Toast.LENGTH_SHORT).show()
+                                        },
+                                        border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.BOLT, size = 12.dp, tint = DigiWearPalette.DigiviceCyan)
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("Seed", fontSize = 9.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(6.dp))
+
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            scope.launch {
+                                                val watchState = wearableManager.requestPetStateFromWatch()
+                                                if (watchState != null) {
+                                                    ownMonsterId = watchState.speciesId
+                                                    ownVictories = watchState.victories
+                                                    ownEffort = watchState.effort
+                                                    val sp = PetSpecies.getById(watchState.speciesId)
+                                                    beamStatus = "[SYNC] Pulled live ${sp.name} from Smartwatch!"
+                                                } else {
+                                                    beamStatus = "Watch offline â€” tap Watch to Phone via NFC or use local fighter"
+                                                }
+                                            }
+                                        },
+                                        border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                                        shape = RoundedCornerShape(6.dp),
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text("PULL FROM WATCH", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            scope.launch {
+                                                val ok = wearableManager.sendCommCodeToWatch(generatedCode)
+                                                beamStatus = if (ok) "Dispatched Comm Code to Watch!" else "Watch not reachable"
+                                            }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.BEAM_ANTENNA, size = 12.dp, tint = Color.White)
+                                        Spacer(modifier = Modifier.width(3.dp))
+                                        Text("BEAM TO WATCH", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Card 2: Opponent Transceiver & Duel Launch
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFFFF8A80).copy(alpha = 0.5f))
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "▸ MODE 3: A-COM / D-COM / WIFICOM + WATCH NFC RELAY",
+                                    text = "â–¸ OPPONENT D-COM TRANSCEIVER & DUEL",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFFF8A80),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Button(
+                                    onClick = {
+                                        scannerStatusError = null
+                                        isCameraScannerOpen = true
+                                        buzzerManager.playButtonBeep()
+                                    },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                                ) {
+                                    DigiVectorIcon(type = DigiIconType.CAMERA, size = 15.dp, tint = Color.White)
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text("SCAN CAMERA (TEXT CODES OR QR)", fontSize = 10.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
+                                }
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                OutlinedTextField(
+                                    value = inputCode,
+                                    onValueChange = {
+                                        inputCode = it
+                                        validationError = null
+                                        decodedOpponent = try {
+                                            CommCodeCodec.decodeAuto(it)
+                                        } catch (_: Exception) {
+                                            null
+                                        }
+                                    },
+                                    label = { Text("Paste 26-Char Base32 or V1-XXXX-XXXX-XXXX DigiROM", fontSize = 10.sp) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    singleLine = true
+                                )
+
+                                Spacer(modifier = Modifier.height(8.dp))
+
+                                Text("SPARRING HOLO-TARGETS:", fontSize = 8.5.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = {
+                                            val devimonCode = CommCodeCodec.encode128(
+                                                monsterId = 303, // Devimon (Virus)
+                                                stage = PetStage.ADULT,
+                                                attribute = ElementalAttribute.VIRUS,
+                                                basePowerHp = 210,
+                                                historicalVictories = 9,
+                                                trainingEffort = 3,
+                                                battleRngSeed = 0xBEEF
+                                            )
+                                            inputCode = CommCodeCodec.formatWithHyphens(devimonCode)
+                                            decodedOpponent = try { CommCodeCodec.decodeAuto(devimonCode) } catch (_: Exception) { null }
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                    ) {
+                                        Text("Devimon", fontSize = 9.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                                    }
+
+                                    OutlinedButton(
+                                        onClick = {
+                                            val metalGaruruCode = CommCodeCodec.encode128(
+                                                monsterId = 503, // MetalGarurumon (Data)
+                                                stage = PetStage.ULTIMATE,
+                                                attribute = ElementalAttribute.DATA,
+                                                basePowerHp = 280,
+                                                historicalVictories = 18,
+                                                trainingEffort = 4,
+                                                battleRngSeed = 0xCAFE
+                                            )
+                                            inputCode = CommCodeCodec.formatWithHyphens(metalGaruruCode)
+                                            decodedOpponent = try { CommCodeCodec.decodeAuto(metalGaruruCode) } catch (_: Exception) { null }
+                                        },
+                                        modifier = Modifier.weight(1.3f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                                    ) {
+                                        Text("MetalGarurumon", fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            launchAnimatedBattle(inputCode, BattleMode.ACOM_DCOM_WIFICOM, selectedEnvironment)
+                                        },
+                                        modifier = Modifier.weight(1f),
+                                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.BATTLE, size = 12.dp, tint = Color.White)
+                                        Spacer(modifier = Modifier.width(2.dp))
+                                        Text("DUEL!", fontSize = 9.5.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, maxLines = 1)
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Card 3: Lobby Spar Tamers
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, DigiWearPalette.CrestGold.copy(alpha = 0.5f))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
+                                Text(
+                                    text = "â–¸ D-COM & 0NL1NE LOBBY SPAR TAMERS",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DigiWearPalette.CrestGold,
                                     fontFamily = FontFamily.Monospace
                                 )
-                                Spacer(modifier = Modifier.height(4.dp))
+                                Spacer(modifier = Modifier.height(6.dp))
+                                ONLINE_LOBBY_TAMERS.forEach { (tamerName, monId, seed) ->
+                                    val tamerSp = PetSpecies.getById(monId)
+                                    val tamerRom = CommCodeCodec.encodeDigiRom(
+                                        monsterId = monId,
+                                        stage = tamerSp.stage,
+                                        attribute = tamerSp.attribute,
+                                        basePowerHp = tamerSp.basePower,
+                                        battleRngSeed = seed
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(vertical = 3.dp)
+                                            .background(DigiWearPalette.CardInner, RoundedCornerShape(8.dp))
+                                            .border(1.dp, Color(0xFF263238), RoundedCornerShape(8.dp))
+                                            .padding(8.dp),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                            SpriteCanvasRenderer(speciesId = monId, frame = SpriteFrame.IDLE_A, size = 32.dp)
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Column {
+                                                Text(tamerName, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(
+                                                    text = "${tamerSp.name} â€¢ $tamerRom",
+                                                    fontSize = 8.5.sp,
+                                                    color = DigiWearPalette.CrestGold,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                        }
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            OutlinedButton(
+                                                onClick = {
+                                                    scope.launch {
+                                                        val ok = wearableManager.sendCommCodeToWatch(tamerRom)
+                                                        beamStatus = if (ok) "Relayed $tamerName to Watch!" else "Watch offline"
+                                                    }
+                                                },
+                                                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                                modifier = Modifier.height(28.dp)
+                                            ) {
+                                                Text("WATCH", fontSize = 8.5.sp, fontFamily = FontFamily.Monospace)
+                                            }
+                                            Button(
+                                                onClick = {
+                                                    inputCode = tamerRom
+                                                    launchAnimatedBattle(tamerRom, BattleMode.ACOM_DCOM_WIFICOM, "Normal")
+                                                },
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0)),
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                                modifier = Modifier.height(28.dp)
+                                            ) {
+                                                Text("DUEL", fontSize = 9.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+
+                        // Card 4: Collapsible 128-bit payload specs
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                            shape = RoundedCornerShape(14.dp),
+                            border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = "â–¸ 128-BIT PAYLOAD ARCHITECTURE (SPEC)",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color(0xFFFFCC80),
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    OutlinedButton(
+                                        onClick = { showPayloadSpecs = !showPayloadSpecs },
+                                        contentPadding = PaddingValues(horizontal = 6.dp, vertical = 2.dp),
+                                        modifier = Modifier.height(24.dp)
+                                    ) {
+                                        Text(
+                                            text = if (showPayloadSpecs) "HIDE" else "EXPAND",
+                                            fontSize = 8.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                                if (showPayloadSpecs) {
+                                    Spacer(modifier = Modifier.height(6.dp))
+                                    BitFieldRow("000 - 007", "Version (8-bit)", "0x01")
+                                    BitFieldRow("008 - 023", "Monster ID (16-bit)", "$ownMonsterId (${ownSpecies.name})")
+                                    BitFieldRow("024 - 027", "Stage Index (4-bit)", "${ownSpecies.stage.stageIndex}")
+                                    BitFieldRow("028 - 031", "Attribute (4-bit)", ownSpecies.attribute.displayName)
+                                    BitFieldRow("032 - 047", "Base Power (16-bit)", "${ownSpecies.basePower} PWR")
+                                    BitFieldRow("080 - 095", "PRNG Seed (16-bit)", "0x${Integer.toHexString(ownSeed).uppercase()}")
+                                    BitFieldRow("112 - 127", "HMAC-16 Checksum", "Tamper-Proof")
+                                }
+                            }
+                        }
+                    }
+
+                    BattleMode.ADVENTURE -> {
+                        // -----------------------------------------------------------------
+                        // 4. COLOSSEUM & 100-FLOOR BATTLE TOWER
+                        // -----------------------------------------------------------------
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                            shape = RoundedCornerShape(16.dp),
+                            border = BorderStroke(1.dp, Color(0xFF26A69A).copy(alpha = 0.6f))
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "Tap your Smartwatch to the back of this phone (or click 'RELAY DIGIROM TO PHONE' on Watch) to bridge your Watch Partner into A-Com / D-Com / WiFiCom / Digimon 0nl1ne lobbies!",
-                                    fontSize = 10.sp,
-                                    color = Color.LightGray
+                                    text = "â–¸ 100-FLOOR BATTLE TOWER GAUNTLET",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF64FFDA),
+                                    fontFamily = FontFamily.Monospace
                                 )
                                 Spacer(modifier = Modifier.height(8.dp))
+                                Button(
+                                    onClick = {
+                                        buzzerManager.playButtonBeep()
+                                        showBattleTower = true
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .height(44.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
+                                    shape = RoundedCornerShape(8.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        DigiVectorIcon(type = DigiIconType.TROPHY_CROWN, size = 14.dp, tint = Color.Black)
+                                        Text(
+                                            text = "ENTER 100-FLOOR BATTLE TOWER",
+                                            fontSize = 10.5.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = Color.Black,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(10.dp))
                                 Text(
-                                    text = "D-COM SPAR LOBBY TAMERS (CANONICAL BENCHMARKS):",
+                                    text = "SELECT DIGITAL WORLD SECTOR HAZARD:",
+                                    fontSize = 9.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF80CBC4),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.height(4.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState()),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    COLOSSEUM_ENVIRONMENTS.forEach { env ->
+                                        val active = selectedEnvironment == env
+                                        Box(
+                                            modifier = Modifier
+                                                .background(
+                                                    if (active) Color(0xFF00695C) else DigiWearPalette.CardInner,
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                                .border(
+                                                    1.dp,
+                                                    if (active) Color(0xFF64FFDA) else Color(0xFF263238),
+                                                    RoundedCornerShape(8.dp)
+                                                )
+                                                .clickable { selectedEnvironment = env }
+                                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                DigiVectorIcon(
+                                                    type = DigiIconType.LIGHTNING_BOLT,
+                                                    size = 10.dp,
+                                                    tint = if (active) Color(0xFF64FFDA) else Color.LightGray
+                                                )
+                                                Text(
+                                                    text = env,
+                                                    fontSize = 9.sp,
+                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                                    color = if (active) Color.White else Color.LightGray,
+                                                    fontFamily = FontFamily.Monospace
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.height(12.dp))
+                                Text(
+                                    text = "COLOSSEUM TOURNAMENT ROSTER ($selectedEnvironment):",
                                     fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF80D8FF),
@@ -1248,550 +1953,30 @@ fun BattleHubScreen(
                                             SpriteCanvasRenderer(speciesId = monId, frame = SpriteFrame.IDLE_A, size = 32.dp)
                                             Spacer(modifier = Modifier.width(8.dp))
                                             Column {
-                                                Text(tamerName, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text(tamerName, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                                 Text(
-                                                    text = "${tamerSp.name} • $tamerRom",
-                                                    fontSize = 9.sp,
-                                                    color = DigiWearPalette.CrestGold,
-                                                    fontFamily = FontFamily.Monospace
-                                                )
-                                            }
-                                        }
-                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                            OutlinedButton(
-                                                onClick = {
-                                                    scope.launch {
-                                                        val ok = wearableManager.sendCommCodeToWatch(tamerRom)
-                                                        beamStatus = if (ok) "Relayed $tamerName ($tamerRom) to Watch!" else "Watch offline"
-                                                    }
-                                                }
-                                            ) {
-                                                Text("WATCH", fontSize = 9.sp, fontFamily = FontFamily.Monospace)
-                                            }
-                                            Button(
-                                                onClick = {
-                                                    inputCode = tamerRom
-                                                    launchAnimatedBattle(tamerRom, BattleMode.ACOM_DCOM_WIFICOM, "Normal")
-                                                },
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1565C0))
-                                            ) {
-                                                Text("DUEL", fontSize = 9.5.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    BattleMode.ADVENTURE -> {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, Color(0xFF26A69A).copy(alpha = 0.6f))
-                        ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
-                                Text(
-                                    text = "MODE 4: COLOSSEUM & 100-FLOOR BATTLE TOWER",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF64FFDA),
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Button(
-                                    onClick = {
-                                        buzzerManager.playButtonBeep()
-                                        showBattleTower = true
-                                    },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(44.dp),
-                                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E5FF)),
-                                    shape = RoundedCornerShape(8.dp)
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        DigiVectorIcon(type = DigiIconType.TROPHY_CROWN, size = 14.dp, tint = Color.Black)
-                                        Text(
-                                            text = "ENTER 100-FLOOR BATTLE TOWER GAUNTLET",
-                                            fontSize = 10.5.sp,
-                                            fontWeight = FontWeight.Black,
-                                            color = Color.Black,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-                                Spacer(modifier = Modifier.height(10.dp))
-                                Text(
-                                    text = "Or select an active Digital World sector hazard to test canonical Attribute & Weather modifiers:",
-                                    fontSize = 10.sp,
-                                    color = Color.LightGray
-                                )
-                                Spacer(modifier = Modifier.height(6.dp))
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                ) {
-                                    COLOSSEUM_ENVIRONMENTS.forEach { env ->
-                                        val active = selectedEnvironment == env
-                                        Box(
-                                            modifier = Modifier
-                                                .background(
-                                                    if (active) Color(0xFF00695C) else DigiWearPalette.CardInner,
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .border(
-                                                    1.dp,
-                                                    if (active) Color(0xFF64FFDA) else Color(0xFF263238),
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .clickable { selectedEnvironment = env }
-                                                .padding(horizontal = 10.dp, vertical = 6.dp)
-                                        ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                DigiVectorIcon(
-                                                    type = DigiIconType.LIGHTNING_BOLT,
-                                                    size = 10.dp,
-                                                    tint = if (active) Color(0xFF64FFDA) else Color.LightGray
-                                                )
-                                                Text(
-                                                    text = env,
-                                                    fontSize = 9.5.sp,
-                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (active) Color.White else Color.LightGray,
-                                                    fontFamily = FontFamily.Monospace
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Opponent Code Input & Live Animated Face-to-Face Combat Arena
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "▸ OPPONENT D-COM / DIGIROM TRANSCEIVER & LIVE ARENA",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFF8A80),
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Button(
-                            onClick = {
-                                scannerStatusError = null
-                                isCameraScannerOpen = true
-                                buzzerManager.playButtonBeep()
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
-                        ) {
-                            DigiVectorIcon(type = DigiIconType.QR, size = 16.dp, tint = Color.White)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("POINT-AND-SHOOT CAMERA SCANNER", fontSize = 10.5.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        OutlinedTextField(
-                            value = inputCode,
-                            onValueChange = {
-                                inputCode = it
-                                validationError = null
-                                decodedOpponent = try {
-                                    CommCodeCodec.decodeAuto(it)
-                                } catch (_: Exception) {
-                                    null
-                                }
-                            },
-                            label = { Text("Paste 26-Char Base32 or V1-XXXX-XXXX-XXXX DigiROM", fontSize = 11.sp) },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-
-                        Spacer(modifier = Modifier.height(8.dp))
-
-                        Text("SPARRING HOLO-TARGETS (TEST COMBAT FORMULAS):", fontSize = 9.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = {
-                                    val devimonCode = CommCodeCodec.encode128(
-                                        monsterId = 303, // Devimon (Virus)
-                                        stage = PetStage.ADULT,
-                                        attribute = ElementalAttribute.VIRUS,
-                                        basePowerHp = 210,
-                                        historicalVictories = 9,
-                                        trainingEffort = 3,
-                                        battleRngSeed = 0xBEEF
-                                    )
-                                    inputCode = CommCodeCodec.formatWithHyphens(devimonCode)
-                                    decodedOpponent = try { CommCodeCodec.decodeAuto(devimonCode) } catch (_: Exception) { null }
-                                },
-                                modifier = Modifier.weight(0.9f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                            ) {
-                                Text("Devimon", fontSize = 9.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
-                            }
-
-                            OutlinedButton(
-                                onClick = {
-                                    val metalGaruruCode = CommCodeCodec.encode128(
-                                        monsterId = 503, // MetalGarurumon (Data)
-                                        stage = PetStage.ULTIMATE,
-                                        attribute = ElementalAttribute.DATA,
-                                        basePowerHp = 280,
-                                        historicalVictories = 18,
-                                        trainingEffort = 4,
-                                        battleRngSeed = 0xCAFE
-                                    )
-                                    inputCode = CommCodeCodec.formatWithHyphens(metalGaruruCode)
-                                    decodedOpponent = try { CommCodeCodec.decodeAuto(metalGaruruCode) } catch (_: Exception) { null }
-                                },
-                                modifier = Modifier.weight(1.35f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
-                            ) {
-                                Text("MetalGarurumon", fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
-                            }
-
-                            Button(
-                                onClick = {
-                                    launchAnimatedBattle(inputCode, selectedBattleMode, selectedEnvironment)
-                                },
-                                modifier = Modifier.weight(0.95f),
-                                contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFD32F2F))
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.BATTLE, size = 13.dp, tint = Color.White)
-                                Spacer(modifier = Modifier.width(2.dp))
-                                Text("FIGHT!", fontSize = 9.5.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace, maxLines = 1)
-                            }
-                        }
-
-                        // Live Animated Face-to-Face Bandai LCD VS Arena
-                        decodedOpponent?.let { opp ->
-                            val oppSp = PetSpecies.getById(opp.monsterId)
-                            val ownSp = ownSpecies
-
-                            val activeTurn = if (isAnimatingBattle && battleResult != null) {
-                                battleResult!!.turns.getOrNull(currentTurnIndex)
-                            } else {
-                                battleResult?.turns?.lastOrNull()
-                            }
-
-                            val playerRemHp = when {
-                                battleResult == null -> ownSp.baseHp
-                                !isAnimatingBattle -> battleResult!!.fighterAFinalHp
-                                activeTurn == null -> battleResult!!.fighterA.maxHp
-                                activeTurn.attackerIndex == 1 -> activeTurn.defenderRemainingHp
-                                else -> battleResult!!.turns.take(currentTurnIndex).lastOrNull { it.attackerIndex == 1 }?.defenderRemainingHp ?: battleResult!!.fighterA.maxHp
-                            }
-
-                            val oppRemHp = when {
-                                battleResult == null -> oppSp.baseHp
-                                !isAnimatingBattle -> battleResult!!.fighterBFinalHp
-                                activeTurn == null -> battleResult!!.fighterB.maxHp
-                                activeTurn.attackerIndex == 0 -> activeTurn.defenderRemainingHp
-                                else -> battleResult!!.turns.take(currentTurnIndex).lastOrNull { it.attackerIndex == 0 }?.defenderRemainingHp ?: battleResult!!.fighterB.maxHp
-                            }
-
-                            val playerHpFrac = (playerRemHp.toFloat() / ownSp.baseHp.coerceAtLeast(1)).coerceIn(0f, 1f)
-                            val oppHpFrac = (oppRemHp.toFloat() / oppSp.baseHp.coerceAtLeast(1)).coerceIn(0f, 1f)
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Face-to-Face Bandai LCD VS Arena Card
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color(0xFF15221D), RoundedCornerShape(12.dp))
-                                    .border(1.dp, Color(0xFF4CAF50), RoundedCornerShape(12.dp))
-                                    .padding(12.dp)
-                            ) {
-                                EnvironmentParticleCanvas(environmentEffect = selectedEnvironment)
-                                if (isAnimatingBattle && activeTurn != null) {
-                                    val attackerSp = if (activeTurn.attackerIndex == 0) ownSp else oppSp
-                                    BattleClashFxCanvas(
-                                        attackerIndex = activeTurn.attackerIndex,
-                                        attribute = attackerSp.attribute,
-                                        attackType = activeTurn.attackType,
-                                        isCritical = activeTurn.isCritical,
-                                        moveName = activeTurn.moveName,
-                                        damage = activeTurn.damage,
-                                        progress = turnFxProgress
-                                    )
-                                }
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text(
-                                        text = "${selectedBattleMode.displayName.uppercase()} • ENV: ${selectedEnvironment.uppercase()}",
-                                        fontSize = 9.5.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = DigiWearPalette.CrestGold,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    Row(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        horizontalArrangement = Arrangement.SpaceEvenly,
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        // Left Fighter (Player - flipped horizontally to face Right!)
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            val playerArenaFrame = when {
-                                                !isAnimatingBattle && battleResult != null ->
-                                                    if (battleResult!!.winnerIndex == 0) SpriteFrame.JOY_EAT else SpriteFrame.INJURED
-                                                activeTurn == null -> SpriteFrame.IDLE_A
-                                                activeTurn.attackerIndex == 0 -> when {
-                                                    qteActive || turnFxProgress < 0.25f -> SpriteFrame.ATTACK_CHARGE
-                                                    turnFxProgress < 0.65f -> SpriteFrame.ATTACK_RELEASE
-                                                    else -> SpriteFrame.IDLE_B
-                                                }
-                                                turnFxProgress >= 0.65f -> SpriteFrame.INJURED
-                                                else -> SpriteFrame.IDLE_A
-                                            }
-                                            SpriteCanvasRenderer(
-                                                speciesId = ownSp.id,
-                                                frame = playerArenaFrame,
-                                                size = 64.dp,
-                                                flipHorizontal = true
-                                            )
-                                            Text(ownSp.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFF80CBC4))
-                                            Spacer(modifier = Modifier.height(3.dp))
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(84.dp)
-                                                    .height(6.dp)
-                                                    .background(Color(0xFF263238), RoundedCornerShape(3.dp))
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth(playerHpFrac)
-                                                        .height(6.dp)
-                                                        .background(Color(0xFF00E676), RoundedCornerShape(3.dp))
-                                                )
-                                            }
-                                            Text("$playerRemHp / ${ownSp.baseHp} HP • ${ownEffPower}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
-                                        }
-
-                                        // Center Clash & Projectile Indicator
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .background(Color(0xFF3E1C1C), RoundedCornerShape(6.dp))
-                                                    .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(6.dp))
-                                                    .padding(horizontal = 8.dp, vertical = 4.dp)
-                                            ) {
-                                                Text(
-                                                    text = when {
-                                                        activeTurn?.attackType == "MEGA_HIT" -> "[ MEGA HIT ]"
-                                                        activeTurn?.attackerIndex == 0 -> "[ ===> ]"
-                                                        activeTurn?.attackerIndex == 1 -> "[ <=== ]"
-                                                        else -> "VS"
-                                                    },
-                                                    fontSize = 11.sp,
-                                                    fontWeight = FontWeight.Black,
-                                                    color = Color(0xFFFFD54F),
-                                                    fontFamily = FontFamily.Monospace
-                                                )
-                                            }
-                                            activeTurn?.let { turn ->
-                                                Spacer(modifier = Modifier.height(3.dp))
-                                                Text(
-                                                    text = "R${turn.round} • HIT ${turn.hitRatePercent}%",
+                                                    text = "${tamerSp.name} â€¢ ${tamerSp.stage.displayName} â€¢ ${tamerSp.attribute.displayName}",
                                                     fontSize = 8.5.sp,
-                                                    color = Color(0xFF90CAF9),
+                                                    color = Color(0xFF80CBC4),
                                                     fontFamily = FontFamily.Monospace
                                                 )
                                             }
                                         }
-
-                                        // Right Fighter (Opponent - faces Left toward Player!)
-                                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            val oppArenaFrame = when {
-                                                !isAnimatingBattle && battleResult != null ->
-                                                    if (battleResult!!.winnerIndex == 1) SpriteFrame.JOY_EAT else SpriteFrame.INJURED
-                                                activeTurn == null -> SpriteFrame.IDLE_A
-                                                activeTurn.attackerIndex == 1 -> when {
-                                                    turnFxProgress < 0.25f -> SpriteFrame.ATTACK_CHARGE
-                                                    turnFxProgress < 0.65f -> SpriteFrame.ATTACK_RELEASE
-                                                    else -> SpriteFrame.IDLE_B
-                                                }
-                                                turnFxProgress >= 0.65f -> SpriteFrame.INJURED
-                                                else -> SpriteFrame.IDLE_A
-                                            }
-                                            SpriteCanvasRenderer(
-                                                speciesId = oppSp.id,
-                                                frame = oppArenaFrame,
-                                                size = 64.dp,
-                                                flipHorizontal = false
-                                            )
-                                            Text(oppSp.name, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF8A80))
-                                            Spacer(modifier = Modifier.height(3.dp))
-                                            Box(
-                                                modifier = Modifier
-                                                    .width(84.dp)
-                                                    .height(6.dp)
-                                                    .background(Color(0xFF263238), RoundedCornerShape(3.dp))
-                                            ) {
-                                                Box(
-                                                    modifier = Modifier
-                                                        .fillMaxWidth(oppHpFrac)
-                                                        .height(6.dp)
-                                                        .background(Color(0xFFFF5252), RoundedCornerShape(3.dp))
-                                                )
-                                            }
-                                            Text("$oppRemHp / ${oppSp.baseHp} HP • ${opp.basePowerHp}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
-                                        }
-                                    }
-
-                                    if (isAnimatingBattle && activeTurn != null) {
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        Text(
-                                            text = "${activeTurn.attackerName} [${activeTurn.attackType}] -> -${activeTurn.damage} HP!",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (activeTurn.isAdvantage) Color(0xFF00E676) else Color.White,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        if (qteActive) {
-                                            Spacer(modifier = Modifier.height(6.dp))
-                                            Button(
-                                                onClick = {
-                                                    critBoostTriggered = true
-                                                    qteActive = false
-                                                    buzzerManager.playButtonBeep()
-                                                },
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF1744))
-                                            ) {
-                                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                                    DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 11.dp, tint = Color.White)
-                                                    Text("TAP TO MEGA-BOOST (+25% CRIT)!", fontSize = 10.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-                                                    DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 11.dp, tint = Color.White)
-                                                }
-                                            }
+                                        Button(
+                                            onClick = {
+                                                inputCode = tamerRom
+                                                launchAnimatedBattle(tamerRom, BattleMode.ADVENTURE, selectedEnvironment)
+                                            },
+                                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B)),
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
+                                            modifier = Modifier.height(28.dp)
+                                        ) {
+                                            Text("DUEL", fontSize = 9.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
                                         }
                                     }
                                 }
                             }
                         }
-
-                        validationError?.let {
-                            Text(
-                                text = it,
-                                fontSize = 11.sp,
-                                color = Color(0xFFFF5252),
-                                fontFamily = FontFamily.Monospace,
-                                modifier = Modifier.padding(top = 8.dp)
-                            )
-                        }
-                    }
-                }
-
-                // Battle Simulation Log Results
-                battleResult?.let { result ->
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                        shape = RoundedCornerShape(16.dp),
-                        border = BorderStroke(1.dp, if (result.winnerIndex == 0) Color(0xFF00E676) else Color(0xFFEF5350))
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                text = "▸ CANONICAL V-PET COMBAT RESOLUTION LOG (${result.battleMode.displayName.uppercase()})",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = DigiWearPalette.CrestGold,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(
-                                text = "WINNER: ${result.winnerName ?: "DRAW"} (${result.totalRounds} ROUNDS)",
-                                fontSize = 15.sp,
-                                fontWeight = FontWeight.Black,
-                                color = if (result.winnerIndex == 0) Color(0xFF00E676) else Color(0xFFFF5252),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(
-                                text = result.formulaSummary,
-                                fontSize = 9.5.sp,
-                                color = Color(0xFF80CBC4),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            for (turn in result.turns) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 2.dp)
-                                        .background(DigiWearPalette.CardInner, RoundedCornerShape(6.dp))
-                                        .padding(horizontal = 8.dp, vertical = 6.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "R${turn.round} [${turn.attackType} • ${turn.hitRatePercent}%]: ${turn.attackerName} -> ${turn.defenderName}",
-                                        fontSize = 9.5.sp,
-                                        color = Color.White,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = "-${turn.damage} HP ${if (turn.isAdvantage) "[1.2x]" else ""} (${turn.defenderRemainingHp}HP)",
-                                        fontSize = 9.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (turn.isAdvantage) Color(0xFF00E676) else Color(0xFFFF8A80),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                // Codec Bit-Map Inspector
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "▸ 128-BIT PAYLOAD ARCHITECTURE",
-                            fontSize = 11.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFCC80),
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Spacer(modifier = Modifier.height(6.dp))
-                        BitFieldRow("000 - 007", "Version (8-bit)", "0x01")
-                        BitFieldRow("008 - 023", "Monster ID (16-bit)", "$ownMonsterId (${ownSpecies.name})")
-                        BitFieldRow("024 - 027", "Stage Index (4-bit)", "${ownSpecies.stage.stageIndex}")
-                        BitFieldRow("028 - 031", "Attribute (4-bit)", ownSpecies.attribute.displayName)
-                        BitFieldRow("032 - 047", "Base Power (16-bit)", "${ownSpecies.basePower} PWR")
-                        BitFieldRow("080 - 095", "PRNG Seed (16-bit)", "0x${Integer.toHexString(ownSeed).uppercase()}")
-                        BitFieldRow("112 - 127", "HMAC-16 Checksum", "Tamper-Proof")
                     }
                 }
             }

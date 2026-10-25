@@ -88,25 +88,7 @@ fun PetDashboardScreen(
     val buzzerManager = remember { com.digiwear.companion.sound.BuzzerManager(context) }
 
     val persistPhoneSnapshot: suspend (PetState) -> Unit = { updated ->
-        val sp = PetSpecies.getById(updated.speciesId)
-        db.phoneDao().insertSnapshot(
-            SyncedPetEntity(
-                syncedTimestampUtc = System.currentTimeMillis() / 1000L,
-                speciesId = updated.speciesId,
-                speciesName = sp.name,
-                currentHp = updated.currentHp,
-                maxHp = updated.maxHp,
-                hunger = updated.hunger,
-                strength = updated.strength,
-                weight = updated.weight,
-                ageSeconds = updated.ageSeconds,
-                careMistakes = updated.careMistakes,
-                effort = updated.effort,
-                overfeedCount = updated.overfeedCount,
-                totalBattles = updated.totalBattles,
-                victories = updated.victories
-            )
-        )
+        db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updated))
         DigiWearAppWidgetProvider.updateAllWidgets(context)
     }
 
@@ -114,20 +96,7 @@ fun PetDashboardScreen(
     LaunchedEffect(Unit) {
         val latest = db.phoneDao().getLatestSnapshot()
         if (latest != null) {
-            petState = PetState(
-                speciesId = latest.speciesId,
-                currentHp = latest.currentHp,
-                maxHp = latest.maxHp,
-                hunger = latest.hunger,
-                strength = latest.strength,
-                weight = latest.weight,
-                ageSeconds = latest.ageSeconds,
-                careMistakes = latest.careMistakes,
-                effort = latest.effort,
-                overfeedCount = latest.overfeedCount,
-                totalBattles = latest.totalBattles,
-                victories = latest.victories
-            )
+            petState = latest.toDomain()
         } else {
             // Attempt auto-sync from watch if connected
             val liveWatchState = wearableManager.requestPetStateFromWatch()

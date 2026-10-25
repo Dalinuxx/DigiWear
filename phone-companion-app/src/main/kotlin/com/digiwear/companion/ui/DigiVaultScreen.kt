@@ -410,39 +410,9 @@ fun DigiVaultScreen(
                                 activePet = activePetForDeposit,
                                 onDeployToWatch = {
                                     scope.launch {
-                                        val state = PetState(
-                                            speciesId = storedPet.speciesId,
-                                            currentHp = storedPet.currentHp,
-                                            maxHp = storedPet.maxHp,
-                                            hunger = storedPet.hunger,
-                                            strength = storedPet.strength,
-                                            weight = storedPet.weight,
-                                            ageSeconds = storedPet.ageSeconds,
-                                            careMistakes = storedPet.careMistakes,
-                                            effort = storedPet.effort,
-                                            overfeedCount = storedPet.overfeedCount,
-                                            totalBattles = storedPet.totalBattles,
-                                            victories = storedPet.victories
-                                        )
+                                        val state = storedPet.toDomain().copy(isFrozen = false)
                                         activePetForDeposit = state
-                                        db.phoneDao().insertSnapshot(
-                                            SyncedPetEntity(
-                                                syncedTimestampUtc = System.currentTimeMillis() / 1000L,
-                                                speciesId = state.speciesId,
-                                                speciesName = storedPet.speciesName,
-                                                currentHp = state.currentHp,
-                                                maxHp = state.maxHp,
-                                                hunger = state.hunger,
-                                                strength = state.strength,
-                                                weight = state.weight,
-                                                ageSeconds = state.ageSeconds,
-                                                careMistakes = state.careMistakes,
-                                                effort = state.effort,
-                                                overfeedCount = state.overfeedCount,
-                                                totalBattles = state.totalBattles,
-                                                victories = state.victories
-                                            )
-                                        )
+                                        db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(state))
                                         val ok = wearableManager.sendPetStateToWatch(state)
                                         DigiWearAppWidgetProvider.updateAllWidgets(context)
                                         actionStatusMessage = if (ok) {
@@ -1184,24 +1154,7 @@ fun DigiVaultScreen(
                                     )
                                     activePetForDeposit = fusedState
                                     wearableManager.sendPetStateToWatch(fusedState)
-                                    db.phoneDao().insertSnapshot(
-                                        SyncedPetEntity(
-                                            syncedTimestampUtc = System.currentTimeMillis() / 1000L,
-                                            speciesId = fusedState.speciesId,
-                                            speciesName = targetSp.name,
-                                            currentHp = fusedState.currentHp,
-                                            maxHp = fusedState.maxHp,
-                                            hunger = fusedState.hunger,
-                                            strength = fusedState.strength,
-                                            weight = fusedState.weight,
-                                            ageSeconds = fusedState.ageSeconds,
-                                            careMistakes = fusedState.careMistakes,
-                                            effort = fusedState.effort,
-                                            overfeedCount = fusedState.overfeedCount,
-                                            totalBattles = fusedState.totalBattles,
-                                            victories = fusedState.victories
-                                        )
-                                    )
+                                    db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(fusedState))
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPet.id)
                                     DigiWearAppWidgetProvider.updateAllWidgets(context)
                                 }

@@ -74,6 +74,10 @@ import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import com.google.mlkit.vision.text.TextRecognition
+import com.google.mlkit.vision.text.TextRecognizer
+import com.google.mlkit.vision.text.latin.TextRecognizerOptions
+import com.digiwear.core.codec.CommCodeCodec
 import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.atomic.AtomicLong
@@ -156,6 +160,9 @@ private fun CameraPreviewAndScanner(
                 .build()
             )
     }
+    val textRecognizer = remember {
+        TextRecognition.getClient(TextRecognizerOptions.DEFAULT_OPTIONS)
+    }
 
     var camera by remember { mutableStateOf<Camera?>(null) }
     var isTorchOn by remember { mutableStateOf(false) }
@@ -175,6 +182,7 @@ private fun CameraPreviewAndScanner(
                 cameraProviderRef.get()?.unbindAll()
                 cameraExecutor.shutdown()
                 barcodeScanner.close()
+                textRecognizer.close()
             } catch (e: Exception) {
                 Log.w("CameraBattleScanner", "Error releasing scanner resources", e)
             }
@@ -222,7 +230,7 @@ private fun CameraPreviewAndScanner(
                             .build()
 
                         imageAnalysis.setAnalyzer(cameraExecutor) { imageProxy ->
-                            processImageProxy(barcodeScanner, imageProxy) { scannedRaw ->
+                            processImageProxy(barcodeScanner, textRecognizer, imageProxy) { scannedRaw ->
                                 val now = System.currentTimeMillis()
                                 val lastCode = lastScannedCode.get()
                                 val lastTimestamp = lastScanTimestamp.get()
@@ -375,8 +383,8 @@ private fun CameraPreviewAndScanner(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.fillMaxWidth()) {
                     Text(
-                        text = "ALIGN OPPONENT QR MATRIX / BARCODE IN RETICLE",
-                        fontSize = 11.sp,
+                        text = "ALIGN QR MATRIX, BARCODE, OR TEXT COMM CODE IN RETICLE",
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Black,
                         color = Color(0xFF80D8FF),
                         fontFamily = FontFamily.Monospace,
@@ -384,7 +392,7 @@ private fun CameraPreviewAndScanner(
                     )
                     Spacer(modifier = Modifier.height(3.dp))
                     Text(
-                        text = "Point camera at Smartwatch LCD or Phone D-Com Comm Code",
+                        text = "Point camera at Smartwatch LCD, screen text, or physical barcode/QR",
                         fontSize = 9.sp,
                         color = Color(0xFFB0BEC5),
                         fontFamily = FontFamily.Monospace,
@@ -399,6 +407,7 @@ private fun CameraPreviewAndScanner(
 @OptIn(ExperimentalGetImage::class)
 private fun processImageProxy(
     barcodeScanner: BarcodeScanner,
+    textRecognizer: TextRecognizer,
     imageProxy: ImageProxy,
     onCodeDetected: (String) -> Unit
 ) {
@@ -408,27 +417,101 @@ private fun processImageProxy(
         try {
             barcodeScanner.process(inputImage)
                 .addOnSuccessListener { barcodes ->
+                    var barcodeFound = false
                     for (barcode in barcodes) {
                         val rawValue = barcode.rawValue
                         if (!rawValue.isNullOrBlank()) {
+                            barcodeFound = true
                             onCodeDetected(rawValue)
                             break
                         }
                     }
+                    if (!barcodeFound) {
+                        // Optical OCR recognition for printed or screen-displayed CommCodes & DigiROMs
+                        textRecognizer.process(inputImage)
+                            .addOnSuccessListener { visionText ->
+                                val extracted = extractCommCodeFromText(visionText.text)
+                                if (!extracted.isNullOrBlank()) {
+                                    onCodeDetected(extracted)
+                                }
+                            }
+                            .addOnFailureListener { e ->
+                                Log.w("CameraBattleScanner", "Text recognition failure", e)
+                            }
+                            .addOnCompleteListener {
+                                imageProxy.close()
+                            }
+                    } else {
+                        imageProxy.close()
+                    }
                 }
                 .addOnFailureListener { e ->
                     Log.w("CameraBattleScanner", "Barcode analysis failure", e)
-                }
-                .addOnCompleteListener {
-                    imageProxy.close()
+                    textRecognizer.process(inputImage)
+                        .addOnSuccessListener { visionText ->
+                            val extracted = extractCommCodeFromText(visionText.text)
+                            if (!extracted.isNullOrBlank()) {
+                                onCodeDetected(extracted)
+                            }
+                        }
+                        .addOnCompleteListener {
+                            imageProxy.close()
+                        }
                 }
         } catch (e: Exception) {
-            Log.w("CameraBattleScanner", "Barcode scanner submission failure", e)
+            Log.w("CameraBattleScanner", "Scanner submission failure", e)
             imageProxy.close()
         }
     } else {
         imageProxy.close()
     }
+}
+
+/**
+ * Extracts a valid 128-bit CommCode or DigiROM packet from OCR-recognized text.
+ */
+fun extractCommCodeFromText(rawText: String): String? {
+    if (rawText.isBlank()) return null
+    val clean = rawText.trim()
+    try {
+        CommCodeCodec.decodeAuto(clean)
+        return clean
+    } catch (_: Exception) {}
+
+    // Check for DigiROM regex: V1-XXXX-XXXX-XXXX or similar
+    val digiRomRegex = Regex("""(?:V[0-9]|D[0-9]|A[0-9]|[0-9A-Fa-f]{2})-[0-9A-Fa-f]{3,4}-[0-9A-Fa-f]{3,4}(?:-[0-9A-Fa-f]{3,4})*""", RegexOption.IGNORE_CASE)
+    digiRomRegex.find(clean)?.let { match ->
+        try {
+            CommCodeCodec.decodeAuto(match.value)
+            return match.value
+        } catch (_: Exception) {}
+    }
+
+    // Check for 26-character Base32 Comm Code
+    val base32Regex = Regex("""[A-Za-z2-7]{4,6}(?:-[A-Za-z2-7]{4,6}){3,6}|[A-Za-z2-7]{26}""")
+    base32Regex.find(clean)?.let { match ->
+        val candidate = match.value.replace("-", "").uppercase()
+        if (candidate.length == 26) {
+            try {
+                CommCodeCodec.decode128(candidate)
+                return candidate
+            } catch (_: Exception) {}
+        }
+    }
+
+    // Check individual tokens
+    for (line in clean.lines()) {
+        for (token in line.split(" ", "\t", ",", ";", "|")) {
+            val candidate = token.trim().trim('"', '\'', '(', ')', '[', ']', '<', '>')
+            if (candidate.length >= 10) {
+                try {
+                    CommCodeCodec.decodeAuto(candidate)
+                    return candidate
+                } catch (_: Exception) {}
+            }
+        }
+    }
+    return null
 }
 
 @Composable

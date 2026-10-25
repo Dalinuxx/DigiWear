@@ -38,29 +38,7 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
                         val updatedState = wearableManager.sendRemoteCareCommand(REMOTE_ACTION_FEED_MEAL)
                         val db = PhoneDatabase.getInstance(context)
                         if (updatedState != null) {
-                            val species = PetSpecies.SPECIES_REGISTRY[updatedState.speciesId] ?: PetSpecies.SPECIES_REGISTRY[101]!!
-                            db.phoneDao().insertSnapshot(
-                                SyncedPetEntity(
-                                    speciesId = updatedState.speciesId,
-                                    speciesName = species.name,
-                                    currentHp = updatedState.currentHp,
-                                    maxHp = updatedState.maxHp,
-                                    hunger = updatedState.hunger,
-                                    strength = updatedState.strength,
-                                    weight = updatedState.weight,
-                                    ageSeconds = updatedState.ageSeconds,
-                                    careMistakes = updatedState.careMistakes,
-                                    effort = updatedState.effort,
-                                    overfeedCount = updatedState.overfeedCount,
-                                    totalBattles = updatedState.totalBattles,
-                                    victories = updatedState.victories,
-                                    generation = updatedState.generation,
-                                    lifespanDays = updatedState.lifespanDays,
-                                    isDeceased = updatedState.isDeceased,
-                                    traitedEggBonus = updatedState.traitedEggBonus,
-                                    vitalPoints = updatedState.vitalPoints
-                                )
-                            )
+                            db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updatedState))
                         } else {
                             val latest = db.phoneDao().getLatestSnapshot()
                             if (latest != null) {
@@ -89,29 +67,7 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
                         val updatedState = wearableManager.sendRemoteCareCommand(REMOTE_ACTION_CLEAN_WASTE)
                         val db = PhoneDatabase.getInstance(context)
                         if (updatedState != null) {
-                            val species = PetSpecies.SPECIES_REGISTRY[updatedState.speciesId] ?: PetSpecies.SPECIES_REGISTRY[101]!!
-                            db.phoneDao().insertSnapshot(
-                                SyncedPetEntity(
-                                    speciesId = updatedState.speciesId,
-                                    speciesName = species.name,
-                                    currentHp = updatedState.currentHp,
-                                    maxHp = updatedState.maxHp,
-                                    hunger = updatedState.hunger,
-                                    strength = updatedState.strength,
-                                    weight = updatedState.weight,
-                                    ageSeconds = updatedState.ageSeconds,
-                                    careMistakes = updatedState.careMistakes,
-                                    effort = updatedState.effort,
-                                    overfeedCount = updatedState.overfeedCount,
-                                    totalBattles = updatedState.totalBattles,
-                                    victories = updatedState.victories,
-                                    generation = updatedState.generation,
-                                    lifespanDays = updatedState.lifespanDays,
-                                    isDeceased = updatedState.isDeceased,
-                                    traitedEggBonus = updatedState.traitedEggBonus,
-                                    vitalPoints = updatedState.vitalPoints
-                                )
-                            )
+                            db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updatedState))
                         } else {
                             val latest = db.phoneDao().getLatestSnapshot()
                             if (latest != null) {

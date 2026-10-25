@@ -78,6 +78,7 @@ androidx-camera-view = { group = "androidx.camera", name = "camera-view", versio
 
 # MLKit Barcode Scanning
 mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
+mlkit-text-recognition = { group = "com.google.mlkit", name = "text-recognition", version = "16.0.1" }
 dadb = { group = "dev.mobile", name = "dadb", version.ref = "dadb" }
 
 [plugins]

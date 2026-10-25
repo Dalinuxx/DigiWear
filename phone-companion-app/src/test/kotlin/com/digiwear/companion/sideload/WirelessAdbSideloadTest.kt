@@ -84,7 +84,7 @@ class WirelessAdbSideloadTest {
     @Test
     fun testApkSourceTypeLabels() {
         assertEquals("Phone Storage", ApkSourceType.PHONE_STORAGE.label)
-        assertEquals("GitHub Release", ApkSourceType.GITHUB_DOWNLOAD.label)
+        assertEquals("GitHub release_bin", ApkSourceType.GITHUB_DOWNLOAD.label)
         assertEquals("Embedded Asset", ApkSourceType.EMBEDDED_ASSET.label)
         assertEquals("Local Cache", ApkSourceType.LOCAL_CACHE.label)
     }

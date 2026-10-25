@@ -14,10 +14,14 @@ android {
         applicationId = "com.digiwear.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "2.5.1"
+        versionCode = 17
+        versionName = "2.5.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        ndk {
+            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+        }
     }
 
     testOptions {
@@ -110,6 +114,7 @@ dependencies {
 
     // MLKit Barcode Scanning
     implementation(libs.mlkit.barcode.scanning)
+    implementation(libs.mlkit.text.recognition)
 
     // Direct Wireless ADB Client Engine
     implementation(libs.dadb)

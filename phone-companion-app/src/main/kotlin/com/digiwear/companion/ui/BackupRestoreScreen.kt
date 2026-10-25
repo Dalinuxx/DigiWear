@@ -110,25 +110,7 @@ fun BackupRestoreScreen(
     }
 
     val persistStateSnapshot: suspend (PetState) -> Unit = { state ->
-        val sp = PetSpecies.getById(state.speciesId)
-        db.phoneDao().insertSnapshot(
-            SyncedPetEntity(
-                syncedTimestampUtc = System.currentTimeMillis() / 1000L,
-                speciesId = state.speciesId,
-                speciesName = sp.name,
-                currentHp = state.currentHp,
-                maxHp = state.maxHp,
-                hunger = state.hunger,
-                strength = state.strength,
-                weight = state.weight,
-                ageSeconds = state.ageSeconds,
-                careMistakes = state.careMistakes,
-                effort = state.effort,
-                overfeedCount = state.overfeedCount,
-                totalBattles = state.totalBattles,
-                victories = state.victories
-            )
-        )
+        db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(state))
         DigiWearAppWidgetProvider.updateAllWidgets(context)
     }
 
