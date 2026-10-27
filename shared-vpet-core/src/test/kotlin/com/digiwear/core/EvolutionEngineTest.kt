@@ -69,4 +69,49 @@ class EvolutionEngineTest {
         )
         assertNull(EvolutionEngine.evaluateEvolution(babyAgumon))
     }
+
+    @Test
+    fun testVitalPointsRemainStrictlyOptional() {
+        val rule = com.digiwear.core.model.EvolutionRule(
+            targetSpeciesId = 301,
+            minAgeSeconds = 86400L,
+            minVitalPoints = 2500, // Optional Vital Points condition
+            maxCareMistakes = 3
+        )
+        // Pet with 0 vital points should still evolve normally when standard conditions are met
+        val petWithoutVitals = PetState(
+            speciesId = 201,
+            ageSeconds = 86400L,
+            careMistakes = 1,
+            vitalPoints = 0
+        )
+        org.junit.Assert.assertTrue("0 vital points must not block evolution", rule.matches(petWithoutVitals))
+    }
+
+    @Test
+    fun testVitalPointsFastTracksEvolutionAgeRequirement() {
+        val rule = com.digiwear.core.model.EvolutionRule(
+            targetSpeciesId = 301,
+            minAgeSeconds = 86400L,
+            minVitalPoints = 2000,
+            maxCareMistakes = 3
+        )
+        // At half age (43200s), standard pet cannot evolve yet
+        val standardPetAtHalfAge = PetState(
+            speciesId = 201,
+            ageSeconds = 43200L,
+            careMistakes = 1,
+            vitalPoints = 500
+        )
+        org.junit.Assert.assertFalse("Below threshold must not fast-track before full age", rule.matches(standardPetAtHalfAge))
+
+        // But pet meeting optional vital points threshold fast-tracks at half age
+        val highVitalPetAtHalfAge = PetState(
+            speciesId = 201,
+            ageSeconds = 43200L,
+            careMistakes = 1,
+            vitalPoints = 2500
+        )
+        org.junit.Assert.assertTrue("Achieving vital points fast-tracks evolution by halving required age", rule.matches(highVitalPetAtHalfAge))
+    }
 }

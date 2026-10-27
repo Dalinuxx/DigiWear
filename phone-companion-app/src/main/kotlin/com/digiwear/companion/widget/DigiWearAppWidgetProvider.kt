@@ -34,25 +34,25 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
                 val pendingResult = runCatching { goAsync() }.getOrNull()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val wearableManager = PhoneWearableManager(context)
+                        val appCtx = context.applicationContext
+                        val wearableManager = PhoneWearableManager(appCtx)
                         val updatedState = wearableManager.sendRemoteCareCommand(REMOTE_ACTION_FEED_MEAL)
-                        val db = PhoneDatabase.getInstance(context)
+                        val db = PhoneDatabase.getInstance(appCtx)
                         if (updatedState != null) {
                             db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updatedState))
                         } else {
                             val latest = db.phoneDao().getLatestSnapshot()
                             if (latest != null) {
-                                db.phoneDao().insertSnapshot(
-                                    latest.copy(
-                                        id = 0,
-                                        hunger = (latest.hunger + 1).coerceAtMost(4),
-                                        weight = latest.weight + 1,
-                                        syncedTimestampUtc = System.currentTimeMillis() / 1000L
-                                    )
+                                val nextState = com.digiwear.core.engine.PetSimulationEngine.feedMeal(
+                                    latest.toDomain(),
+                                    System.currentTimeMillis() / 1000L
                                 )
+                                db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(nextState))
+                                // Local-only: a null reply can also mean timeout, so never push this
+                                // possibly-stale snapshot over the watch; the next sync reconciles.
                             }
                         }
-                        updateAllWidgets(context)
+                        updateAllWidgets(appCtx)
                     } catch (_: Exception) {
                     } finally {
                         pendingResult?.finish()
@@ -63,23 +63,25 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
                 val pendingResult = runCatching { goAsync() }.getOrNull()
                 CoroutineScope(Dispatchers.IO).launch {
                     try {
-                        val wearableManager = PhoneWearableManager(context)
+                        val appCtx = context.applicationContext
+                        val wearableManager = PhoneWearableManager(appCtx)
                         val updatedState = wearableManager.sendRemoteCareCommand(REMOTE_ACTION_CLEAN_WASTE)
-                        val db = PhoneDatabase.getInstance(context)
+                        val db = PhoneDatabase.getInstance(appCtx)
                         if (updatedState != null) {
                             db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updatedState))
                         } else {
                             val latest = db.phoneDao().getLatestSnapshot()
                             if (latest != null) {
-                                db.phoneDao().insertSnapshot(
-                                    latest.copy(
-                                        id = 0,
-                                        syncedTimestampUtc = System.currentTimeMillis() / 1000L
-                                    )
+                                val nextState = com.digiwear.core.engine.PetSimulationEngine.cleanWaste(
+                                    latest.toDomain(),
+                                    System.currentTimeMillis() / 1000L
                                 )
+                                db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(nextState))
+                                // Local-only: a null reply can also mean timeout, so never push this
+                                // possibly-stale snapshot over the watch; the next sync reconciles.
                             }
                         }
-                        updateAllWidgets(context)
+                        updateAllWidgets(appCtx)
                     } catch (_: Exception) {
                     } finally {
                         pendingResult?.finish()

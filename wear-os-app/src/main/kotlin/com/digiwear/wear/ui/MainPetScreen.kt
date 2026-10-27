@@ -189,9 +189,9 @@ fun MainPetScreen(
         } else when (item) {
             VPetMenu.FEED -> {
                 scope.launch {
-                    if (petState.isSleeping) {
+                    if (petState.isSleeping || petState.isFrozen) {
                         overrideSpriteFrame = SpriteFrame.REFUSAL
-                        actionFeedback = "Sleeping!"
+                        actionFeedback = if (petState.isFrozen) "Frozen in Cryo!" else "Sleeping!"
                         buzzerManager.playAttentionBeep()
                         delay(800L)
                         overrideSpriteFrame = null

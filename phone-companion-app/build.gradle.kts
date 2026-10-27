@@ -14,14 +14,12 @@ android {
         applicationId = "com.digiwear.companion"
         minSdk = 26
         targetSdk = 35
-        versionCode = 17
-        versionName = "2.5.2"
+        versionCode = 18
+        versionName = "2.5.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
-        ndk {
-            abiFilters += listOf("arm64-v8a", "armeabi-v7a")
-        }
+        // ABI filtering moved to release buildType so debug builds include x86_64 native libraries
     }
 
     testOptions {
@@ -42,6 +40,9 @@ android {
 
     buildTypes {
         release {
+            ndk {
+                abiFilters += listOf("arm64-v8a", "armeabi-v7a")
+            }
             isMinifyEnabled = true
             isShrinkResources = true
             signingConfig = signingConfigs.getByName("release")

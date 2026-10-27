@@ -7,6 +7,8 @@
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
+$ScriptDir = if ($PSScriptRoot) { $PSScriptRoot } elseif ($MyInvocation.MyCommand.Path) { Split-Path -Parent $MyInvocation.MyCommand.Path } else { (Get-Location).Path }
+
 function Write-Header {
     Clear-Host
     Write-Host '======================================================================' -ForegroundColor Cyan
@@ -52,7 +54,7 @@ function Get-ApkPath {
     param(
         [string]$moduleName
     )
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $scriptDir = $ScriptDir
     $candidates = @()
 
     if ($moduleName -eq 'wear-os-app') {
@@ -86,7 +88,7 @@ function Get-ApkPath {
 }
 
 function Sync-ReleaseBinaries {
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $scriptDir = $ScriptDir
     $relBinDir = Join-Path $scriptDir 'release_bin'
     if (-not (Test-Path $relBinDir)) {
         New-Item -ItemType Directory -Path $relBinDir | Out-Null
@@ -258,7 +260,7 @@ function Select-TargetDevice {
 function Invoke-RebuildApks {
     Write-Host ''
     Write-Host 'Rebuilding Release & Debug APKs and syncing release_bin/...' -ForegroundColor Cyan
-    $scriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
+    $scriptDir = $ScriptDir
     Push-Location $scriptDir
     cmd.exe /c "gradlew.bat assembleRelease assembleDebug"
     $exitCode = $LASTEXITCODE

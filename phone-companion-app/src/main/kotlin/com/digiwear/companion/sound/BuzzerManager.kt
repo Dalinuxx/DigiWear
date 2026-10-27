@@ -40,25 +40,43 @@ class BuzzerManager(context: Context) {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Once released, getters return inert/no-op audio so in-flight sounds can't recreate leaked AudioTracks. */
     @Volatile
-    private var toneGeneratorInitialized = false
+    private var released = false
 
-    private val toneGenerator: ToneGenerator? by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        toneGeneratorInitialized = true
-        try {
-            ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
-        } catch (_: Exception) {
-            null
+    @Volatile
+    private var _toneGenerator: ToneGenerator? = null
+
+    private val toneGenerator: ToneGenerator?
+        @Synchronized get() {
+            if (released) return null
+            var current = _toneGenerator
+            if (current == null) {
+                current = try {
+                    ToneGenerator(AudioManager.STREAM_NOTIFICATION, 85)
+                } catch (_: Exception) {
+                    null
+                }
+                _toneGenerator = current
+            }
+            return current
         }
-    }
 
     @Volatile
-    private var synthInitialized = false
+    private var _synth: PureSquareWaveSynth? = null
 
-    private val synth: PureSquareWaveSynth by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        synthInitialized = true
-        PureSquareWaveSynth()
-    }
+    private val releasedSynth by lazy { PureSquareWaveSynth(createTrack = false) }
+
+    private val synth: PureSquareWaveSynth
+        @Synchronized get() {
+            if (released) return releasedSynth
+            var current = _synth
+            if (current == null) {
+                current = PureSquareWaveSynth()
+                _synth = current
+            }
+            return current
+        }
 
     /**
      * Attention call sequence (pip-pip-pip-pip or anime chime).
@@ -786,27 +804,27 @@ class BuzzerManager(context: Context) {
         }
     }
 
+    @Synchronized
     fun release() {
-        scope.cancel()
-        if (synthInitialized) {
-            synth.release()
-        }
-        if (toneGeneratorInitialized) {
-            try {
-                toneGenerator?.release()
-            } catch (_: Exception) {}
-        }
+        released = true
+        scope.coroutineContext[kotlinx.coroutines.Job]?.children?.forEach { it.cancel() }
+        _synth?.release()
+        _synth = null
+        try {
+            _toneGenerator?.release()
+        } catch (_: Exception) {}
+        _toneGenerator = null
     }
 
     /**
      * Pure square-wave PCM audio synthesizer generating in-memory chiptune frequencies via AudioTrack.
      */
-    private class PureSquareWaveSynth {
+    private class PureSquareWaveSynth(createTrack: Boolean = true) {
         private val sampleRate = 22050
         private var track: AudioTrack? = null
 
         init {
-            try {
+            if (createTrack) try {
                 val minBuf = AudioTrack.getMinBufferSize(
                     sampleRate,
                     AudioFormat.CHANNEL_OUT_MONO,

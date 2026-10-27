@@ -13,9 +13,9 @@ android {
     defaultConfig {
         applicationId = "com.digiwear.wear"
         minSdk = 28
-        targetSdk = 34
-        versionCode = 17
-        versionName = "2.5.2"
+        targetSdk = 35
+        versionCode = 18
+        versionName = "2.5.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

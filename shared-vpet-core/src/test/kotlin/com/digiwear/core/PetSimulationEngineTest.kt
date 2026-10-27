@@ -320,4 +320,35 @@ class PetSimulationEngineTest {
         // Test Baby I (never sleeps)
         assertFalse(PetSimulationEngine.isSleepWindowWithSchedule(PetStage.BABY_I, 22, 0, "20:00_07:00"))
     }
+
+    @Test
+    fun testEmptyHungerDuringSleepWithLightsOffDoesNotTriggerCareMistake() {
+        // Agumon sleeps 21:00..08:00. At 22:00 UTC (79,200s) with lightsOff = true and hunger = 0:
+        val sleepingEmpty = PetState(
+            speciesId = 201,
+            hunger = 0,
+            strength = 0,
+            lightsOff = true,
+            isSleeping = true,
+            careMistakes = 0,
+            lastProcessedTimestampUtc = 79200L
+        )
+        val after2HoursSleep = PetSimulationEngine.processDelta(sleepingEmpty, 79200L + 7200L, ZoneOffset.UTC)
+        assertTrue(after2HoursSleep.isSleeping)
+        assertFalse("Empty hunger while sleeping with lights off must not trigger attention call", after2HoursSleep.attentionCallActive)
+        assertEquals("No care mistakes should accrue while sleeping with lights off", 0, after2HoursSleep.careMistakes)
+    }
+
+    @Test
+    fun testVitalPointsAwardedOnTrainingAndBattle() {
+        val initial = PetState(speciesId = 201, vitalPoints = 100)
+        val afterTrainWin = PetSimulationEngine.train(initial, success = true, currentTimestampUtc = 1000L)
+        assertEquals(125, afterTrainWin.vitalPoints)
+        val afterTrainLoss = PetSimulationEngine.train(afterTrainWin, success = false, currentTimestampUtc = 1010L)
+        assertEquals(130, afterTrainLoss.vitalPoints)
+        val (afterBattleWin, _) = PetSimulationEngine.processBattleOutcome(afterTrainLoss, won = true)
+        assertEquals(180, afterBattleWin.vitalPoints)
+        val (afterBattleLoss, _) = PetSimulationEngine.processBattleOutcome(afterBattleWin, won = false)
+        assertEquals(190, afterBattleLoss.vitalPoints)
+    }
 }

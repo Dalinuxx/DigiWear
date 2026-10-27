@@ -20,19 +20,26 @@ data class EvolutionRule(
     val minVitalPoints: Int = 0
 ) {
     /**
+     * Returns the age gate that applies to [state]: halved when the optional
+     * [minVitalPoints] threshold is defined and achieved, otherwise [minAgeSeconds].
+     */
+    fun effectiveMinAgeSeconds(state: PetState): Long =
+        if (minVitalPoints > 0 && state.vitalPoints >= minVitalPoints) minAgeSeconds / 2 else minAgeSeconds
+
+    /**
      * Checks whether the given [state] satisfies all condition constraints.
-     * Note: [minVitalPoints] is strictly optional; when > 0, it acts as an additional fast-track/mastery requirement
-     * if the user engages with Workout Mode, but classic care parameters (CM, effort, battles) provide the primary gate.
+     * Note: [minVitalPoints] is strictly optional; when > 0, achieving the threshold fast-tracks
+     * evolution (halving required age), but classic care parameters (CM, effort, battles) provide
+     * the primary gate and lack of Vital Points never blocks evolution.
      */
     fun matches(state: PetState): Boolean {
-        if (state.ageSeconds < minAgeSeconds) return false
+        if (state.ageSeconds < effectiveMinAgeSeconds(state)) return false
         if (state.careMistakes < minCareMistakes || state.careMistakes > maxCareMistakes) return false
         if (state.effort < minEffort) return false
         if (state.overfeedCount < minOverfeed) return false
         if (state.totalBattles < minBattles) return false
         if (state.winRatio < minWinRatio) return false
         if (state.weight < minWeight) return false
-        if (minVitalPoints > 0 && state.vitalPoints < minVitalPoints) return false
         return true
     }
 }

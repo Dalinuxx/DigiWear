@@ -146,7 +146,7 @@ class StepTrackerManager(
                 sensorManager.registerListener(this, stepDetectorSensor, SensorManager.SENSOR_DELAY_NORMAL, 10_000_000)
             }
 
-            if (stepCounterSensor == null && accelerometerSensor != null && !isOffBody) {
+            if (stepCounterSensor == null && stepDetectorSensor == null && accelerometerSensor != null && !isOffBody) {
                 sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
             }
         } catch (e: Exception) {
@@ -202,7 +202,7 @@ class StepTrackerManager(
                     if (accelerometerSensor != null) {
                         sensorManager.unregisterListener(this, accelerometerSensor)
                     }
-                } else if (!isAmbient && accelerometerSensor != null && stepCounterSensor == null) {
+                } else if (!isAmbient && accelerometerSensor != null && stepCounterSensor == null && stepDetectorSensor == null) {
                     sensorManager.registerListener(this, accelerometerSensor, SensorManager.SENSOR_DELAY_UI)
                 }
             }

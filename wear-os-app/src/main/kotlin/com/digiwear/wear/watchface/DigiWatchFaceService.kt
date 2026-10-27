@@ -254,8 +254,8 @@ class DigiWatchFaceService : WatchFaceService() {
         }
 
         serviceScope.launch {
-            repository.adventureStateFlow.collect {
-                renderer.updateAdventureSteps(it.totalAdventureSteps)
+            repository.dailyStepsFlow.collect {
+                renderer.updateAdventureSteps(it)
                 renderer.invalidate()
             }
         }
@@ -448,6 +448,12 @@ class DigiCanvasRenderer(
         style = Paint.Style.FILL
         isAntiAlias = true
     }
+    private val reusableDstRect = Rect()
+    private val reusableBezelRect = RectF()
+    private val reusableHeartPath = Path()
+
+    private var cachedBgBitmap: android.graphics.Bitmap? = null
+    private var cachedBgKey: String = ""
 
     fun updatePetState(state: PetState) {
         petState = state
@@ -507,6 +513,8 @@ class DigiCanvasRenderer(
 
     override fun onDestroy() {
         cancelBounce()
+        cachedBgBitmap?.recycle()
+        cachedBgBitmap = null
         buzzerManager.release()
         super.onDestroy()
     }
@@ -602,8 +610,8 @@ class DigiCanvasRenderer(
         val spriteSize = (w * 0.34f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
         val spriteTop = (centerY - spriteSize / 2f + h * 0.02f).toInt()
-        val dstRect = Rect(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
-        canvas.drawBitmap(ambientBitmap, null, dstRect, spritePaint)
+        reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
+        canvas.drawBitmap(ambientBitmap, null, reusableDstRect, spritePaint)
 
         // 3. Status Line
         textPaint.color = tintColor
@@ -626,6 +634,83 @@ class DigiCanvasRenderer(
             textPaint.textSize = w * 0.045f
             canvas.drawText("${currentSteps}st • ${batteryPct}%", centerX, centerY + h * 0.38f, textPaint)
         }
+    }
+
+    private fun getOrBuildBackgroundBitmap(
+        width: Int,
+        height: Int,
+        baseLcdColor: Int,
+        gridDotColor: Int,
+        isOled: Boolean,
+        activePattern: LcdPattern
+    ): android.graphics.Bitmap {
+        val key = "${width}x${height}_${baseLcdColor}_${gridDotColor}_${isOled}_${activePattern.name}"
+        val existing = cachedBgBitmap
+        if (existing != null && !existing.isRecycled && cachedBgKey == key) {
+            return existing
+        }
+        existing?.recycle()
+        val bmp = android.graphics.Bitmap.createBitmap(width.coerceAtLeast(1), height.coerceAtLeast(1), android.graphics.Bitmap.Config.ARGB_8888)
+        val bgCanvas = Canvas(bmp)
+        bgPaint.color = baseLcdColor
+        bgCanvas.drawRect(0f, 0f, width.toFloat(), height.toFloat(), bgPaint)
+
+        val w = width.toFloat()
+        val h = height.toFloat()
+        when (activePattern) {
+            LcdPattern.DOT_MATRIX -> {
+                dotPaint.color = gridDotColor
+                dotPaint.alpha = if (isOled) 30 else 45
+                dotPaint.style = Paint.Style.FILL
+                val dotSpacing = 10f
+                var x = 5f
+                while (x < w) {
+                    var y = 5f
+                    while (y < h) {
+                        bgCanvas.drawCircle(x, y, 1.2f, dotPaint)
+                        y += dotSpacing
+                    }
+                    x += dotSpacing
+                }
+            }
+            LcdPattern.GRID -> {
+                dotPaint.color = gridDotColor
+                dotPaint.alpha = if (isOled) 25 else 35
+                dotPaint.strokeWidth = 1f
+                dotPaint.style = Paint.Style.STROKE
+                val gridSpacing = 12f
+                var gx = gridSpacing
+                while (gx < w) {
+                    bgCanvas.drawLine(gx, 0f, gx, h, dotPaint)
+                    gx += gridSpacing
+                }
+                var gy = gridSpacing
+                while (gy < h) {
+                    bgCanvas.drawLine(0f, gy, w, gy, dotPaint)
+                    gy += gridSpacing
+                }
+                dotPaint.style = Paint.Style.FILL
+            }
+            LcdPattern.SCANLINES -> {
+                dotPaint.color = gridDotColor
+                dotPaint.alpha = if (isOled) 30 else 40
+                dotPaint.strokeWidth = 1.2f
+                dotPaint.style = Paint.Style.STROKE
+                val scanlineSpacing = 4f
+                var sy = 2f
+                while (sy < h) {
+                    bgCanvas.drawLine(0f, sy, w, sy, dotPaint)
+                    sy += scanlineSpacing
+                }
+                dotPaint.style = Paint.Style.FILL
+            }
+            LcdPattern.OLED -> {
+                // Pure solid backlight, no pattern overlay
+            }
+        }
+        cachedBgBitmap = bmp
+        cachedBgKey = key
+        return bmp
     }
 
     private fun renderInteractiveMode(
@@ -652,11 +737,7 @@ class DigiCanvasRenderer(
         val darkPixelColor = if (isOled) Color.WHITE else rawDarkPixelColor
         val gridDotColor = if (isOled) Color.DKGRAY else rawGridColor
 
-        // 1. Fill Screen with LCD theme primary tint
-        bgPaint.color = baseLcdColor
-        canvas.drawRect(bounds, bgPaint)
-
-        // 2. LCD Matrix Pattern Overlay (DOT_MATRIX, GRID, SCANLINES, OLED)
+        // 1 & 2. Cached LCD Matrix Pattern Overlay (DOT_MATRIX, GRID, SCANLINES, OLED)
         val activePattern = if (isCustom) {
             customThemeConfig?.pattern ?: LcdPattern.DOT_MATRIX
         } else if (isOled) {
@@ -664,65 +745,22 @@ class DigiCanvasRenderer(
         } else {
             LcdPattern.DOT_MATRIX
         }
-
-        when (activePattern) {
-            LcdPattern.DOT_MATRIX -> {
-                dotPaint.color = gridDotColor
-                dotPaint.alpha = if (isOled) 30 else 45
-                dotPaint.style = Paint.Style.FILL
-                val dotSpacing = 10f
-                var x = 5f
-                while (x < w) {
-                    var y = 5f
-                    while (y < h) {
-                        canvas.drawCircle(x, y, 1.2f, dotPaint)
-                        y += dotSpacing
-                    }
-                    x += dotSpacing
-                }
-            }
-            LcdPattern.GRID -> {
-                dotPaint.color = gridDotColor
-                dotPaint.alpha = if (isOled) 25 else 35
-                dotPaint.strokeWidth = 1f
-                dotPaint.style = Paint.Style.STROKE
-                val gridSpacing = 12f
-                var gx = gridSpacing
-                while (gx < w) {
-                    canvas.drawLine(gx, 0f, gx, h, dotPaint)
-                    gx += gridSpacing
-                }
-                var gy = gridSpacing
-                while (gy < h) {
-                    canvas.drawLine(0f, gy, w, gy, dotPaint)
-                    gy += gridSpacing
-                }
-                dotPaint.style = Paint.Style.FILL
-            }
-            LcdPattern.SCANLINES -> {
-                dotPaint.color = gridDotColor
-                dotPaint.alpha = if (isOled) 30 else 40
-                dotPaint.strokeWidth = 1.2f
-                dotPaint.style = Paint.Style.STROKE
-                val scanlineSpacing = 4f
-                var sy = 2f
-                while (sy < h) {
-                    canvas.drawLine(0f, sy, w, sy, dotPaint)
-                    sy += scanlineSpacing
-                }
-                dotPaint.style = Paint.Style.FILL
-            }
-            LcdPattern.OLED -> {
-                // Pure solid backlight, no pattern overlay
-            }
-        }
+        val bgBitmap = getOrBuildBackgroundBitmap(
+            width = bounds.width(),
+            height = bounds.height(),
+            baseLcdColor = baseLcdColor,
+            gridDotColor = gridDotColor,
+            isOled = isOled,
+            activePattern = activePattern
+        )
+        canvas.drawBitmap(bgBitmap, 0f, 0f, null)
 
         // 3. Inner LCD Screen Bezel Frame
         framePaint.color = darkPixelColor
         framePaint.alpha = 110
         val bezelMargin = w * 0.06f
-        val bezelRect = RectF(bezelMargin, bezelMargin, w - bezelMargin, h - bezelMargin)
-        canvas.drawRoundRect(bezelRect, 18f, 18f, framePaint)
+        reusableBezelRect.set(bezelMargin, bezelMargin, w - bezelMargin, h - bezelMargin)
+        canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
 
         // 4. Top Header Status Bar: Battery • Partner Name • Step Target
         val batteryPct = getBatteryPercentage(context)
@@ -792,8 +830,8 @@ class DigiCanvasRenderer(
         val spriteSize = (w * 0.32f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
         val spriteTop = (centerY - spriteSize / 2f + h * 0.05f + bounceOffset).toInt()
-        val dstRect = Rect(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
-        canvas.drawBitmap(spriteBitmap, null, dstRect, spritePaint)
+        reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
+        canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
@@ -978,13 +1016,12 @@ class DigiCanvasRenderer(
         heartPaint.style = if (filled) Paint.Style.FILL else Paint.Style.STROKE
         heartPaint.strokeWidth = 1.2f
 
-        val path = Path().apply {
-            moveTo(cx, cy + radius * 0.8f)
-            cubicTo(cx - radius * 1.5f, cy - radius * 0.8f, cx - radius, cy - radius * 1.8f, cx, cy - radius * 0.7f)
-            cubicTo(cx + radius, cy - radius * 1.8f, cx + radius * 1.5f, cy - radius * 0.8f, cx, cy + radius * 0.8f)
-            close()
-        }
-        canvas.drawPath(path, heartPaint)
+        reusableHeartPath.reset()
+        reusableHeartPath.moveTo(cx, cy + radius * 0.8f)
+        reusableHeartPath.cubicTo(cx - radius * 1.5f, cy - radius * 0.8f, cx - radius, cy - radius * 1.8f, cx, cy - radius * 0.7f)
+        reusableHeartPath.cubicTo(cx + radius, cy - radius * 1.8f, cx + radius * 1.5f, cy - radius * 0.8f, cx, cy + radius * 0.8f)
+        reusableHeartPath.close()
+        canvas.drawPath(reusableHeartPath, heartPaint)
     }
 
     private fun drawJoyHeart(canvas: Canvas, cx: Float, cy: Float, color: Int) {
@@ -1035,6 +1072,8 @@ class RetroLcdCanvasComplication(
 ) : CanvasComplication {
 
     private var complicationData: ComplicationData = NoDataComplicationData()
+    private var cachedIconDrawable: android.graphics.drawable.Drawable? = null
+    private val reusableRectF = RectF()
 
     private val textPaint = Paint().apply {
         typeface = Typeface.MONOSPACE
@@ -1048,6 +1087,12 @@ class RetroLcdCanvasComplication(
         isAntiAlias = false
     }
 
+    private val highlightPaint = Paint().apply {
+        style = Paint.Style.STROKE
+        strokeWidth = 2f
+        isAntiAlias = false
+    }
+
     private val barPaint = Paint().apply {
         style = Paint.Style.FILL
         isAntiAlias = false
@@ -1055,6 +1100,18 @@ class RetroLcdCanvasComplication(
 
     override fun loadData(complicationData: ComplicationData, loadNow: Boolean) {
         this.complicationData = complicationData
+        this.cachedIconDrawable = try {
+            when (complicationData) {
+                is ShortTextComplicationData -> complicationData.monochromaticImage?.image?.loadDrawable(context)
+                    ?: complicationData.smallImage?.image?.loadDrawable(context)
+                is RangedValueComplicationData -> complicationData.monochromaticImage?.image?.loadDrawable(context)
+                is MonochromaticImageComplicationData -> complicationData.monochromaticImage.image.loadDrawable(context)
+                is SmallImageComplicationData -> complicationData.smallImage.image.loadDrawable(context)
+                else -> null
+            }
+        } catch (_: Exception) {
+            null
+        }
         if (loadNow) {
             invalidateCallback.onInvalidate()
         }
@@ -1069,13 +1126,9 @@ class RetroLcdCanvasComplication(
         zonedDateTime: ZonedDateTime,
         color: Int
     ) {
-        val highlightPaint = Paint().apply {
-            style = Paint.Style.STROKE
-            strokeWidth = 2f
-            this.color = color
-            isAntiAlias = false
-        }
-        canvas.drawRoundRect(RectF(bounds), 4f, 4f, highlightPaint)
+        highlightPaint.color = color
+        reusableRectF.set(bounds)
+        canvas.drawRoundRect(reusableRectF, 4f, 4f, highlightPaint)
     }
 
     override fun render(
@@ -1094,19 +1147,18 @@ class RetroLcdCanvasComplication(
         val shadowColor = if (isAmbient) Color.TRANSPARENT else gridColor
 
         val instant = zonedDateTime.toInstant()
-        val rectF = RectF(bounds)
+        reusableRectF.set(bounds)
 
         // Draw subtle retro LCD slot frame outline (1px rounded rect)
         framePaint.color = primaryColor
         framePaint.alpha = if (isAmbient) 80 else 110
-        canvas.drawRoundRect(rectF, 4f, 4f, framePaint)
+        canvas.drawRoundRect(reusableRectF, 4f, 4f, framePaint)
 
         when (data) {
             is ShortTextComplicationData -> {
                 val text = data.text.getTextAt(context.resources, instant)?.toString() ?: ""
                 val title = data.title?.getTextAt(context.resources, instant)?.toString()
-                val iconDrawable = data.monochromaticImage?.image?.loadDrawable(context)
-                    ?: data.smallImage?.image?.loadDrawable(context)
+                val iconDrawable = cachedIconDrawable
 
                 val hasIcon = iconDrawable != null
                 val hasTitle = !title.isNullOrEmpty()
@@ -1115,9 +1167,12 @@ class RetroLcdCanvasComplication(
                     val iconSize = (bounds.height() * 0.48f).toInt().coerceAtLeast(8)
                     val iconLeft = bounds.left + 4
                     val iconTop = bounds.centerY() - (iconSize / 2)
-                    iconDrawable.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
+                    iconDrawable!!.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
                     if (isAmbient || data.monochromaticImage != null) {
                         iconDrawable.setTint(primaryColor)
+                    } else {
+                        // Clear any tint left over from a previous ambient frame on the cached drawable.
+                        iconDrawable.setTintList(null)
                     }
                     iconDrawable.draw(canvas)
 
@@ -1158,7 +1213,7 @@ class RetroLcdCanvasComplication(
                     ?: data.title?.getTextAt(context.resources, instant)?.toString()
                     ?: "${(ratio * 100).toInt()}%"
 
-                val iconDrawable = data.monochromaticImage?.image?.loadDrawable(context)
+                val iconDrawable = cachedIconDrawable
 
                 // Top: Monospace label with optional icon
                 textPaint.color = primaryColor
@@ -1217,7 +1272,7 @@ class RetroLcdCanvasComplication(
             }
 
             is MonochromaticImageComplicationData -> {
-                val iconDrawable = data.monochromaticImage.image.loadDrawable(context)
+                val iconDrawable = cachedIconDrawable
                 if (iconDrawable != null) {
                     val size = (minOf(bounds.width(), bounds.height()) * 0.62f).toInt()
                     val left = bounds.centerX() - (size / 2)
@@ -1229,7 +1284,7 @@ class RetroLcdCanvasComplication(
             }
 
             is SmallImageComplicationData -> {
-                val iconDrawable = data.smallImage.image.loadDrawable(context)
+                val iconDrawable = cachedIconDrawable
                 if (iconDrawable != null) {
                     val size = (minOf(bounds.width(), bounds.height()) * 0.62f).toInt()
                     val left = bounds.centerX() - (size / 2)
@@ -1237,6 +1292,9 @@ class RetroLcdCanvasComplication(
                     iconDrawable.setBounds(left, top, left + size, top + size)
                     if (isAmbient) {
                         iconDrawable.setTint(primaryColor)
+                    } else {
+                        // Clear any tint left over from a previous ambient frame on the cached drawable.
+                        iconDrawable.setTintList(null)
                     }
                     iconDrawable.draw(canvas)
                 }

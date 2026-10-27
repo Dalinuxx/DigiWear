@@ -65,6 +65,24 @@ class PhoneWearableManager(private val context: Context) {
         prefs.edit().putString("aosp_watch_ip", cleaned).apply()
     }
 
+    fun getMaskUndiscoveredSpecies(): Boolean =
+        prefs.getBoolean("mask_undiscovered_species", true)
+
+    /** Mirrors the watch's Battle Injuries setting (from the last known settings snapshot). Defaults to canon `true`. */
+    fun isCombatInjuriesEnabled(): Boolean =
+        getCachedSettings()?.get("combat_injuries_enabled")?.toBooleanStrictOrNull() ?: true
+
+    fun setMaskUndiscoveredSpecies(masked: Boolean) {
+        val editor = prefs.edit().putBoolean("mask_undiscovered_species", masked)
+        // Keep the cached watch-settings snapshot consistent so an offline settings reload
+        // (which falls back to this cache) doesn't revert the user's choice.
+        getCachedSettings()?.let { cached ->
+            val patched = cached + ("mask_undiscovered_species" to masked.toString())
+            runCatching { editor.putString("cached_watch_settings", json.encodeToString(patched)) }
+        }
+        editor.apply()
+    }
+
     /**
      * Broadcasts a UDP discovery probe on local Wi-Fi / Hotspot interfaces to auto-discover
      * an AOSP / standard Android watch running [com.digiwear.wear.datalayer.AospLanSyncServer].
@@ -389,7 +407,8 @@ class PhoneWearableManager(private val context: Context) {
         clockFormat24h: Boolean = false,
         lifespanCanonicalEnabled: Boolean = true,
         combatInjuriesEnabled: Boolean = true,
-        soundpack: String = "ORIGINAL_1997"
+        soundpack: String = "ORIGINAL_1997",
+        maskUndiscoveredSpecies: Boolean = true
     ): Boolean = withContext(Dispatchers.IO) {
         val nodes = getConnectedWatchNodes()
         if (nodes.isEmpty()) return@withContext false
@@ -420,6 +439,7 @@ class PhoneWearableManager(private val context: Context) {
             put("lifespan_canonical_enabled", lifespanCanonicalEnabled.toString())
             put("combat_injuries_enabled", combatInjuriesEnabled.toString())
             put("soundpack", soundpack)
+            put("mask_undiscovered_species", maskUndiscoveredSpecies.toString())
         }
         val jsonStr = json.encodeToString(map)
         runCatching { prefs.edit().putString("cached_watch_settings", jsonStr).apply() }

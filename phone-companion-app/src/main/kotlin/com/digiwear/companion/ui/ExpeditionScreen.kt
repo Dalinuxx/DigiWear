@@ -338,11 +338,13 @@ fun ExpeditionScreen(
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                         shape = RoundedCornerShape(6.dp),
                                         colors = ButtonDefaults.buttonColors(
-                                            containerColor = if (isCurrent) Color(0xFF00897B) else Color(0xFF263238)
+                                            containerColor = if (isCurrent) Color(0xFF00897B) else Color(0xFF263238),
+                                            contentColor = Color.White
                                         )
                                     ) {
                                         Text(
                                             text = if (isCurrent) "SELECTED [OK]" else "SELECT SAGA",
+                                            color = Color.White,
                                             fontSize = 9.5.sp,
                                             fontWeight = FontWeight.Bold,
                                             fontFamily = FontFamily.Monospace
@@ -429,11 +431,13 @@ fun ExpeditionScreen(
                                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp),
                                                 shape = RoundedCornerShape(6.dp),
                                                 colors = ButtonDefaults.buttonColors(
-                                                    containerColor = if (isCurrent) Color(0xFFFFA000) else Color(0xFF37474F)
+                                                    containerColor = if (isCurrent) Color(0xFFFFA000) else Color(0xFF37474F),
+                                                    contentColor = Color.White
                                                 )
                                             ) {
                                                 Text(
                                                     text = if (isCurrent) "SELECTED" else "LOAD",
+                                                    color = Color.White,
                                                     fontSize = 9.5.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     fontFamily = FontFamily.Monospace

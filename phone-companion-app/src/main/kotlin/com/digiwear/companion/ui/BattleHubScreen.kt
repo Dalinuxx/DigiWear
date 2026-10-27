@@ -390,7 +390,53 @@ fun BattleHubScreen(
                         }
                         idx++
                     }
-                    if (activeRes.winnerIndex == 0) {
+                    val won = activeRes.winnerIndex == 0
+                    db.phoneDao().recordEncounter(fB.speciesId, isDefeated = won)
+                    val nowSec = System.currentTimeMillis() / 1000L
+                    // Apply the outcome to the freshest state available: the live watch pet if reachable
+                    // (so we never overwrite newer watch hunger/age/care data), else the latest phone snapshot.
+                    val liveWatchState = wearableManager.requestPetStateFromWatch()
+                        ?.takeIf { it.speciesId == ownMonsterId }
+                    val baseState = liveWatchState
+                        ?: db.phoneDao().getLatestSnapshot()?.takeIf { it.speciesId == ownMonsterId }?.toDomain()
+                    if (baseState != null) {
+                        val (battleState, _) = com.digiwear.core.engine.PetSimulationEngine.processBattleOutcome(
+                            state = baseState,
+                            won = won,
+                            combatInjuriesEnabled = wearableManager.isCombatInjuriesEnabled()
+                        )
+                        val evolved = com.digiwear.core.engine.EvolutionEngine.evaluateEvolution(battleState)
+                        val finalState = if (evolved != null) {
+                            com.digiwear.core.engine.EvolutionEngine.evolve(battleState, evolved, nowSec)
+                        } else battleState
+                        val savedEntity = SyncedPetEntity.fromDomain(finalState)
+                        db.phoneDao().insertSnapshot(savedEntity)
+                        activeSnapshot = savedEntity
+                        ownMonsterId = finalState.speciesId
+                        ownVictories = finalState.victories
+                        ownEffort = finalState.effort
+                        DigiWearAppWidgetProvider.updateAllWidgets(context)
+                        // Only push back when built on the live watch state; a stale phone snapshot
+                        // must never clobber the watch's authoritative pet.
+                        if (liveWatchState != null) {
+                            wearableManager.sendPetStateToWatch(finalState)
+                        }
+                    } else {
+                        val matchingVault = vaultPets.firstOrNull { it.speciesId == ownMonsterId }
+                        if (matchingVault != null) {
+                            val updatedVault = matchingVault.copy(
+                                totalBattles = matchingVault.totalBattles + 1,
+                                victories = if (won) matchingVault.victories + 1 else matchingVault.victories,
+                                vitalPoints = (matchingVault.vitalPoints + if (won) 50 else 10).coerceIn(0, 9999)
+                            )
+                            db.phoneDao().insertVaultPet(updatedVault)
+                            ownVictories = updatedVault.victories
+                        } else if (won) {
+                            ownVictories += 1
+                        }
+                    }
+
+                    if (won) {
                         buzzerManager.playVictoryFanfare()
                     } else {
                         buzzerManager.playDefeatJingle()
@@ -585,7 +631,7 @@ fun BattleHubScreen(
                                         val sp = PetSpecies.getById(watchState.speciesId)
                                         beamStatus = "[SYNC] Pulled live ${sp.name} from Smartwatch!"
                                     } else {
-                                        beamStatus = "Watch offline â€” ensure DigiWatch is running on your smartwatch."
+                                        beamStatus = "Watch offline — ensure DigiWatch is running on your smartwatch."
                                     }
                                 }
                             },
@@ -660,7 +706,7 @@ fun BattleHubScreen(
                                     }
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
-                                        text = "BASE ${ownSpecies.basePower}P (EFF: ${ownEffPower}P) â€¢ ${ownSpecies.baseHp} HP â€¢ ${ownVictories}W â€¢ EFFORT ${ownEffort}/4",
+                                        text = "BASE ${ownSpecies.basePower}P (EFF: ${ownEffPower}P) • ${ownSpecies.baseHp} HP • ${ownVictories}W • EFFORT ${ownEffort}/4",
                                         fontSize = 9.sp,
                                         color = Color(0xFF80CBC4),
                                         fontFamily = FontFamily.Monospace
@@ -735,7 +781,7 @@ fun BattleHubScreen(
                                                 color = if (isSelected) Color.White else Color(0xFFCFD8DC)
                                             )
                                             Text(
-                                                text = "${sp.stage.displayName} â€¢ ${sp.basePower}P â€¢ ${fighter.victories}W",
+                                                text = "${sp.stage.displayName} • ${sp.basePower}P • ${fighter.victories}W",
                                                 fontSize = 8.sp,
                                                 color = if (isSelected) Color(0xFFFF8A80) else Color(0xFF90A4AE),
                                                 fontFamily = FontFamily.Monospace
@@ -750,7 +796,7 @@ fun BattleHubScreen(
 
                 beamStatus?.let {
                     Text(
-                        text = "â–¸ $it",
+                        text = "▸ $it",
                         fontSize = 10.5.sp,
                         color = Color(0xFF00E676),
                         fontFamily = FontFamily.Monospace,
@@ -815,7 +861,7 @@ fun BattleHubScreen(
                         }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
-                                text = "${selectedBattleMode.displayName.uppercase()} â€¢ ENV: ${selectedEnvironment.uppercase()}",
+                                text = "${selectedBattleMode.displayName.uppercase()} • ENV: ${selectedEnvironment.uppercase()}",
                                 fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Black,
                                 color = DigiWearPalette.CrestGold,
@@ -862,7 +908,7 @@ fun BattleHubScreen(
                                                 .background(Color(0xFF00E676), RoundedCornerShape(3.dp))
                                         )
                                     }
-                                    Text("$playerRemHp / ${ownSp.baseHp} HP â€¢ ${ownEffPower}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
+                                    Text("$playerRemHp / ${ownSp.baseHp} HP • ${ownEffPower}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
                                 }
 
                                 // Center Clash
@@ -889,7 +935,7 @@ fun BattleHubScreen(
                                     activeTurn?.let { turn ->
                                         Spacer(modifier = Modifier.height(3.dp))
                                         Text(
-                                            text = "R${turn.round} â€¢ HIT ${turn.hitRatePercent}%",
+                                            text = "R${turn.round} • HIT ${turn.hitRatePercent}%",
                                             fontSize = 8.5.sp,
                                             color = Color(0xFF90CAF9),
                                             fontFamily = FontFamily.Monospace
@@ -932,7 +978,7 @@ fun BattleHubScreen(
                                                 .background(Color(0xFFFF5252), RoundedCornerShape(3.dp))
                                         )
                                     }
-                                    Text("$oppRemHp / ${oppSp.baseHp} HP â€¢ ${opp.basePowerHp}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
+                                    Text("$oppRemHp / ${oppSp.baseHp} HP • ${opp.basePowerHp}P", fontSize = 9.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
                                 }
                             }
 
@@ -993,7 +1039,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(12.dp)) {
                                 Text(
-                                    text = "â–¸ COMBAT RESOLUTION LOG (${result.battleMode.displayName.uppercase()})",
+                                    text = "▸ COMBAT RESOLUTION LOG (${result.battleMode.displayName.uppercase()})",
                                     fontSize = 10.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DigiWearPalette.CrestGold,
@@ -1024,7 +1070,7 @@ fun BattleHubScreen(
                                         horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Text(
-                                            text = "R${turn.round} [${turn.attackType} â€¢ ${turn.hitRatePercent}%]: ${turn.attackerName} -> ${turn.defenderName}",
+                                            text = "R${turn.round} [${turn.attackType} • ${turn.hitRatePercent}%]: ${turn.attackerName} -> ${turn.defenderName}",
                                             fontSize = 9.sp,
                                             color = Color.White,
                                             fontFamily = FontFamily.Monospace
@@ -1179,7 +1225,7 @@ fun BattleHubScreen(
                                                     color = Color(0xFF69F0AE)
                                                 )
                                                 Text(
-                                                    text = "${opp.stage.displayName} â€¢ ${opp.attribute.displayName} â€¢ ${opp.basePowerHp} PWR",
+                                                    text = "${opp.stage.displayName} • ${opp.attribute.displayName} • ${opp.basePowerHp} PWR",
                                                     fontSize = 9.sp,
                                                     color = Color.LightGray,
                                                     fontFamily = FontFamily.Monospace
@@ -1212,7 +1258,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "â–¸ WILD BARCODE / QR SCANNER & RADAR",
+                                    text = "▸ WILD BARCODE / QR SCANNER & RADAR",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF69F0AE),
@@ -1318,13 +1364,13 @@ fun BattleHubScreen(
                                                     color = if (enc.isRareAnomaly) DigiWearPalette.CrestGold else Color(0xFF69F0AE)
                                                 )
                                                 Text(
-                                                    text = "${enc.habitatZone} â€¢ ENV: ${enc.environmentHazard}",
+                                                    text = "${enc.habitatZone} • ENV: ${enc.environmentHazard}",
                                                     fontSize = 9.5.sp,
                                                     color = Color.LightGray,
                                                     fontFamily = FontFamily.Monospace
                                                 )
                                                 Text(
-                                                    text = "HP ${enc.fighter.maxHp} â€¢ PWR ${enc.fighter.basePower} â€¢ ${enc.species.attribute.displayName}",
+                                                    text = "HP ${enc.fighter.maxHp} • PWR ${enc.fighter.basePower} • ${enc.species.attribute.displayName}",
                                                     fontSize = 9.sp,
                                                     color = Color(0xFF80CBC4),
                                                     fontFamily = FontFamily.Monospace
@@ -1375,7 +1421,7 @@ fun BattleHubScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "â–¸ YOUR COMM CODE & DIGIROM PACKET",
+                                        text = "▸ YOUR COMM CODE & DIGIROM PACKET",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = DigiWearPalette.DigiviceCyan,
@@ -1557,7 +1603,7 @@ fun BattleHubScreen(
                                                     val sp = PetSpecies.getById(watchState.speciesId)
                                                     beamStatus = "[SYNC] Pulled live ${sp.name} from Smartwatch!"
                                                 } else {
-                                                    beamStatus = "Watch offline â€” tap Watch to Phone via NFC or use local fighter"
+                                                    beamStatus = "Watch offline — tap Watch to Phone via NFC or use local fighter"
                                                 }
                                             }
                                         },
@@ -1597,7 +1643,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "â–¸ OPPONENT D-COM TRANSCEIVER & DUEL",
+                                    text = "▸ OPPONENT D-COM TRANSCEIVER & DUEL",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFFFF8A80),
@@ -1711,7 +1757,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "â–¸ D-COM & 0NL1NE LOBBY SPAR TAMERS",
+                                    text = "▸ D-COM & 0NL1NE LOBBY SPAR TAMERS",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = DigiWearPalette.CrestGold,
@@ -1743,7 +1789,7 @@ fun BattleHubScreen(
                                             Column {
                                                 Text(tamerName, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                                 Text(
-                                                    text = "${tamerSp.name} â€¢ $tamerRom",
+                                                    text = "${tamerSp.name} • $tamerRom",
                                                     fontSize = 8.5.sp,
                                                     color = DigiWearPalette.CrestGold,
                                                     fontFamily = FontFamily.Monospace
@@ -1796,7 +1842,7 @@ fun BattleHubScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Text(
-                                        text = "â–¸ 128-BIT PAYLOAD ARCHITECTURE (SPEC)",
+                                        text = "▸ 128-BIT PAYLOAD ARCHITECTURE (SPEC)",
                                         fontSize = 10.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(0xFFFFCC80),
@@ -1840,7 +1886,7 @@ fun BattleHubScreen(
                         ) {
                             Column(modifier = Modifier.padding(14.dp)) {
                                 Text(
-                                    text = "â–¸ 100-FLOOR BATTLE TOWER GAUNTLET",
+                                    text = "▸ 100-FLOOR BATTLE TOWER GAUNTLET",
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = Color(0xFF64FFDA),
@@ -1955,7 +2001,7 @@ fun BattleHubScreen(
                                             Column {
                                                 Text(tamerName, fontSize = 10.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                                 Text(
-                                                    text = "${tamerSp.name} â€¢ ${tamerSp.stage.displayName} â€¢ ${tamerSp.attribute.displayName}",
+                                                    text = "${tamerSp.name} • ${tamerSp.stage.displayName} • ${tamerSp.attribute.displayName}",
                                                     fontSize = 8.5.sp,
                                                     color = Color(0xFF80CBC4),
                                                     fontFamily = FontFamily.Monospace

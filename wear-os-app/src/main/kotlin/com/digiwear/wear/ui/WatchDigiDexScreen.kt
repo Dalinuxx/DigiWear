@@ -19,6 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,10 +56,13 @@ import com.digiwear.wear.render.SpriteCanvasRenderer
  */
 @Composable
 fun WatchDigiDexScreen(
+    repository: com.digiwear.wear.data.PetRepository = com.digiwear.wear.data.PetRepository.getInstance(androidx.compose.ui.platform.LocalContext.current),
     onBack: () -> Unit
 ) {
     val displayConfig = WatchDisplayConfig.current()
     val listState = rememberScalingLazyListState()
+    val discoveredIds by repository.discoveredSpeciesFlow.collectAsState(initial = emptySet())
+    val maskSpoilers by repository.maskUndiscoveredSpeciesFlow.collectAsState(initial = true)
     var selectedStageFilter by remember { mutableStateOf<PetStage?>(null) }
     var selectedSpeciesId by remember { mutableStateOf<Int?>(null) }
 
@@ -119,7 +123,7 @@ fun WatchDigiDexScreen(
                         letterSpacing = 1.sp
                     )
                     Text(
-                        text = "${filteredList.size} Species Active",
+                        text = "${discoveredIds.size}/${PetSpecies.SORTED_SPECIES.size} Discovered",
                         fontSize = 7.5.sp,
                         color = Color(0xFF80CBC4),
                         fontFamily = FontFamily.Monospace
@@ -174,6 +178,8 @@ fun WatchDigiDexScreen(
 
             // Species items
             items(filteredList, key = { it.id }) { sp ->
+                val isDiscovered = discoveredIds.contains(sp.id)
+                val isRevealed = !maskSpoilers || isDiscovered
                 val attrColor = when (sp.attribute) {
                     ElementalAttribute.VACCINE -> Color(0xFF00E5FF)
                     ElementalAttribute.DATA -> Color(0xFFFFCA28)
@@ -186,7 +192,7 @@ fun WatchDigiDexScreen(
                         .fillMaxWidth()
                         .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
                         .background(Color(0xFF101722), RoundedCornerShape(6.dp))
-                        .border(0.5.dp, Color(0x3300E5FF), RoundedCornerShape(6.dp))
+                        .border(0.5.dp, if (isRevealed) Color(0x3300E5FF) else Color(0x22FFFFFF), RoundedCornerShape(6.dp))
                         .clickable { selectedSpeciesId = sp.id }
                         .padding(horizontal = 6.dp, vertical = 3.dp),
                     verticalAlignment = Alignment.CenterVertically
@@ -195,15 +201,16 @@ fun WatchDigiDexScreen(
                         speciesId = sp.id,
                         isAmbient = false,
                         overrideFrame = SpriteFrame.IDLE_A,
+                        isSilhouette = !isRevealed,
                         size = 22.dp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = "#${sp.id} ${sp.name}",
+                            text = if (isRevealed) "#${sp.id} ${sp.name}" else "#${sp.id} ???",
                             fontSize = 8.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color.White,
+                            color = if (isRevealed) Color.White else Color(0xFF78909C),
                             fontFamily = FontFamily.Monospace,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -217,9 +224,9 @@ fun WatchDigiDexScreen(
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = sp.attribute.displayName.uppercase(),
+                                text = if (isRevealed) sp.attribute.displayName.uppercase() else "???",
                                 fontSize = 6.sp,
-                                color = attrColor,
+                                color = if (isRevealed) attrColor else Color(0xFF546E7A),
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace
                             )
@@ -253,6 +260,8 @@ fun WatchDigiDexScreen(
         // Detail Modal Overlay
         selectedSpeciesId?.let { id ->
             val sp = PetSpecies.getById(id)
+            val isDiscovered = discoveredIds.contains(id)
+            val isRevealed = !maskSpoilers || isDiscovered
             val hint = DigiDexEngine.getDiscoveryHint(id)
             val attrColor = when (sp.attribute) {
                 ElementalAttribute.VACCINE -> Color(0xFF00E5FF)
@@ -302,12 +311,13 @@ fun WatchDigiDexScreen(
                         speciesId = sp.id,
                         isAmbient = false,
                         overrideFrame = SpriteFrame.IDLE_A,
+                        isSilhouette = !isRevealed,
                         size = 36.dp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
 
                     Text(
-                        text = sp.name,
+                        text = if (isRevealed) sp.name else "???",
                         fontSize = 11.sp,
                         fontWeight = FontWeight.Black,
                         color = Color.White,
@@ -320,14 +330,14 @@ fun WatchDigiDexScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = sp.attribute.displayName,
+                            text = if (isRevealed) sp.attribute.displayName else "???",
                             fontSize = 7.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = attrColor,
+                            color = if (isRevealed) attrColor else Color(0xFF78909C),
                             fontFamily = FontFamily.Monospace
                         )
                         Text(
-                            text = "HP ${sp.baseHp}  PWR ${sp.basePower}",
+                            text = if (isRevealed) "HP ${sp.baseHp}  PWR ${sp.basePower}" else "HP ???  PWR ???",
                             fontSize = 7.sp,
                             color = Color(0xFFFFD54F),
                             fontFamily = FontFamily.Monospace

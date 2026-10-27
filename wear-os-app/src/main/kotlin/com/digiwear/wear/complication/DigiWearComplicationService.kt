@@ -67,7 +67,7 @@ class DigiWearComplicationService : SuspendingComplicationDataSourceService() {
 
             ComplicationType.RANGED_VALUE -> {
                 val target = repo.dailyStepGoalFlow.value.toFloat().coerceAtLeast(1000f)
-                val current = progress.totalAdventureSteps.toFloat().coerceIn(0f, target)
+                val current = repo.getDailySteps().toFloat().coerceIn(0f, target)
                 val stepLabel = if (current < 1000f) {
                     "${current.toInt()}"
                 } else {
@@ -77,7 +77,7 @@ class DigiWearComplicationService : SuspendingComplicationDataSourceService() {
                     value = current,
                     min = 0f,
                     max = target,
-                    contentDescription = plainText("Adventure Steps")
+                    contentDescription = plainText("Daily Steps")
                 )
                     .setText(plainText(stepLabel))
                     .setTitle(plainText("STEPS"))

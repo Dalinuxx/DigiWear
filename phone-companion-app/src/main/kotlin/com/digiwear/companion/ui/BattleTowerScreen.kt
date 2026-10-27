@@ -115,11 +115,12 @@ fun BattleTowerScreen(
     }
 
     // Battle simulation state
+    val playerMaxHp = activePartner?.maxHp ?: playerSpecies.baseHp
     var isBattling by remember { mutableStateOf(false) }
     var battleResult by remember { mutableStateOf<BattleResult?>(null) }
     var currentTurnIndex by remember { mutableIntStateOf(0) }
-    var playerDisplayHp by remember { mutableIntStateOf(playerSpecies.baseHp) }
-    var opponentDisplayHp by remember { mutableIntStateOf(floor.opponentHp) }
+    var playerDisplayHp by remember(playerMaxHp, currentFloorNumber) { mutableIntStateOf(playerMaxHp) }
+    var opponentDisplayHp by remember(floor.opponentHp, currentFloorNumber) { mutableIntStateOf(floor.opponentHp) }
     var currentCombatActionText by remember { mutableStateOf("READY TO ENGAGE") }
     var battleFinishedMsg by remember { mutableStateOf<String?>(null) }
 
@@ -181,11 +182,56 @@ fun BattleTowerScreen(
             }
 
             val won = result.winnerIndex == 0
+            db.phoneDao().recordEncounter(floor.opponentSpeciesId, isDefeated = won)
+
+            if (activePartner != null) {
+                val nowSec = System.currentTimeMillis() / 1000L
+                // Use the live watch pet when reachable so stale phone data never overwrites it.
+                val liveWatchState = wearableManager.requestPetStateFromWatch()
+                    ?.takeIf { it.speciesId == activePartner.speciesId }
+                val baseState = liveWatchState
+                    ?: (db.phoneDao().getLatestSnapshot()?.takeIf { it.speciesId == activePartner.speciesId } ?: activePartner).toDomain()
+                val (baseUpdated, _) = com.digiwear.core.engine.PetSimulationEngine.processBattleOutcome(
+                    state = baseState,
+                    won = won,
+                    combatInjuriesEnabled = wearableManager.isCombatInjuriesEnabled()
+                )
+                // Permanent boss rewards (max HP, traited-egg bonus) are granted only on a floor's
+                // first clear, so replaying boss floors can't farm them indefinitely.
+                val isFirstClear = currentFloorNumber >= highestUnlockedFloor
+                val bonusVp = if (won && floor.isBossFloor) 150 else if (won) 25 else 0
+                val bonusMaxHp = if (won && floor.isBossFloor && isFirstClear) 5 else 0
+                val bonusTraitedEgg = when {
+                    !won || !isFirstClear -> 0
+                    floor.floorNumber == 100 -> 2
+                    floor.floorNumber % 20 == 0 -> 1
+                    else -> 0
+                }
+                val bonusEffort = if (won && floor.isBossFloor) 1 else 0
+                val bonusStrength = if (won && floor.isBossFloor) 1 else 0
+                val newMaxHp = baseUpdated.maxHp + bonusMaxHp
+                val withBonus = baseUpdated.copy(
+                    vitalPoints = (baseUpdated.vitalPoints + bonusVp).coerceIn(0, 9999),
+                    maxHp = newMaxHp,
+                    currentHp = (baseUpdated.currentHp + bonusMaxHp).coerceAtMost(newMaxHp),
+                    traitedEggBonus = (baseUpdated.traitedEggBonus + bonusTraitedEgg).coerceAtMost(5),
+                    effort = (baseUpdated.effort + bonusEffort).coerceAtMost(4),
+                    strength = (baseUpdated.strength + bonusStrength).coerceAtMost(4)
+                )
+                val evolved = com.digiwear.core.engine.EvolutionEngine.evaluateEvolution(withBonus)
+                val finalPet = if (evolved != null) {
+                    com.digiwear.core.engine.EvolutionEngine.evolve(withBonus, evolved, nowSec)
+                } else withBonus
+                db.phoneDao().insertSnapshot(com.digiwear.companion.data.SyncedPetEntity.fromDomain(finalPet))
+                com.digiwear.companion.widget.DigiWearAppWidgetProvider.updateAllWidgets(context)
+                if (liveWatchState != null) {
+                    wearableManager.sendPetStateToWatch(finalPet)
+                }
+            }
+
             if (won) {
                 buzzerManager.playVictoryFanfare()
                 battleFinishedMsg = "VICTORY! Floor $currentFloorNumber Cleared: ${floor.rewardDescription}"
-                // Record discovery & defeat
-                db.phoneDao().recordEncounter(floor.opponentSpeciesId, isDefeated = true)
 
                 // Unlock next floor
                 if (currentFloorNumber >= highestUnlockedFloor && highestUnlockedFloor < 100) {
@@ -237,10 +283,10 @@ fun BattleTowerScreen(
 
                 Button(
                     onClick = onBack,
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238), contentColor = Color.White),
                     shape = RoundedCornerShape(6.dp)
                 ) {
-                    Text("BACK", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("BACK", color = Color.White, fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
 
@@ -554,10 +600,10 @@ fun BattleTowerScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(44.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238)),
+                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238), contentColor = Color.White),
                                 shape = RoundedCornerShape(8.dp)
                             ) {
-                                Text("NEXT FLOOR", fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                                Text("NEXT FLOOR", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                             }
                         }
                     }

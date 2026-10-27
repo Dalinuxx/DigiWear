@@ -28,9 +28,13 @@ interface PhoneDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertSnapshotInternal(snapshot: SyncedPetEntity)
 
+    @Query("DELETE FROM synced_pet_history WHERE id NOT IN (SELECT id FROM synced_pet_history ORDER BY id DESC LIMIT 50)")
+    suspend fun pruneOldSnapshots()
+
     @Transaction
     suspend fun insertSnapshot(snapshot: SyncedPetEntity) {
         insertSnapshotInternal(snapshot)
+        pruneOldSnapshots()
         recordEncounter(snapshot.speciesId, isRaised = true)
     }
 

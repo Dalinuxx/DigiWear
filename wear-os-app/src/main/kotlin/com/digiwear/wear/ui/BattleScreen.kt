@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -76,12 +77,18 @@ fun BattleScreen(
     onBack: () -> Unit
 ) {
     val petState by repository.petStateFlow.collectAsState(initial = PetState())
+    val backupPet by repository.backupPetStateFlow.collectAsState(initial = null)
+    val isSoundEnabled by repository.soundEnabledFlow.collectAsState(initial = false)
     val nfcBridgeMode by repository.nfcBridgeModeFlow.collectAsState(initial = "NFC_DUEL")
     val displayConfig = WatchDisplayConfig.current()
     val clipboardManager = LocalClipboardManager.current
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val species = remember(petState.speciesId) { PetSpecies.getById(petState.speciesId) }
+
+    LaunchedEffect(isSoundEnabled) {
+        buzzerManager.isEnabled = isSoundEnabled
+    }
 
     // Generate own 128-bit Comm Code and 0nl1ne DigiROM packet
     val ownSeed = remember { Random.nextInt(0xFFFF) }
@@ -220,6 +227,7 @@ fun BattleScreen(
             activeEnvEffect = envEffect
             val opponentPayload = CommCodeCodec.decodeAuto(code)
             val oppSpecies = PetSpecies.getById(opponentPayload.monsterId)
+            repository.recordDiscoveredSpecies(oppSpecies.id)
 
             val fighterA = BattleFighter(
                 id = "player",
@@ -742,7 +750,10 @@ fun BattleScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.dp),
+                            .padding(
+                                horizontal = if (displayConfig.isRound) 26.dp else displayConfig.horizontalPadding,
+                                vertical = 1.dp
+                            ),
                         horizontalArrangement = Arrangement.spacedBy(3.dp)
                     ) {
                         pair.forEach { (mode, label, iconType) ->
@@ -1320,6 +1331,19 @@ fun BattleScreen(
                         val partnerId = if (recipe.primarySpeciesId == petState.speciesId) recipe.secondarySpeciesId else recipe.primarySpeciesId
                         val partnerSp = PetSpecies.getById(partnerId)
                         val targetSp = PetSpecies.getById(recipe.targetSpeciesId)
+                        val isSelfModeChange = recipe.primarySpeciesId == recipe.secondarySpeciesId
+                        val decodedPartner = remember(opponentCodeInput) {
+                            if (opponentCodeInput.isBlank()) null
+                            else try { CommCodeCodec.decodeAuto(opponentCodeInput) } catch (_: Exception) { null }
+                        }
+                        val hasBackupPartner = backupPet?.speciesId == partnerSp.id
+                        val hasCodePartner = decodedPartner?.monsterId == partnerSp.id
+                        val canExecuteFusion = when {
+                            isSelfModeChange -> petState.effort >= 4 && petState.victories >= 15
+                            hasBackupPartner -> JogressEngine.findFusionRecipe(petState.speciesId, backupPet!!.speciesId) != null
+                            hasCodePartner -> JogressEngine.findFusionRecipe(petState.speciesId, decodedPartner!!.monsterId) != null
+                            else -> false
+                        }
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -1347,47 +1371,67 @@ fun BattleScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                 Button(
                                     onClick = {
-                                        val code = CommCodeCodec.encode128(
-                                            monsterId = partnerSp.id,
-                                            stage = partnerSp.stage,
-                                            attribute = partnerSp.attribute,
-                                            basePowerHp = partnerSp.basePower,
-                                            historicalVictories = 15,
-                                            trainingEffort = 4,
-                                            battleRngSeed = 0x7777
-                                        )
-                                        opponentCodeInput = code
-                                        hapticManager.playStepMilestone()
-                                        battleStatusText = "Loaded ${partnerSp.name} for ${recipe.fusionType.displayName}!"
-                                    },
-                                    modifier = Modifier.height(22.dp),
-                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF37474F))
-                                ) {
-                                    Text("CODE", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                                }
-                                Button(
-                                    onClick = {
                                         scope.launch {
-                                            val fusedState = JogressEngine.executeFusion(
-                                                primary = petState,
-                                                secondarySpeciesId = partnerSp.id,
-                                                secondaryVictories = 15,
-                                                secondaryEffort = 4
-                                            )
-                                            repository.savePetState(fusedState)
-                                            hapticManager.playVictoryFanfare()
-                                            battleStatusText = "Awakened ${targetSp.name}!"
+                                            when {
+                                                isSelfModeChange && canExecuteFusion -> {
+                                                    val fusedState = JogressEngine.executeFusion(
+                                                        primary = petState,
+                                                        secondarySpeciesId = partnerSp.id,
+                                                        secondaryVictories = petState.victories,
+                                                        secondaryEffort = petState.effort
+                                                    )
+                                                    repository.savePetState(fusedState)
+                                                    hapticManager.playVictoryFanfare()
+                                                    battleStatusText = "Awakened ${targetSp.name}!"
+                                                }
+                                                hasBackupPartner && canExecuteFusion -> {
+                                                    val fused = repository.performDirectJogress()
+                                                    if (fused != null) {
+                                                        hapticManager.playVictoryFanfare()
+                                                        battleStatusText = "Awakened ${targetSp.name}!"
+                                                    } else {
+                                                        battleStatusText = "Needs 4 Effort or 15 Wins!"
+                                                    }
+                                                }
+                                                hasCodePartner && canExecuteFusion -> {
+                                                    val fusedState = JogressEngine.executeFusion(
+                                                        primary = petState,
+                                                        secondarySpeciesId = decodedPartner!!.monsterId,
+                                                        secondaryVictories = decodedPartner.historicalVictories,
+                                                        secondaryEffort = decodedPartner.trainingEffort
+                                                    )
+                                                    if (fusedState.speciesId != petState.speciesId) {
+                                                        repository.savePetState(fusedState)
+                                                        hapticManager.playVictoryFanfare()
+                                                        battleStatusText = "Awakened ${targetSp.name}!"
+                                                    } else {
+                                                        battleStatusText = "Needs 4 Effort or 15 Wins!"
+                                                    }
+                                                }
+                                                else -> {
+                                                    battleStatusText = "Need ${partnerSp.name} in Cryo or Comm Code!"
+                                                }
+                                            }
                                         }
                                     },
+                                    enabled = canExecuteFusion,
                                     modifier = Modifier.height(22.dp),
-                                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(recipe.fusionType.badgeColorHex))
+                                    colors = ButtonDefaults.buttonColors(
+                                        backgroundColor = if (canExecuteFusion) Color(recipe.fusionType.badgeColorHex) else Color(0xFF37474F)
+                                    )
                                 ) {
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
                                         horizontalArrangement = Arrangement.spacedBy(2.dp)
                                     ) {
-                                        DigiVectorIcon(type = DigiIconType.BOLT, size = 7.dp, tint = Color.Black)
-                                        Text("FUSE", fontSize = 6.sp, fontWeight = FontWeight.Black, color = Color.Black, fontFamily = FontFamily.Monospace)
+                                        DigiVectorIcon(type = DigiIconType.BOLT, size = 7.dp, tint = if (canExecuteFusion) Color.Black else Color.LightGray)
+                                        Text(
+                                            text = if (canExecuteFusion) "FUSE" else "LOCKED",
+                                            fontSize = 6.sp,
+                                            fontWeight = FontWeight.Black,
+                                            color = if (canExecuteFusion) Color.Black else Color.LightGray,
+                                            fontFamily = FontFamily.Monospace
+                                        )
                                     }
                                 }
                             }

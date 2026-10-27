@@ -75,15 +75,23 @@ class MainActivity : ComponentActivity() {
 
         db = PhoneDatabase.getInstance(this)
         wearableManager = PhoneWearableManager(this)
+        // Load user-edited custom sprites at startup (off the main thread) so every screen and the
+        // widget render them, not only after Sprite Studio has been opened.
+        val appCtx = applicationContext
+        Thread { com.digiwear.companion.render.PixelArtMatrices.loadCustomMatrices(appCtx) }.start()
         handleNfcIntent(intent)
 
         setContent {
             MaterialTheme(
                 colorScheme = darkColorScheme(
                     primary = DigiWearPalette.DigiviceCyan,
+                    onPrimary = Color.White,
                     secondary = DigiWearPalette.CrestGold,
+                    onSecondary = Color.Black,
                     background = DigiWearPalette.CyberBg,
-                    surface = DigiWearPalette.CardSurface
+                    onBackground = Color.White,
+                    surface = DigiWearPalette.CardSurface,
+                    onSurface = Color.White
                 )
             ) {
                 MainPhoneApp(db, wearableManager)

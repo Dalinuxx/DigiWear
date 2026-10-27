@@ -77,6 +77,7 @@ fun SettingsScreen(
     val clockFormat24h by repository.clockFormatFlow.collectAsState(initial = false)
     val isLifespanCanonical by repository.lifespanCanonicalEnabledFlow.collectAsState(initial = false)
     val combatInjuriesEnabled by repository.combatInjuriesEnabledFlow.collectAsState(initial = true)
+    val maskUndiscoveredSpecies by repository.maskUndiscoveredSpeciesFlow.collectAsState(initial = true)
 
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
     var showEggSelector by remember { mutableStateOf(false) }
@@ -941,6 +942,51 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = if (combatInjuriesEnabled) "CANON" else "SAFE",
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        // ==========================================
+        // 14b. Mask Undiscovered Digimon (DigiDex & Evo Lines)
+        // ==========================================
+        item {
+            Spacer(modifier = Modifier.height(6.dp))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = displayConfig.horizontalPadding),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "MASK UNDISCOVERED",
+                        fontSize = 9.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = if (maskUndiscoveredSpecies) "Question marks & silhouettes" else "Full reveal (no mystery)",
+                        fontSize = 7.5.sp,
+                        color = if (maskUndiscoveredSpecies) Color(0xFF80D8FF) else Color(0xFFFFB74D)
+                    )
+                }
+                Button(
+                    onClick = {
+                        val next = !maskUndiscoveredSpecies
+                        repository.setMaskUndiscoveredSpecies(next)
+                        if (isVibrationEnabled) hapticManager.playStepMilestone()
+                    },
+                    modifier = Modifier.size(width = 58.dp, height = 30.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        backgroundColor = if (maskUndiscoveredSpecies) Color(0xFF00695C) else Color(0xFFE65100)
+                    )
+                ) {
+                    Text(
+                        text = if (maskUndiscoveredSpecies) "MASK" else "REVEAL",
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold
                     )

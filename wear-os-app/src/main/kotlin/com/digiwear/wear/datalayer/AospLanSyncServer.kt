@@ -12,6 +12,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.BufferedReader
@@ -41,8 +42,8 @@ object AospLanSyncServer {
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private val json = Json { ignoreUnknownKeys = true }
 
-    /** Maximum bytes accepted for a single request line (path or payload). Prevents memory exhaustion. */
-    private const val MAX_LINE_CHARS = 64 * 1024
+    /** Maximum bytes accepted for a single request line (path or payload). Prevents memory exhaustion while allowing Base64 454x454 PNG wallpapers. */
+    private const val MAX_LINE_CHARS = 512 * 1024
     private const val MAX_CONCURRENT_CLIENTS = 4
     private val clientPermits = java.util.concurrent.Semaphore(MAX_CONCURRENT_CLIENTS)
 
@@ -106,6 +107,11 @@ object AospLanSyncServer {
                         launch {
                             try {
                                 handleClient(appContext, client)
+                            } catch (e: kotlinx.coroutines.CancellationException) {
+                                throw e
+                            } catch (_: Exception) {
+                                // Never let a single misbehaving client crash the process or the accept loop.
+                                try { client.close() } catch (_: Exception) {}
                             } finally {
                                 clientPermits.release()
                             }
@@ -180,9 +186,11 @@ object AospLanSyncServer {
     }
 
     /**
-     * Pauses or stops the LAN server during ambient mode or onStop when not connected to a charger,
-     * allowing the watch Wi-Fi chipset to enter low-power DTIM sleep.
+     * Pauses (fully stops) the LAN sync server — both the TCP command listener and the UDP
+     * discovery listener — during ambient mode / onStop / onDestroy when not connected to a
+     * charger, so the Wi-Fi chipset can enter low-power sleep. Use [resumeIfNeeded] to restart.
      */
+    @Synchronized
     fun pauseIfUnplugged(context: Context) {
         if (!isConnectedToCharger(context)) {
             stop()
@@ -200,7 +208,8 @@ object AospLanSyncServer {
         socket.use { client ->
             client.soTimeout = 4000
             val reader = BufferedReader(InputStreamReader(client.getInputStream(), Charsets.UTF_8))
-            val writer = PrintWriter(client.getOutputStream(), true, Charsets.UTF_8)
+            // PrintWriter(OutputStream, Boolean, Charset) is API 33+; wrap a Writer for minSdk 28 AOSP watches.
+            val writer = PrintWriter(java.io.OutputStreamWriter(client.getOutputStream(), Charsets.UTF_8), true)
 
             val path = try { readBoundedLine(reader)?.trim() } catch (_: Exception) { null } ?: return
             val payload = try { readBoundedLine(reader) } catch (_: Exception) { return } ?: ""
@@ -250,6 +259,7 @@ object AospLanSyncServer {
                         map["clock_format_24h"]?.let { repo.setClockFormat24h(it.toBoolean()) }
                         map["lifespan_canonical_enabled"]?.let { repo.setLifespanCanonicalEnabled(it.toBoolean()) }
                         map["combat_injuries_enabled"]?.let { repo.setCombatInjuriesEnabled(it.toBoolean()) }
+                        map["mask_undiscovered_species"]?.let { repo.setMaskUndiscoveredSpecies(it.toBoolean()) }
                         map["soundpack"]?.let { repo.setSoundpack(com.digiwear.core.model.SoundpackProfile.fromId(it)) }
                         "OK"
                     } catch (_: Exception) {
@@ -276,12 +286,25 @@ object AospLanSyncServer {
                                     ?.takeIf { isKnownSpecies(it) } ?: 101
                                 repo.hatchNewEgg(eggId)
                             }
+                            action.startsWith("JOGRESS:") -> {
+                                val partnerId = action.substringAfter("JOGRESS:").toIntOrNull() ?: 0
+                                repo.performRemoteJogress(partnerId) ?: repo.getPetState()
+                            }
                             else -> repo.getPetState()
                         }
-                        if (action == "FEED_MEAL" || action == "FEED" || action == "CLEAN_WASTE" || action == "CLEAN" || action == "TOGGLE_LIGHTS") {
+                        if (action == "FEED_MEAL" || action == "FEED" || action == "CLEAN_WASTE" || action == "CLEAN" || action == "TOGGLE_LIGHTS" || action.startsWith("JOGRESS:")) {
                             DigiWearComplicationService.requestUpdate(context)
                             DigiWearTileService.requestUpdate(context)
                         }
+                        json.encodeToString(updatedState)
+                    } catch (_: Exception) {
+                        ""
+                    }
+                }
+                "/sync/jogress_trigger" -> {
+                    try {
+                        val partnerId = payload.trim().toIntOrNull() ?: 0
+                        val updatedState = repo.performRemoteJogress(partnerId) ?: repo.getPetState()
                         json.encodeToString(updatedState)
                     } catch (_: Exception) {
                         ""
@@ -311,11 +334,15 @@ object AospLanSyncServer {
                     try {
                         val bytes = android.util.Base64.decode(payload.trim(), android.util.Base64.DEFAULT)
                         if (bytes.isNotEmpty()) {
-                            val file = java.io.File(context.filesDir, "custom_wallpaper.png")
-                            file.writeBytes(bytes)
-                            repo.setThemeId(com.digiwear.core.model.CustomThemeConfig.WALLPAPER_THEME_ID)
-                            repo.notifyWallpaperUpdated()
-                            "OK"
+                            val written = repo.wallpaperWriteMutex.withLock {
+                                repo.writeWallpaperAtomically(bytes).also { ok ->
+                                    if (ok) {
+                                        repo.setThemeId(com.digiwear.core.model.CustomThemeConfig.WALLPAPER_THEME_ID)
+                                        repo.notifyWallpaperUpdated()
+                                    }
+                                }
+                            }
+                            if (written) "OK" else "ERR"
                         } else {
                             "ERR"
                         }

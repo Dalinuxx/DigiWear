@@ -89,7 +89,7 @@ object WorkoutEngine {
     /**
      * Completes a workout session and applies natural V-Pet rewards to [currentState]:
      * - Reduces excess weight down toward canonical baseline.
-     * - Fills training effort hearts to 4.
+     * - Fills training effort hearts in proportion to session duration (up to 4).
      * - Cleanses stress / distressed state.
      * - Returns the updated [PetState] and [WorkoutSummary].
      */
@@ -104,8 +104,8 @@ object WorkoutEngine {
         val safeDuration = durationSeconds.coerceAtLeast(0L)
         val safeRawSteps = rawSteps.coerceAtLeast(0)
         val validSamples = bpmSamples.filter { it > 40 }
-        val avgBpm = if (validSamples.isNotEmpty()) validSamples.average().toInt() else 85
-        val peakBpm = if (validSamples.isNotEmpty()) validSamples.maxOrNull() ?: avgBpm else avgBpm
+        val avgBpm = if (validSamples.isNotEmpty()) validSamples.average().toInt() else 0
+        val peakBpm = if (validSamples.isNotEmpty()) validSamples.maxOrNull() ?: avgBpm else 0
 
         val calories = computeEstimatedCalories(avgBpm, safeDuration)
         val effectiveSteps = computeEffectiveSteps(safeRawSteps, avgBpm)
@@ -113,21 +113,37 @@ object WorkoutEngine {
         val species = PetSpecies.getById(currentState.speciesId)
         val baseline = species.baselineWeight
 
-        // 1g burned per 3 minutes of workout or 20+ calories, capped so weight never drops below baseline
-        val weightBurnUnits = max(1, (safeDuration / 180L).toInt() + (calories / 25))
+        // 1g burned per 3 minutes of workout or 25+ calories (minimum 30s active session), capped at baseline
+        val weightBurnUnits = if (safeDuration < 30L && safeRawSteps < 15) {
+            0
+        } else {
+            max(1, (safeDuration / 180L).toInt() + (calories / 25))
+        }
         val newWeight = max(baseline, currentState.weight - weightBurnUnits)
         val weightBurned = currentState.weight - newWeight
 
-        // Full workout awards max training effort and +1 strength heart
-        val newEffort = 4
-        val newStrength = min(4, currentState.strength + 1)
+        // Scale training effort proportionally to workout duration/activity (preventing 0s instant max-effort exploit)
+        val effortDelta = when {
+            safeDuration < 30L && safeRawSteps < 15 -> 0
+            safeDuration < 120L -> 1
+            safeDuration < 240L -> 2
+            safeDuration < 360L -> 3
+            else -> 4
+        }
+        val newEffort = min(4, currentState.effort + effortDelta)
+        val strengthDelta = if (safeDuration >= 60L || safeRawSteps >= 25) 1 else 0
+        val newStrength = min(4, currentState.strength + strengthDelta)
         val effortGained = max(0, newEffort - currentState.effort)
 
         // Sessions of 3+ minutes grant an energized buff for battles
         val energized = safeDuration >= 180L || avgBpm >= 120
 
-        // Vital Points calculation: 10 VP per minute + 1 VP per 10 effective steps (optional Vital Bracelet mechanic)
-        val vpGained = max(10, ((safeDuration / 60L) * 10 + (effectiveSteps / 10)).toInt())
+        // Vital Points calculation: 10 VP per minute + 1 VP per 10 effective steps
+        val vpGained = if (safeDuration < 15L && effectiveSteps == 0) {
+            0
+        } else {
+            max(5, ((safeDuration / 60L) * 10 + (effectiveSteps / 10)).toInt())
+        }
         val newVitalPoints = currentState.vitalPoints + vpGained
 
         val needsAttentionStill = currentState.hunger == 0 || (currentState.isSleeping && !currentState.lightsOff)

@@ -18,35 +18,37 @@
     kotlinx.serialization.KSerializer serializer(...);
 }
 
-# DigiWear Core Models & Companion Data
--keep class com.digiwear.core.** { *; }
--keep class com.digiwear.companion.data.** { *; }
+# DigiWear Core Models & Companion Data (Serializable & Room Entities are kept via annotations)
+-keep class com.digiwear.core.model.** { *; }
+-keep class com.digiwear.companion.data.*Entity { *; }
 
 # AndroidX Room
--keep class androidx.room.** { *; }
 -dontwarn androidx.room.**
--keep class * extends androidx.room.RoomDatabase
+-keep class * extends androidx.room.RoomDatabase { *; }
 -keep @androidx.room.Entity class * { *; }
 -keep @androidx.room.Dao interface * { *; }
 
-# Cryptography, BouncyCastle, Conscrypt & Wireless ADB
--keep class org.bouncycastle.** { *; }
+# Cryptography, BouncyCastle, Conscrypt & Wireless ADB JNI/Reflection Entrypoints
+-keep class org.bouncycastle.jcajce.provider.** { *; }
+-keep class org.bouncycastle.jce.provider.** { *; }
 -dontwarn org.bouncycastle.**
--keep class org.conscrypt.** { *; }
+-keep class org.conscrypt.OpenSSLProvider { *; }
+-keep class org.conscrypt.NativeCrypto { *; }
+-keepclassmembers class org.conscrypt.** {
+    native <methods>;
+}
 -dontwarn org.conscrypt.**
 -keep class io.github.muntashirakon.adb.** { *; }
 -dontwarn io.github.muntashirakon.adb.**
 -keep class dadb.** { *; }
 -dontwarn dadb.**
--keep class javax.crypto.** { *; }
--keep class java.security.** { *; }
 
-# MLKit Barcode Scanning & Google Play Services Vision
--keep class com.google.mlkit.** { *; }
+# MLKit Barcode Scanning & Google Play Services Vision JNI Entrypoints
+-keep class com.google.mlkit.common.internal.CommonComponentRegistrar { *; }
+-keep class com.google.mlkit.vision.**Registrar { *; }
+-keepclassmembers class com.google.mlkit.** {
+    native <methods>;
+}
 -dontwarn com.google.mlkit.**
--keep class com.google.android.gms.vision.** { *; }
 -dontwarn com.google.android.gms.vision.**
 
-# Jetpack Compose & Navigation
--keep class androidx.compose.runtime.** { *; }
--keep class androidx.navigation.** { *; }

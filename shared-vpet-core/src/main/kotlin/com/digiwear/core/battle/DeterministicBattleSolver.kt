@@ -107,23 +107,30 @@ object DeterministicBattleSolver {
                 Order(secondaryFighter, 1, canonHp1, primaryFighter, 0, canonHp0)
             }
 
+            val callerAttackerIdxFirst = if (aIsPrimary) firstIdx else (1 - firstIdx)
+            val callerDefenderIdxFirst = if (aIsPrimary) secondIdx else (1 - secondIdx)
+
             // First attacker strikes
             val multFirst = firstFighter.attribute.damageMultiplierAgainst(secondFighter.attribute)
-            val envMultFirst = computeEnvironmentMultiplier(firstFighter, firstIdx, env)
+            val envMultFirst = computeEnvironmentMultiplier(firstFighter, callerAttackerIdxFirst, env, battleMode)
             val isAdvFirst = multFirst > 1.0f || envMultFirst > 1.0f
             val critThresholdFirst = if (env == "glitch_fog" || env == "x_program_fog") 25 else 15
             val isNaturalCritFirst = prng.nextInt(100) < critThresholdFirst
             val isBoostedFirst = if (firstIdx == 0) primaryCritBoost else secondaryCritBoost
             val isCritFirst = isNaturalCritFirst || isBoostedFirst
             val varianceFirst = 0.9f + (prng.nextInt(21) / 100f) // 0.90 to 1.10
+            val activeHitRateFirst = if (firstIdx == 0) hitRate0 else hitRate1
+            val isDirectHitFirst = isNaturalCritFirst || (((round * 19 + firstFighter.speciesId * 7 + secondFighter.speciesId * 3) and 0x7FFFFFFF) % 100) < activeHitRateFirst
 
             val effFirst = if (firstIdx == 0) effPower0 else effPower1
             var dmgFirst = (effFirst * 0.35f) * multFirst * envMultFirst * varianceFirst
+            if (!isDirectHitFirst) dmgFirst *= 0.85f
             if (isNaturalCritFirst) dmgFirst *= 1.5f
             if (isBoostedFirst) dmgFirst *= 1.25f
             val finalDmgFirst = max(5, dmgFirst.roundToInt())
             val attackTypeFirst = when {
                 isCritFirst -> "MEGA_HIT"
+                !isDirectHitFirst -> "GRAZE"
                 varianceFirst >= 1.02f || firstFighter.effort >= 3 -> "DOUBLE"
                 else -> "SINGLE"
             }
@@ -134,9 +141,6 @@ object DeterministicBattleSolver {
                 isCritical = isCritFirst,
                 attackType = attackTypeFirst
             )
-
-            val callerAttackerIdxFirst = if (aIsPrimary) firstIdx else (1 - firstIdx)
-            val callerDefenderIdxFirst = if (aIsPrimary) secondIdx else (1 - secondIdx)
 
             turns.add(
                 BattleTurn(
@@ -150,7 +154,7 @@ object DeterministicBattleSolver {
                     isAdvantage = isAdvFirst,
                     isCritical = isCritFirst,
                     attackType = attackTypeFirst,
-                    hitRatePercent = if (firstIdx == 0) hitRate0 else hitRate1,
+                    hitRatePercent = activeHitRateFirst,
                     effectivePower = if (firstIdx == 0) effPower0 else effPower1,
                     moveName = moveNameFirst
                 )
@@ -166,23 +170,30 @@ object DeterministicBattleSolver {
                 break
             }
 
+            val callerAttackerIdxSecond = if (aIsPrimary) secondIdx else (1 - secondIdx)
+            val callerDefenderIdxSecond = if (aIsPrimary) firstIdx else (1 - firstIdx)
+
             // Second attacker retaliates
             val multSecond = secondFighter.attribute.damageMultiplierAgainst(firstFighter.attribute)
-            val envMultSecond = computeEnvironmentMultiplier(secondFighter, secondIdx, env)
+            val envMultSecond = computeEnvironmentMultiplier(secondFighter, callerAttackerIdxSecond, env, battleMode)
             val isAdvSecond = multSecond > 1.0f || envMultSecond > 1.0f
             val critThresholdSecond = if (env == "glitch_fog" || env == "x_program_fog") 25 else 15
             val isNaturalCritSecond = prng.nextInt(100) < critThresholdSecond
             val isBoostedSecond = if (secondIdx == 0) primaryCritBoost else secondaryCritBoost
             val isCritSecond = isNaturalCritSecond || isBoostedSecond
             val varianceSecond = 0.9f + (prng.nextInt(21) / 100f)
+            val activeHitRateSecond = if (secondIdx == 0) hitRate0 else hitRate1
+            val isDirectHitSecond = isNaturalCritSecond || (((round * 23 + secondFighter.speciesId * 11 + firstFighter.speciesId * 5) and 0x7FFFFFFF) % 100) < activeHitRateSecond
 
             val effSecond = if (secondIdx == 0) effPower0 else effPower1
             var dmgSecond = (effSecond * 0.35f) * multSecond * envMultSecond * varianceSecond
+            if (!isDirectHitSecond) dmgSecond *= 0.85f
             if (isNaturalCritSecond) dmgSecond *= 1.5f
             if (isBoostedSecond) dmgSecond *= 1.25f
             val finalDmgSecond = max(5, dmgSecond.roundToInt())
             val attackTypeSecond = when {
                 isCritSecond -> "MEGA_HIT"
+                !isDirectHitSecond -> "GRAZE"
                 varianceSecond >= 1.02f || secondFighter.effort >= 3 -> "DOUBLE"
                 else -> "SINGLE"
             }
@@ -196,9 +207,6 @@ object DeterministicBattleSolver {
                 attackType = attackTypeSecond
             )
 
-            val callerAttackerIdxSecond = if (aIsPrimary) secondIdx else (1 - secondIdx)
-            val callerDefenderIdxSecond = if (aIsPrimary) firstIdx else (1 - firstIdx)
-
             turns.add(
                 BattleTurn(
                     round = round,
@@ -211,7 +219,7 @@ object DeterministicBattleSolver {
                     isAdvantage = isAdvSecond,
                     isCritical = isCritSecond,
                     attackType = attackTypeSecond,
-                    hitRatePercent = if (secondIdx == 0) hitRate0 else hitRate1,
+                    hitRatePercent = activeHitRateSecond,
                     effectivePower = if (secondIdx == 0) effPower0 else effPower1,
                     moveName = moveNameSecond
                 )
@@ -277,23 +285,58 @@ object DeterministicBattleSolver {
     }
 
     /**
-     * Computes dynamic environmental weather hazard combat multipliers:
-     * - glitch_fog: Virus-type combatants gain +15% power; crit rate rises to 25%.
-     * - subzero_frost: Data-type combatants gain +15% power; non-Data suffer -10% frost chill.
-     * - pyroclastic_flow / heat_wave: Vaccine-type combatants gain +15% power; volcanic heat adds +10% damage.
-     * - cosmic_nihilism / quantum_erasure / dark_gravity: Apex boss aura (+10% for defender/boss), or +15% heroic surge if challenger has 4 Effort hearts.
+     * Computes dynamic environmental weather hazard combat multipliers across all Campaign Sagas and Battle Tower floors.
      */
-    fun computeEnvironmentMultiplier(fighter: BattleFighter, fighterIdx: Int, env: String): Float {
+    fun computeEnvironmentMultiplier(
+        fighter: BattleFighter,
+        callerFighterIdx: Int,
+        env: String,
+        battleMode: BattleMode = BattleMode.NFC_TAP_DUEL
+    ): Float {
         return when (env.lowercase().trim().replace(Regex("[\\s-]+"), "_")) {
-            "glitch_fog", "x_program_fog", "x_virus_rot", "dark_miasma", "miasma_fog" -> if (fighter.attribute == ElementalAttribute.VIRUS) 1.15f else 1.0f
-            "subzero_frost", "cocytus_blizzard", "absolute_aurora", "fenrir_frost", "tidal_current", "data_storm" -> if (fighter.attribute == ElementalAttribute.DATA) 1.15f else 0.90f
-            "pyroclastic_flow", "heat_wave", "magma_heat", "ancient_inferno", "hellfire_storm", "solar_flare", "gehenna_flames", "thunderstorm" -> if (fighter.attribute == ElementalAttribute.VACCINE) 1.15f else 1.10f
-            "cosmic_nihilism", "quantum_erasure", "quantum_singularity", "dark_gravity", "zero_gravity", "apocalymon_void", "dark_annihilation", "grb_cataclysm", "grb_wave_cataclysm", "seven_sins_maw", "dark_area_sin_gates", "temporal_singularity" -> {
-                if (fighterIdx == 0 && fighter.effort >= 4) 1.15f
-                else if (fighterIdx == 1) 1.10f
+            "glitch_fog", "x_program_fog", "x_virus_rot", "dark_miasma", "miasma_fog", "miasma_haze",
+            "blood_moon_curse", "grave_miasma", "creeping_shadows", "demonic_twilight", "unholy_chorus",
+            "somnolent_curse", "darkness_claw", "phantom_pain", "damp_decay", "crimson_fog",
+            "grb_radiation", "decay_corrosion", "dark_ocean_fog", "shadow_smoke", "biochem_mist" ->
+                if (fighter.attribute == ElementalAttribute.VIRUS) 1.15f else 1.0f
+
+            "subzero_frost", "subzero_chill", "cocytus_blizzard", "absolute_aurora", "fenrir_frost",
+            "tidal_current", "tide_surge", "data_storm", "cyber_rain", "clockwork_drift",
+            "whirlpool_vortex", "high_pressure_data", "hydro_thermal_vent", "abyssal_trench",
+            "abyssal_crush", "abyssal_currents", "hyper_abyssal_crush", "deep_current",
+            "deep_water_shield", "cyclonic_gale", "pollen_drift", "wind_rapier", "ion_jetstream",
+            "ion_wind", "cyber_surveillance", "electronic_flicker", "reflective_illusion",
+            "marionette_threads", "chlorophyll_surge", "insectoid_hive", "scrap_metal_hail", "cyber_grid_arena" ->
+                if (fighter.attribute == ElementalAttribute.DATA) 1.15f else 0.90f
+
+            "pyroclastic_flow", "heat_wave", "overclock_heat", "fire_wall_surge", "magma_heat",
+            "magma_core_vein", "ancient_inferno", "hellfire_storm", "hellfire_cataclysm",
+            "apocalyptic_inferno", "solar_flare", "gehenna_flames", "thunderstorm",
+            "electromagnetic_storm", "electromagnetic_pulse", "scorching_sunlight", "blinding_sandstorm",
+            "arena_resonance", "giga_radiation", "jurassic_heat", "primeval_storm", "razor_obsidian",
+            "laser_barrage", "radiation_overload", "gaia_overload", "crimson_firewall", "warm_cinders",
+            "lightning_resonance", "tremor_vibration", "storm_of_lightning", "roaring_frenzy",
+            "supersonic_exhaust", "gluttonous_flare", "bancho_guts", "hornet_thrust", "flowering_kick",
+            "gigabyte_crush", "electrical_hum", "dense_mist", "furious_howling", "looga_howl",
+            "lightning_spar", "static_overload" ->
+                if (fighter.attribute == ElementalAttribute.VACCINE) 1.15f else 1.10f
+
+            "cosmic_nihilism", "quantum_erasure", "quantum_singularity", "dark_gravity", "zero_gravity",
+            "zero_gravity_core", "apocalymon_void", "dark_annihilation", "grb_cataclysm",
+            "grb_wave_cataclysm", "seven_sins_maw", "dark_area_sin_gates", "temporal_singularity",
+            "spatial_distortion", "chaos_gravity", "paradise_lost", "nihilistic_pulse",
+            "blinding_arrogance", "pandemonium_lost", "unholy_collision", "astral_snatcher" -> {
+                val isSymmetricPvp = battleMode == BattleMode.NFC_TAP_DUEL || battleMode == BattleMode.ACOM_DCOM_WIFICOM
+                if (fighter.effort >= 4 && (isSymmetricPvp || callerFighterIdx == 0)) 1.15f
+                else if (isSymmetricPvp || callerFighterIdx == 1) 1.10f
                 else 1.0f
             }
-            "seraphic_grace", "holy_shield_aura", "divine_seals", "merciful_aurora", "aurora_blessing" -> if (fighter.attribute == ElementalAttribute.VACCINE) 1.20f else 0.95f
+
+            "seraphic_grace", "holy_shield_aura", "divine_seals", "merciful_aurora", "aurora_blessing",
+            "sacred_chivalry", "matrix_ascension", "aegis_barrier", "legend_resonance",
+            "blade_resonance", "ten_spirits_halo", "sirius_nova", "sacred_sanctuary", "vaccine_sanctuary" ->
+                if (fighter.attribute == ElementalAttribute.VACCINE) 1.20f else 0.95f
+
             else -> 1.0f
         }
     }

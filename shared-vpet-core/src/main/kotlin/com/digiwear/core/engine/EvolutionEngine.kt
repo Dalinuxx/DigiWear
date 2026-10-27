@@ -141,7 +141,7 @@ object EvolutionEngine {
         if (rule.minWinRatio > 0f) parts.add("Win ≥ ${(rule.minWinRatio * 100).toInt()}%")
         if (rule.minWeight > 0) parts.add("Weight ≥ ${rule.minWeight}G")
         if (rule.minOverfeed > 0) parts.add("Overfeed ≥ ${rule.minOverfeed}")
-        if (rule.minVitalPoints > 0) parts.add("Vitals ≥ ${rule.minVitalPoints} VP")
+        if (rule.minVitalPoints > 0) parts.add("Vitals ≥ ${rule.minVitalPoints} VP (Optional)")
         return if (parts.isEmpty()) "Natural Ascension" else parts.joinToString(" • ")
     }
 
@@ -171,8 +171,9 @@ object EvolutionEngine {
         if (rule.minAgeSeconds > 0L) {
             totalCount++
             val curH = state.ageSeconds / 3600L
-            val reqH = rule.minAgeSeconds / 3600L
-            val met = state.ageSeconds >= rule.minAgeSeconds
+            val requiredAge = rule.effectiveMinAgeSeconds(state)
+            val reqH = requiredAge / 3600L
+            val met = state.ageSeconds >= requiredAge
             if (met) metCount++
             items.add(ConditionItem("Age", "${curH}h", "${reqH}h", met))
         }
@@ -223,11 +224,11 @@ object EvolutionEngine {
             items.add(ConditionItem("Weight", "${state.weight}g", "≥${rule.minWeight}g", met))
         }
 
+        // Vital Points are an optional fast-track bonus: listed for visibility but never counted
+        // toward the required-condition completion percentage.
         if (rule.minVitalPoints > 0) {
-            totalCount++
             val met = state.vitalPoints >= rule.minVitalPoints
-            if (met) metCount++
-            items.add(ConditionItem("Vital Points", "${state.vitalPoints} VP", "≥${rule.minVitalPoints} VP", met))
+            items.add(ConditionItem("Vital Points (Optional)", "${state.vitalPoints} VP", "≥${rule.minVitalPoints} VP", met))
         }
 
         val pct = if (totalCount == 0) 100 else ((metCount.toFloat() / totalCount.toFloat()) * 100).toInt()

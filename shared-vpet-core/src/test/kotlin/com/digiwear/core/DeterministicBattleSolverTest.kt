@@ -313,4 +313,75 @@ class DeterministicBattleSolverTest {
         }
         assertTrue("All 550 sprites must have full color fill and visibility! Sparse: $sparseSprites", sparseSprites.isEmpty())
     }
+
+    @Test
+    fun testBattleTowerHazardsAndCampaignBossSpeciesIds() {
+        val vaccineFighter = BattleFighter(
+            id = "vaccine",
+            speciesId = 301,
+            name = "Greymon",
+            stage = PetStage.ADULT,
+            attribute = ElementalAttribute.VACCINE,
+            maxHp = 999,
+            currentHp = 999,
+            basePower = 100,
+            victories = 10,
+            effort = 4,
+            battleSeed = 0x1111
+        )
+        val virusFighter = BattleFighter(
+            id = "virus",
+            speciesId = 303,
+            name = "Devimon",
+            stage = PetStage.ADULT,
+            attribute = ElementalAttribute.VIRUS,
+            maxHp = 999,
+            currentHp = 999,
+            basePower = 100,
+            victories = 10,
+            effort = 4,
+            battleSeed = 0x2222
+        )
+
+        val clearRes = DeterministicBattleSolver.resolveBattle(vaccineFighter, virusFighter, environmentEffect = "NONE")
+        val solarRes = DeterministicBattleSolver.resolveBattle(vaccineFighter, virusFighter, environmentEffect = "SOLAR_FLARE")
+        assertTrue(
+            "SOLAR_FLARE must boost VACCINE damage",
+            solarRes.turns.first { it.attackerIndex == 0 }.damage > clearRes.turns.first { it.attackerIndex == 0 }.damage
+        )
+
+        // Verify canonical CampaignStoryRegistry boss species IDs match their BossEncounter names
+        val allNodes = com.digiwear.core.adventure.CampaignStoryRegistry.ALL_CAMPAIGNS.flatMap { it.nodes }.associateBy { it.nodeId }
+        val fixedNodes = mapOf(
+            212 to 596,
+            214 to 1563,
+            215 to 1562,
+            221 to 1539,
+            225 to 1557,
+            319 to 1421,
+            416 to 1560,
+            417 to 1561,
+            421 to 1555
+        )
+        for ((nodeId, expectedSpeciesId) in fixedNodes) {
+            val boss = allNodes.getValue(nodeId).bossEncounter!!
+            assertEquals("Node $nodeId bossMonsterId", expectedSpeciesId, boss.bossMonsterId)
+            assertEquals("Node $nodeId boss species name", boss.bossName, PetSpecies.getById(boss.bossMonsterId).name)
+        }
+
+        // Verify that a fighter with hitRatePercent >= 50% (e.g. 50% or 62%) can still roll GRAZE on non-crit turns
+        val tankA = vaccineFighter.copy(maxHp = 5000, currentHp = 5000, basePower = 40)
+        val tankB = virusFighter.copy(maxHp = 5000, currentHp = 5000, basePower = 40)
+        val longBattle = DeterministicBattleSolver.resolveBattle(tankA, tankB)
+        val nonCritAdvantagedTurns = longBattle.turns.filter { it.attackerIndex == 0 && !it.isCritical }
+        assertTrue("Expected advantaged hitRate >= 50%", nonCritAdvantagedTurns.first().hitRatePercent >= 50)
+        assertTrue(
+            "Fighter with hitRate >= 50% (< 100%) must be able to roll GRAZE on some non-crit rounds",
+            nonCritAdvantagedTurns.any { it.attackType == "GRAZE" }
+        )
+        assertTrue(
+            "Fighter with hitRate >= 50% must also land direct hits on non-crit rounds",
+            nonCritAdvantagedTurns.any { it.attackType != "GRAZE" }
+        )
+    }
 }

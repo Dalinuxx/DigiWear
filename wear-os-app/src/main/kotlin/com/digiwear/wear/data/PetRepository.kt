@@ -43,6 +43,37 @@ class PetRepository private constructor(context: Context) {
     private val appContext = context.applicationContext
     private val stateMutex = Mutex()
 
+    /** Single lock shared by every writer of `custom_wallpaper.png` (DataLayer + LAN server). */
+    val wallpaperWriteMutex = Mutex()
+
+    /**
+     * Validates [bytes] decode as an image (bounds only, 1..2048 px per side) and atomically
+     * replaces `custom_wallpaper.png` via a `.tmp` file + rename. Callers should hold [wallpaperWriteMutex].
+     * @return true if the wallpaper was written.
+     */
+    fun writeWallpaperAtomically(bytes: ByteArray): Boolean {
+        if (bytes.isEmpty()) return false
+        val opts = android.graphics.BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        android.graphics.BitmapFactory.decodeByteArray(bytes, 0, bytes.size, opts)
+        if (opts.outWidth <= 0 || opts.outHeight <= 0 || opts.outWidth > 2048 || opts.outHeight > 2048) return false
+        val target = java.io.File(appContext.filesDir, "custom_wallpaper.png")
+        val tmp = java.io.File(appContext.filesDir, "custom_wallpaper.png.tmp")
+        return try {
+            tmp.writeBytes(bytes)
+            if (!tmp.renameTo(target)) {
+                target.delete()
+                if (!tmp.renameTo(target)) {
+                    tmp.delete()
+                    return false
+                }
+            }
+            true
+        } catch (_: Exception) {
+            tmp.delete()
+            false
+        }
+    }
+
     private val db = Room.databaseBuilder(
         appContext,
         DigiWearDatabase::class.java,
@@ -95,9 +126,24 @@ class PetRepository private constructor(context: Context) {
 
     init {
         CoroutineScope(Dispatchers.IO).launch {
-            val exists = dao.getPetState() != null
+            val activeEntity = dao.getPetState()
+            val exists = activeEntity != null
             prefs.edit().putBoolean("has_active_egg", exists).apply()
             _hasActiveEggFlow.value = exists
+
+            val initialDiscovered = mutableListOf<Int>()
+            activeEntity?.toDomain()?.let { active ->
+                initialDiscovered.add(active.speciesId)
+                initialDiscovered.addAll(com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(active.speciesId))
+            }
+            dao.getBackupPetState()?.toDomain()?.let { backup ->
+                initialDiscovered.add(backup.speciesId)
+                initialDiscovered.addAll(com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(backup.speciesId))
+            }
+            dao.getAllMemorials().forEach { mem ->
+                initialDiscovered.add(mem.speciesId)
+            }
+            recordDiscoveredSpecies(*initialDiscovered.toIntArray())
         }
     }
 
@@ -146,6 +192,60 @@ class PetRepository private constructor(context: Context) {
     )
     val dailyStepGoalFlow: StateFlow<Int> = _dailyStepGoalFlow.asStateFlow()
 
+    private fun readDailyStepsFromPrefs(): Int {
+        val today = java.time.LocalDate.now().toString()
+        val storedDate = prefs.getString("daily_steps_date", null)
+        return if (storedDate == today) {
+            prefs.getInt("daily_steps_count", 0).coerceAtLeast(0)
+        } else {
+            0
+        }
+    }
+
+    private val _dailyStepsFlow = MutableStateFlow(readDailyStepsFromPrefs())
+    val dailyStepsFlow: StateFlow<Int> = _dailyStepsFlow.asStateFlow()
+
+    fun getDailySteps(): Int {
+        val current = readDailyStepsFromPrefs()
+        if (_dailyStepsFlow.value != current) {
+            _dailyStepsFlow.value = current
+        }
+        return current
+    }
+
+    private fun incrementDailySteps(delta: Int) {
+        if (delta <= 0) return
+        val today = java.time.LocalDate.now().toString()
+        val storedDate = prefs.getString("daily_steps_date", null)
+        val base = if (storedDate == today) prefs.getInt("daily_steps_count", 0).coerceAtLeast(0) else 0
+        val updated = base + delta
+        prefs.edit()
+            .putString("daily_steps_date", today)
+            .putInt("daily_steps_count", updated)
+            .apply()
+        _dailyStepsFlow.value = updated
+    }
+
+    private val _discoveredSpeciesFlow = MutableStateFlow<Set<Int>>(
+        prefs.getString("discovered_species_csv", null)
+            ?.split(",")
+            ?.mapNotNull { it.trim().toIntOrNull() }
+            ?.toSet()
+            ?: setOf(101)
+    )
+    val discoveredSpeciesFlow: StateFlow<Set<Int>> = _discoveredSpeciesFlow.asStateFlow()
+
+    fun recordDiscoveredSpecies(vararg speciesIds: Int) {
+        val validIds = speciesIds.filter { it > 1 && PetSpecies.SPECIES_REGISTRY.containsKey(it) }
+        if (validIds.isEmpty()) return
+        val current = _discoveredSpeciesFlow.value
+        val updated = current + validIds
+        if (updated.size != current.size) {
+            _discoveredSpeciesFlow.value = updated
+            prefs.edit().putString("discovered_species_csv", updated.joinToString(",")).apply()
+        }
+    }
+
     private val _contrastLevelFlow = MutableStateFlow(
         prefs.getString("lcd_contrast_level", "MEDIUM") ?: "MEDIUM"
     )
@@ -185,6 +285,11 @@ class PetRepository private constructor(context: Context) {
         prefs.getBoolean("combat_injuries_enabled", true)
     )
     val combatInjuriesEnabledFlow: StateFlow<Boolean> = _combatInjuriesEnabledFlow.asStateFlow()
+
+    private val _maskUndiscoveredSpeciesFlow = MutableStateFlow(
+        prefs.getBoolean("mask_undiscovered_species", true)
+    )
+    val maskUndiscoveredSpeciesFlow: StateFlow<Boolean> = _maskUndiscoveredSpeciesFlow.asStateFlow()
 
     private val _beamedCommCodeFlow = MutableStateFlow<String?>(null)
     val beamedCommCodeFlow: StateFlow<String?> = _beamedCommCodeFlow.asStateFlow()
@@ -317,6 +422,11 @@ class PetRepository private constructor(context: Context) {
         _combatInjuriesEnabledFlow.value = enabled
     }
 
+    fun setMaskUndiscoveredSpecies(masked: Boolean) {
+        prefs.edit().putBoolean("mask_undiscovered_species", masked).apply()
+        _maskUndiscoveredSpeciesFlow.value = masked
+    }
+
     fun setSoundpack(soundpack: SoundpackProfile) {
         prefs.edit().putString("soundpack", soundpack.id).apply()
         _soundpackFlow.value = soundpack
@@ -343,6 +453,7 @@ class PetRepository private constructor(context: Context) {
         "clock_format_24h" to _clockFormatFlow.value.toString(),
         "lifespan_canonical_enabled" to _lifespanCanonicalEnabledFlow.value.toString(),
         "combat_injuries_enabled" to _combatInjuriesEnabledFlow.value.toString(),
+        "mask_undiscovered_species" to _maskUndiscoveredSpeciesFlow.value.toString(),
         "soundpack" to _soundpackFlow.value.id
     )
 
@@ -455,6 +566,8 @@ class PetRepository private constructor(context: Context) {
     suspend fun savePetState(state: PetState) = withContext(Dispatchers.IO) {
         dao.insertOrUpdatePet(PetEntity.fromDomain(state))
         setHasActiveEgg(true)
+        val discovered = (com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(state.speciesId) + state.speciesId).toIntArray()
+        recordDiscoveredSpecies(*discovered)
         notifySurfaceUpdates()
     }
 
@@ -480,6 +593,8 @@ class PetRepository private constructor(context: Context) {
                 dao.deleteBackupPet()
             } else {
                 dao.insertOrUpdatePet(PetEntity.fromDomain(state.copy(isFrozen = true), id = 2))
+                val discovered = (com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(state.speciesId) + state.speciesId).toIntArray()
+                recordDiscoveredSpecies(*discovered)
             }
         }
     }
@@ -518,20 +633,73 @@ class PetRepository private constructor(context: Context) {
             val active = dao.getPetState()?.toDomain() ?: return@withContext null
             val backup = dao.getBackupPetState()?.toDomain() ?: return@withContext null
 
-            val recipe = com.digiwear.core.fusion.JogressEngine.findFusionRecipe(
-                active.speciesId,
-                backup.speciesId
-            ) ?: return@withContext null
-
-            val targetSpecies = PetSpecies.getById(recipe.targetSpeciesId)
             val now = System.currentTimeMillis() / 1000L
-            val evolved = EvolutionEngine.evolve(active, targetSpecies, now).copy(
+            // JogressEngine.executeFusion throws for deceased pets or missing recipes; guard instead of crashing.
+            if (active.isDeceased) return@withContext null
+            if (com.digiwear.core.fusion.JogressEngine.findFusionRecipe(active.speciesId, backup.speciesId) == null) return@withContext null
+            val fused = runCatching {
+                com.digiwear.core.fusion.JogressEngine.executeFusion(
+                    primary = active,
+                    secondarySpeciesId = backup.speciesId,
+                    secondaryVictories = backup.victories,
+                    secondaryEffort = backup.effort,
+                    currentTimestampUtc = now
+                )
+            }.getOrNull() ?: return@withContext null
+            if (fused.speciesId == active.speciesId) return@withContext null
+
+            val evolved = fused.copy(
                 isFrozen = false,
                 traitedEggBonus = active.traitedEggBonus + backup.traitedEggBonus + 1
             )
 
             dao.insertOrUpdatePet(PetEntity.fromDomain(evolved, id = 1))
             dao.deleteBackupPet()
+            val discovered = (com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(evolved.speciesId) + evolved.speciesId).toIntArray()
+            recordDiscoveredSpecies(*discovered)
+            notifySurfaceUpdates()
+            evolved
+        }
+    }
+
+    suspend fun performRemoteJogress(
+        secondarySpeciesId: Int,
+        secondaryVictories: Int = 15,
+        secondaryEffort: Int = 4
+    ): PetState? = withContext(Dispatchers.IO) {
+        stateMutex.withLock {
+            if (dao.getPetState() == null) return@withContext null
+            val now = System.currentTimeMillis() / 1000L
+            // Apply pending decay first (same as feedMeal) so we never fuse a stale/now-deceased pet.
+            val active = processDecayLocked(now)
+            if (active.isDeceased) return@withContext null
+            val resolvedPartnerId = if (com.digiwear.core.fusion.JogressEngine.findFusionRecipe(active.speciesId, secondarySpeciesId) != null) {
+                secondarySpeciesId
+            } else {
+                val byTarget = com.digiwear.core.fusion.JogressEngine.getCompatibleRecipesFor(active.speciesId)
+                    .firstOrNull { it.targetSpeciesId == secondarySpeciesId }
+                if (byTarget != null) {
+                    if (byTarget.primarySpeciesId == active.speciesId) byTarget.secondarySpeciesId else byTarget.primarySpeciesId
+                } else {
+                    return@withContext null
+                }
+            }
+            if (com.digiwear.core.fusion.JogressEngine.findFusionRecipe(active.speciesId, resolvedPartnerId) == null) return@withContext null
+            val fused = runCatching {
+                com.digiwear.core.fusion.JogressEngine.executeFusion(
+                    primary = active,
+                    secondarySpeciesId = resolvedPartnerId,
+                    secondaryVictories = secondaryVictories,
+                    secondaryEffort = secondaryEffort,
+                    currentTimestampUtc = now
+                )
+            }.getOrNull() ?: return@withContext null
+            if (fused.speciesId == active.speciesId) return@withContext null
+
+            val evolved = fused.copy(isFrozen = false)
+            dao.insertOrUpdatePet(PetEntity.fromDomain(evolved, id = 1))
+            val discovered = (com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(evolved.speciesId) + listOf(resolvedPartnerId, evolved.speciesId)).toIntArray()
+            recordDiscoveredSpecies(*discovered)
             notifySurfaceUpdates()
             evolved
         }
@@ -546,6 +714,7 @@ class PetRepository private constructor(context: Context) {
     }
 
     suspend fun recordMemorial(record: com.digiwear.core.model.MemorialRecord): Long = withContext(Dispatchers.IO) {
+        recordDiscoveredSpecies(record.speciesId)
         dao.insertMemorial(MemorialEntity.fromDomain(record))
     }
 
@@ -676,7 +845,7 @@ class PetRepository private constructor(context: Context) {
     suspend fun cleanWaste(currentUtc: Long = System.currentTimeMillis() / 1000L): PetState = withContext(Dispatchers.IO) {
         stateMutex.withLock {
             val current = processDecayLocked(currentUtc)
-            val updated = PetSimulationEngine.cleanWaste(current)
+            val updated = PetSimulationEngine.cleanWaste(current, currentUtc)
             savePetState(updated)
             updated
         }
@@ -712,7 +881,7 @@ class PetRepository private constructor(context: Context) {
     suspend fun cureInjury(currentUtc: Long = System.currentTimeMillis() / 1000L): PetState = withContext(Dispatchers.IO) {
         stateMutex.withLock {
             val current = processDecayLocked(currentUtc)
-            val updated = PetSimulationEngine.cureInjury(current)
+            val updated = PetSimulationEngine.cureInjury(current, currentUtc)
             savePetState(updated)
             updated
         }
@@ -739,6 +908,7 @@ class PetRepository private constructor(context: Context) {
 
     suspend fun addAdventureSteps(steps: Int): AdventureStepResult = withContext(Dispatchers.IO) {
         stateMutex.withLock {
+            incrementDailySteps(steps)
             val story = getActiveCampaign()
             val progress = getAdventureProgress()
             val result = AdventureEngine.processSteps(story, progress, steps)
@@ -766,6 +936,7 @@ class PetRepository private constructor(context: Context) {
 
     suspend fun recordBossVictory(boss: BossEncounter): AdventureProgress = withContext(Dispatchers.IO) {
         stateMutex.withLock {
+            recordDiscoveredSpecies(boss.bossMonsterId)
             val story = getActiveCampaign()
             val progress = getAdventureProgress()
             val updated = AdventureEngine.recordBossVictory(story, progress, boss)

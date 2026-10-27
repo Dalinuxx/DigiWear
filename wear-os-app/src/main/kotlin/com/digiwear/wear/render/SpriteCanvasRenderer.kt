@@ -14,6 +14,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.unit.Dp
@@ -26,12 +29,13 @@ import kotlinx.coroutines.delay
 @Composable
 fun SpriteCanvasRenderer(
     speciesId: Int,
-    isAmbient: Boolean,
+    isAmbient: Boolean = false,
     overrideFrame: SpriteFrame? = null,
     isSleeping: Boolean = false,
     isInjured: Boolean = false,
     flipHorizontal: Boolean = false,
     enableIdleRoaming: Boolean = false,
+    isSilhouette: Boolean = false,
     modifier: Modifier = Modifier,
     size: Dp = 128.dp,
     roamAmplitude: Float = 1f,
@@ -123,9 +127,13 @@ fun SpriteCanvasRenderer(
                     srcSize = IntSize(64, 64),
                     dstOffset = IntOffset.Zero,
                     dstSize = IntSize(dstPx, dstPx),
-                    filterQuality = FilterQuality.None
+                    filterQuality = FilterQuality.None,
+                    colorFilter = if (isSilhouette) SilhouetteColorFilter else null
                 )
             }
         }
     }
 }
+
+/** Solid slate tint used to render undiscovered species as pixel-exact silhouettes. */
+private val SilhouetteColorFilter = ColorFilter.tint(Color(0xFF37474F), BlendMode.SrcIn)

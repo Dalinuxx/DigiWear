@@ -86,6 +86,9 @@ fun PetDashboardScreen(
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val buzzerManager = remember { com.digiwear.companion.sound.BuzzerManager(context) }
+    androidx.compose.runtime.DisposableEffect(buzzerManager) {
+        onDispose { buzzerManager.release() }
+    }
 
     val persistPhoneSnapshot: suspend (PetState) -> Unit = { updated ->
         db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updated))
@@ -424,22 +427,9 @@ fun PetDashboardScreen(
                 OutlinedButton(
                     onClick = {
                         scope.launch {
-                            val entry = StoredDigimonEntity(
-                                speciesId = currentPet.speciesId,
-                                speciesName = currentSpecies.name,
-                                stageName = currentSpecies.stage.displayName,
-                                attributeName = currentSpecies.attribute.displayName,
-                                currentHp = currentPet.currentHp,
-                                maxHp = currentPet.maxHp,
-                                hunger = currentPet.hunger,
-                                strength = currentPet.strength,
-                                weight = currentPet.weight,
-                                ageSeconds = currentPet.ageSeconds,
-                                careMistakes = currentPet.careMistakes,
-                                effort = currentPet.effort,
-                                overfeedCount = currentPet.overfeedCount,
-                                totalBattles = currentPet.totalBattles,
-                                victories = currentPet.victories,
+                            val entry = StoredDigimonEntity.fromDomain(
+                                state = currentPet,
+                                species = currentSpecies,
                                 notes = "Deposited from Dashboard"
                             )
                             db.phoneDao().insertVaultPet(entry)
@@ -570,7 +560,7 @@ fun PetDashboardScreen(
                                 } else nextState
                                 petState = finalState
                                 persistPhoneSnapshot(finalState)
-                                if (watchUpdated == null) {
+                                if (watchUpdated == null || evolved != null) {
                                     wearableManager.sendPetStateToWatch(finalState)
                                 }
                                 syncStatus = if (evolved != null) {
@@ -595,7 +585,7 @@ fun PetDashboardScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.FEED_MEAT, size = 11.dp, tint = Color(0xFFFFB74D))
-                                    Text("MEAT", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("MEAT", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                             OutlinedButton(
@@ -609,7 +599,7 @@ fun PetDashboardScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.PROTEIN_TABLET, size = 11.dp, tint = Color(0xFF4FC3F7))
-                                    Text("VITAMIN", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("VITAMIN", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                             OutlinedButton(
@@ -623,7 +613,7 @@ fun PetDashboardScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.TRAIN_GLOVE, size = 11.dp, tint = Color(0xFFFF8A80))
-                                    Text("TRAIN", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("TRAIN", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                         }
@@ -635,14 +625,14 @@ fun PetDashboardScreen(
                             OutlinedButton(
                                 onClick = {
                                     buzzerManager.playFlushTone()
-                                    executeCareAction("CLEAN_WASTE", { PetSimulationEngine.cleanWaste(it) }, "Flushed Waste")
+                                    executeCareAction("CLEAN_WASTE", { PetSimulationEngine.cleanWaste(it, System.currentTimeMillis() / 1000L) }, "Flushed Waste")
                                 },
                                 modifier = Modifier.weight(1f),
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.CLEAN_FLUSH, size = 11.dp, tint = Color(0xFF80DEEA))
-                                    Text("CLEAN", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("CLEAN", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                             OutlinedButton(
@@ -654,20 +644,20 @@ fun PetDashboardScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.SLEEP_LIGHT, size = 11.dp, tint = Color(0xFFFFE082))
-                                    Text("LIGHTS", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("LIGHTS", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                             OutlinedButton(
                                 onClick = {
                                     buzzerManager.playHealTone()
-                                    executeCareAction("CURE_INJURY", { PetSimulationEngine.cureInjury(it) }, "Cured Injury")
+                                    executeCareAction("CURE_INJURY", { PetSimulationEngine.cureInjury(it, System.currentTimeMillis() / 1000L) }, "Cured Injury")
                                 },
                                 modifier = Modifier.weight(1f),
                                 contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
                                     DigiVectorIcon(type = DigiIconType.BANDAGE_CROSS, size = 11.dp, tint = Color(0xFFFFB74D))
-                                    Text("BANDAGE", fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                                    Text("BANDAGE", color = Color.White, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
                                 }
                             }
                         }

@@ -87,7 +87,7 @@ object WildScanEncounterGenerator {
             hash = hash xor ch.code.toLong()
             hash *= 0x100000001b3L
         }
-        val positiveHash = abs(hash)
+        val positiveHash = hash ushr 1
 
         val signalType = when {
             cleaned.all { it.isDigit() } && cleaned.length in 8..14 -> "BARCODE_EAN_UPC"

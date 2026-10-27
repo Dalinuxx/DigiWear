@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import java.io.File
@@ -118,6 +119,9 @@ class WearDataSyncService : WearableListenerService() {
                         map["combat_injuries_enabled"]?.let { injStr ->
                             repo.setCombatInjuriesEnabled(injStr.toBoolean())
                         }
+                        map["mask_undiscovered_species"]?.let { maskStr ->
+                            repo.setMaskUndiscoveredSpecies(maskStr.toBoolean())
+                        }
                         map["soundpack"]?.let { spStr ->
                             repo.setSoundpack(com.digiwear.core.model.SoundpackProfile.fromId(spStr))
                         }
@@ -145,12 +149,27 @@ class WearDataSyncService : WearableListenerService() {
                                     ?.takeIf { com.digiwear.core.model.PetSpecies.SPECIES_REGISTRY.containsKey(it) } ?: 101
                                 repo.hatchNewEgg(eggId)
                             }
+                            action.startsWith("JOGRESS:") -> {
+                                val partnerId = action.substringAfter("JOGRESS:").toIntOrNull() ?: 0
+                                repo.performRemoteJogress(partnerId) ?: repo.getPetState()
+                            }
                             else -> repo.getPetState()
                         }
-                        if (action == "FEED_MEAL" || action == "FEED" || action == "CLEAN_WASTE" || action == "CLEAN" || action == "TOGGLE_LIGHTS") {
+                        if (action == "FEED_MEAL" || action == "FEED" || action == "CLEAN_WASTE" || action == "CLEAN" || action == "TOGGLE_LIGHTS" || action.startsWith("JOGRESS:")) {
                             DigiWearComplicationService.requestUpdate(applicationContext)
                             DigiWearTileService.requestUpdate(applicationContext)
                         }
+                        val payload = json.encodeToString(updatedState).toByteArray(Charsets.UTF_8)
+                        Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload)
+                    } catch (_: Exception) {}
+                }
+            }
+            "/sync/jogress_trigger" -> {
+                scope.launch {
+                    try {
+                        val partnerId = String(messageEvent.data, Charsets.UTF_8).trim().toIntOrNull() ?: 0
+                        val updatedState = repo.performRemoteJogress(partnerId) ?: repo.getPetState()
                         val payload = json.encodeToString(updatedState).toByteArray(Charsets.UTF_8)
                         Wearable.getMessageClient(applicationContext)
                             .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload)
@@ -180,10 +199,12 @@ class WearDataSyncService : WearableListenerService() {
                     try {
                         val bytes = messageEvent.data
                         if (bytes.isNotEmpty()) {
-                            val file = File(applicationContext.filesDir, "custom_wallpaper.png")
-                            file.writeBytes(bytes)
-                            repo.setThemeId(CustomThemeConfig.WALLPAPER_THEME_ID)
-                            repo.notifyWallpaperUpdated()
+                            repo.wallpaperWriteMutex.withLock {
+                                if (repo.writeWallpaperAtomically(bytes)) {
+                                    repo.setThemeId(CustomThemeConfig.WALLPAPER_THEME_ID)
+                                    repo.notifyWallpaperUpdated()
+                                }
+                            }
                         }
                     } catch (_: Exception) {}
                 }
@@ -202,13 +223,14 @@ class WearDataSyncService : WearableListenerService() {
                     scope.launch {
                         try {
                             val fd = Tasks.await(Wearable.getDataClient(applicationContext).getFdForAsset(asset))
-                            fd?.inputStream?.use { input ->
-                                val file = File(applicationContext.filesDir, "custom_wallpaper.png")
-                                file.outputStream().use { output ->
-                                    input.copyTo(output)
+                            val bytes = fd?.inputStream?.use { input -> input.readBytes() }
+                            if (bytes != null && bytes.isNotEmpty()) {
+                                repo.wallpaperWriteMutex.withLock {
+                                    if (repo.writeWallpaperAtomically(bytes)) {
+                                        repo.setThemeId(CustomThemeConfig.WALLPAPER_THEME_ID)
+                                        repo.notifyWallpaperUpdated()
+                                    }
                                 }
-                                repo.setThemeId(CustomThemeConfig.WALLPAPER_THEME_ID)
-                                repo.notifyWallpaperUpdated()
                             }
                         } catch (_: Exception) {}
                     }

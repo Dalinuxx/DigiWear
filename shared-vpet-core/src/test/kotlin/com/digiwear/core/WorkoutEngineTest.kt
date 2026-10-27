@@ -85,4 +85,28 @@ class WorkoutEngineTest {
         assertEquals(agumon.baselineWeight, updatedPet.weight)
         assertEquals(0, summary.weightGramsBurned)
     }
+
+    @Test
+    fun testZeroDurationWorkoutGrantsNoFreeRewardsAndZeroBpm() {
+        val initialPet = PetState(
+            speciesId = 201,
+            weight = 30,
+            effort = 1,
+            strength = 1,
+            vitalPoints = 0
+        )
+        val (updatedPet, summary) = WorkoutEngine.finishSession(
+            currentState = initialPet,
+            type = WorkoutType.FREE_TRAINING,
+            durationSeconds = 0L,
+            rawSteps = 0,
+            bpmSamples = emptyList()
+        )
+        assertEquals(1, updatedPet.effort)
+        assertEquals(1, updatedPet.strength)
+        assertEquals(30, updatedPet.weight)
+        assertEquals(0, updatedPet.vitalPoints)
+        assertEquals(0, summary.averageBpm)
+        assertEquals(0, summary.weightGramsBurned)
+    }
 }

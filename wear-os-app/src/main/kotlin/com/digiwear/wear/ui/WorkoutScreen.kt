@@ -82,8 +82,23 @@ fun WorkoutScreen(
 
     var elapsedSeconds by remember { mutableLongStateOf(0L) }
     var sessionSteps by remember { mutableIntStateOf(0) }
+    var hardwareStepsInSession by remember { mutableIntStateOf(0) }
+    var lastObservedAdventureSteps by remember { mutableIntStateOf(-1) }
     var isRunning by remember { mutableStateOf(true) }
     var summary by remember { mutableStateOf<WorkoutSummary?>(null) }
+
+    LaunchedEffect(progress.totalAdventureSteps, isRunning) {
+        if (!isRunning) return@LaunchedEffect
+        val total = progress.totalAdventureSteps
+        if (lastObservedAdventureSteps < 0) {
+            lastObservedAdventureSteps = total
+        } else if (total > lastObservedAdventureSteps) {
+            val delta = total - lastObservedAdventureSteps
+            sessionSteps += delta
+            hardwareStepsInSession += delta
+            lastObservedAdventureSteps = total
+        }
+    }
 
     fun finishWorkoutSession() {
         if (!isRunning && summary != null) {
@@ -111,10 +126,11 @@ fun WorkoutScreen(
             updatedState
         }
 
+        val additionalAdventureSteps = (resSummary.effectiveAdventureSteps - hardwareStepsInSession).coerceAtLeast(0)
         scope.launch {
             repository.savePetState(finalState)
-            if (workoutType == WorkoutType.EXPEDITION_TREK && resSummary.effectiveAdventureSteps > 0) {
-                repository.addAdventureSteps(resSummary.effectiveAdventureSteps)
+            if (workoutType == WorkoutType.EXPEDITION_TREK && additionalAdventureSteps > 0) {
+                repository.addAdventureSteps(additionalAdventureSteps)
             }
         }
         summary = resSummary
@@ -149,19 +165,21 @@ fun WorkoutScreen(
         }
     }
 
-    // Workout timer & step accumulator
+    // Workout timer & heart-rate cadence fallback when hardware step sensor is idle/unavailable
     LaunchedEffect(isRunning) {
         tracker.startListening()
         while (isRunning) {
+            val stepsBeforeTick = sessionSteps
             delay(1000L)
             elapsedSeconds++
-            // Average walking/running cadence simulation (1.5 to 2.5 steps per second)
-            val cadence = when {
-                currentBpm >= 140 -> 3
-                currentBpm >= 100 -> 2
-                else -> 1
+            if (sessionSteps == stepsBeforeTick && currentBpm > 0) {
+                val cadence = when {
+                    currentBpm >= 140 -> 3
+                    currentBpm >= 100 -> 2
+                    else -> 1
+                }
+                sessionSteps += cadence
             }
-            sessionSteps += cadence
         }
     }
 
@@ -182,8 +200,8 @@ fun WorkoutScreen(
     ) {
         if (summary == null) {
             val displayConfig = WatchDisplayConfig.current()
-            val horizInset = if (displayConfig.isRound) 18.dp else 8.dp
-            val topInset = if (displayConfig.isRound) 14.dp else 6.dp
+            val horizInset = if (displayConfig.isRound) 30.dp else 8.dp
+            val topInset = if (displayConfig.isRound) 26.dp else 6.dp
 
             // Active Workout HUD
             Column(
@@ -196,7 +214,8 @@ fun WorkoutScreen(
                 // Top Header: Type & Zone Pill
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(),
+                        .fillMaxWidth()
+                        .padding(horizontal = if (displayConfig.isRound) 16.dp else 0.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -347,7 +366,7 @@ fun WorkoutScreen(
                 Button(
                     onClick = { finishWorkoutSession() },
                     modifier = Modifier
-                        .fillMaxWidth(0.85f)
+                        .fillMaxWidth(if (displayConfig.isRound) 0.72f else 0.85f)
                         .height(28.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD50000)),
                     shape = RoundedCornerShape(14.dp)
@@ -364,13 +383,15 @@ fun WorkoutScreen(
         } else {
             // Summary Completion Screen
             val res = summary!!
-            val listState = rememberScalingLazyListState()
+            val listState = rememberScalingLazyListState(initialCenterItemIndex = 0)
 
             ScalingLazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(horizontal = 8.dp),
+                    .padding(horizontal = 14.dp),
                 state = listState,
+                autoCentering = null,
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(top = 18.dp, bottom = 26.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 item {
@@ -389,7 +410,7 @@ fun WorkoutScreen(
                         speciesId = petState.speciesId,
                         isAmbient = false,
                         overrideFrame = SpriteFrame.IDLE_A,
-                        size = 56.dp
+                        size = 44.dp
                     )
                 }
 
@@ -407,7 +428,13 @@ fun WorkoutScreen(
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("AVG HR", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
-                            Text("${res.averageBpm} BPM", fontSize = 8.sp, color = Color(0xFF00E676), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                            Text(
+                                text = if (res.averageBpm > 0) "${res.averageBpm} BPM" else "-- BPM",
+                                fontSize = 8.sp,
+                                color = Color(0xFF00E676),
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
                         }
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                             Text("CALORIES", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
@@ -470,6 +497,7 @@ fun WorkoutScreen(
                             color = Color.Black
                         )
                     }
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
         }

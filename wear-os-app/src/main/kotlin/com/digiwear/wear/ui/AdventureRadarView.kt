@@ -185,7 +185,7 @@ fun AdventureRadarView(
                 DigiVectorIcon(type = DigiIconType.SCAN, size = 9.dp, tint = Color(0xFFFFD54F))
             }
             Text(
-                text = if (remSteps == 0) "DESTINATION REACHED - ENCOUNTER READY" else "LOCK: -$remSteps STEPS TO ${bossName?.uppercase() ?: "SECTOR BOSS"}",
+                text = if (remSteps == 0) "DESTINATION REACHED - ENCOUNTER READY" else "LOCK: $remSteps STEPS TO ${bossName?.uppercase() ?: "SECTOR BOSS"}",
                 fontSize = 7.sp,
                 fontWeight = FontWeight.Bold,
                 color = if (isNearBoss) Color(0xFFFFD54F) else Color(0xFFB0BEC5),

@@ -267,6 +267,11 @@ fun WearNavigationHost(
             buzzerManager.isEnabled = enabled
         }
     }
+    androidx.compose.runtime.DisposableEffect(buzzerManager) {
+        onDispose {
+            buzzerManager.release()
+        }
+    }
 
     // Guarantee low-power monochrome display (OPR <= 15%) in Ambient Mode regardless of active sub-screen
     if (ambientState.isAmbient && currentScreen != WearScreen.MAIN) {
@@ -319,6 +324,7 @@ fun WearNavigationHost(
             onBack = { currentScreen = WearScreen.MAIN }
         )
         WearScreen.DIGIDEX -> com.digiwear.wear.ui.WatchDigiDexScreen(
+            repository = repository,
             onBack = { currentScreen = WearScreen.STATUS }
         )
         WearScreen.SETTINGS -> SettingsScreen(

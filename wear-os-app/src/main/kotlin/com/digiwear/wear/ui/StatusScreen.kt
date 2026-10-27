@@ -57,6 +57,8 @@ fun StatusScreen(
     val petState by repository.petStateFlow.collectAsState(initial = PetState())
     val backupPet by repository.backupPetStateFlow.collectAsState(initial = null)
     val memorials by repository.memorialsFlow.collectAsState(initial = emptyList())
+    val discoveredIds by repository.discoveredSpeciesFlow.collectAsState(initial = emptySet())
+    val maskSpoilers by repository.maskUndiscoveredSpeciesFlow.collectAsState(initial = true)
     val displayConfig = WatchDisplayConfig.current()
     val species = remember(petState.speciesId) { PetSpecies.getById(petState.speciesId) }
     val nextEvo = remember(petState) { EvolutionEngine.evaluateEvolution(petState) }
@@ -319,7 +321,7 @@ fun StatusScreen(
                     )
                     if (lineagePath.isNotEmpty()) {
                         Text(
-                            text = lineagePath.joinToString("->") { it.name.take(6) },
+                            text = lineagePath.joinToString(" -> ") { if (!maskSpoilers || discoveredIds.contains(it.id)) it.name else "???" },
                             fontSize = 7.sp,
                             color = Color(0xFF80CBC4),
                             fontFamily = FontFamily.Monospace
@@ -337,6 +339,7 @@ fun StatusScreen(
                         species.evolutionRules.forEach { rule ->
                             val target = PetSpecies.getById(rule.targetSpeciesId)
                             val isReady = nextEvo?.id == target.id
+                            val isRevealed = !maskSpoilers || discoveredIds.contains(target.id)
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -352,12 +355,13 @@ fun StatusScreen(
                                     speciesId = target.id,
                                     isAmbient = false,
                                     overrideFrame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !isRevealed,
                                     size = 20.dp
                                 )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Column(modifier = Modifier.weight(1f)) {
                                     Text(
-                                        text = "-> ${target.name} ${if (isReady) "[READY]" else ""}",
+                                        text = "-> ${if (isRevealed) target.name else "???"} ${if (isReady) "[READY]" else ""}",
                                         fontSize = 7.5.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = if (isReady) Color(0xFF00E676) else Color.White,
@@ -401,7 +405,20 @@ fun StatusScreen(
                             val partnerId = if (recipe.primarySpeciesId == species.id) recipe.secondarySpeciesId else recipe.primarySpeciesId
                             val partner = PetSpecies.getById(partnerId)
                             val target = PetSpecies.getById(recipe.targetSpeciesId)
+                            val partnerRevealed = !maskSpoilers || discoveredIds.contains(partner.id)
+                            val targetRevealed = !maskSpoilers || discoveredIds.contains(target.id)
+                            val partnerName = if (partnerRevealed) partner.name else "???"
+                            val targetName = if (targetRevealed) target.name else "???"
                             val isSelfModeChange = recipe.primarySpeciesId == recipe.secondarySpeciesId
+                            val hasBackupPartner = backupPet?.speciesId == partner.id
+                            val canExecuteNow = if (isSelfModeChange) {
+                                petState.effort >= 4 && petState.victories >= 15
+                            } else {
+                                hasBackupPartner && com.digiwear.core.fusion.JogressEngine.findFusionRecipe(
+                                    petState.speciesId,
+                                    backupPet!!.speciesId
+                                ) != null
+                            }
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -420,6 +437,7 @@ fun StatusScreen(
                                             speciesId = partner.id,
                                             isAmbient = false,
                                             overrideFrame = SpriteFrame.IDLE_A,
+                                            isSilhouette = !partnerRevealed,
                                             size = 18.dp
                                         )
                                         Text(" -> ", fontSize = 7.sp, color = Color(0xFFFFD54F), fontWeight = FontWeight.Black)
@@ -427,12 +445,13 @@ fun StatusScreen(
                                             speciesId = target.id,
                                             isAmbient = false,
                                             overrideFrame = SpriteFrame.IDLE_A,
+                                            isSilhouette = !targetRevealed,
                                             size = 20.dp
                                         )
                                         Spacer(modifier = Modifier.width(3.dp))
                                         Column {
                                             Text(
-                                                text = if (isSelfModeChange) "MODE: ${target.name.take(10)}" else "+${partner.name.take(7)} -> ${target.name.take(8)}",
+                                                text = if (isSelfModeChange) "MODE: ${targetName.take(10)}" else "+${partnerName.take(7)} -> ${targetName.take(8)}",
                                                 fontSize = 7.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = Color.White,
@@ -449,25 +468,49 @@ fun StatusScreen(
                                     Button(
                                         onClick = {
                                             scope.launch {
-                                                val fused = com.digiwear.core.fusion.JogressEngine.executeFusion(
-                                                    primary = petState,
-                                                    secondarySpeciesId = partner.id,
-                                                    secondaryVictories = 15,
-                                                    secondaryEffort = 4
-                                                )
-                                                repository.savePetState(fused)
-                                                fusionFeedback = "Awakened ${target.name}!"
+                                                if (isSelfModeChange && canExecuteNow) {
+                                                    val fused = com.digiwear.core.fusion.JogressEngine.executeFusion(
+                                                        primary = petState,
+                                                        secondarySpeciesId = partner.id,
+                                                        secondaryVictories = petState.victories,
+                                                        secondaryEffort = petState.effort
+                                                    )
+                                                    repository.savePetState(fused)
+                                                    fusionFeedback = "Awakened ${target.name}!"
+                                                } else if (hasBackupPartner) {
+                                                    val fused = repository.performDirectJogress()
+                                                    fusionFeedback = if (fused != null) {
+                                                        "Awakened ${target.name}!"
+                                                    } else {
+                                                        "Needs 4 Effort or 15 Wins!"
+                                                    }
+                                                } else {
+                                                    fusionFeedback = if (isSelfModeChange) {
+                                                        "Needs 4 Effort & 15 Wins!"
+                                                    } else {
+                                                        "Need ${partner.name} in Cryo!"
+                                                    }
+                                                }
                                             }
                                         },
+                                        enabled = canExecuteNow,
                                         modifier = Modifier.height(22.dp),
-                                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(recipe.fusionType.badgeColorHex))
+                                        colors = ButtonDefaults.buttonColors(
+                                            backgroundColor = if (canExecuteNow) Color(recipe.fusionType.badgeColorHex) else Color(0xFF37474F)
+                                        )
                                     ) {
                                         Row(
                                             verticalAlignment = Alignment.CenterVertically,
                                             horizontalArrangement = Arrangement.spacedBy(2.dp)
                                         ) {
-                                            DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = Color.Black)
-                                            Text("FUSE", fontSize = 6.5.sp, fontWeight = FontWeight.Black, color = Color.Black, fontFamily = FontFamily.Monospace)
+                                            DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = if (canExecuteNow) Color.Black else Color.LightGray)
+                                            Text(
+                                                text = if (canExecuteNow) "FUSE" else "LOCKED",
+                                                fontSize = 6.5.sp,
+                                                fontWeight = FontWeight.Black,
+                                                color = if (canExecuteNow) Color.Black else Color.LightGray,
+                                                fontFamily = FontFamily.Monospace
+                                            )
                                         }
                                     }
                                 }

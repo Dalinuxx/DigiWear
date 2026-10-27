@@ -79,10 +79,15 @@ fun DigiVaultScreen(
 ) {
     val vaultPets by db.phoneDao().getAllVaultPetsFlow().collectAsState(initial = emptyList())
     val memorials by db.phoneDao().getAllMemorialsFlow().collectAsState(initial = emptyList())
+    val discoveredEntities by db.phoneDao().getAllDiscoveredFlow().collectAsState(initial = emptyList())
+    val discoveredIds = remember(discoveredEntities) { discoveredEntities.map { it.speciesId }.toSet() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val clipboardManager = LocalClipboardManager.current
     val buzzerManager = remember { com.digiwear.companion.sound.BuzzerManager(context) }
+    androidx.compose.runtime.DisposableEffect(buzzerManager) {
+        onDispose { buzzerManager.release() }
+    }
     var activeCelebrationSpeciesId by remember { mutableStateOf<Int?>(null) }
     var activeCelebrationTitle by remember { mutableStateOf<String?>(null) }
 
@@ -105,20 +110,7 @@ fun DigiVaultScreen(
     LaunchedEffect(Unit) {
         val latest = db.phoneDao().getLatestSnapshot()
         if (latest != null) {
-            activePetForDeposit = PetState(
-                speciesId = latest.speciesId,
-                currentHp = latest.currentHp,
-                maxHp = latest.maxHp,
-                hunger = latest.hunger,
-                strength = latest.strength,
-                weight = latest.weight,
-                ageSeconds = latest.ageSeconds,
-                careMistakes = latest.careMistakes,
-                effort = latest.effort,
-                overfeedCount = latest.overfeedCount,
-                totalBattles = latest.totalBattles,
-                victories = latest.victories
-            )
+            activePetForDeposit = latest.toDomain()
         }
     }
 
@@ -142,8 +134,8 @@ fun DigiVaultScreen(
             tag = "DIGIVAULT // CRYO-STASIS & COMPENDIUM",
             title = when (activeTab) {
                 0 -> "Preserved Partners (${vaultPets.size})"
-                1 -> "500-Species Master DigiDex"
-                2 -> "DNA Jogress & DigiXros Lab (${JogressEngine.BASE_RECIPES.size})"
+                1 -> "550-Species Master DigiDex"
+                2 -> "DNA Jogress & DigiXros Lab (${JogressEngine.RECIPES.size})"
                 else -> "Hall of Fame Memorial (${memorials.size})"
             },
             accentColor = when (activeTab) {
@@ -477,13 +469,13 @@ fun DigiVaultScreen(
 
             2 -> {
                 // =========================================================================
-                // SUB-TAB 2: FUSION LAB (CANON 85 RECIPES BROWSER & EXECUTION)
+                // SUB-TAB 2: FUSION LAB (CANON RECIPES BROWSER & EXECUTION)
                 // =========================================================================
                 OutlinedTextField(
                     value = fusionSearchQuery,
                     onValueChange = { fusionSearchQuery = it },
                     modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search 85 recipes by species name...", color = Color.Gray, fontSize = 12.sp) },
+                    placeholder = { Text("Search ${JogressEngine.RECIPES.size} recipes by species name...", color = Color.Gray, fontSize = 12.sp) },
                     leadingIcon = { DigiVectorIcon(type = DigiIconType.SEARCH_LENS, tint = Color.Gray, size = 16.dp) },
                     singleLine = true
                 )
@@ -496,7 +488,7 @@ fun DigiVaultScreen(
                         .horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    FilterChip("All (${JogressEngine.BASE_RECIPES.size})", fusionTypeFilter == null && !onlyShowCanFuseNow) {
+                    FilterChip("All (${JogressEngine.RECIPES.size})", fusionTypeFilter == null && !onlyShowCanFuseNow) {
                         fusionTypeFilter = null
                         onlyShowCanFuseNow = false
                     }
@@ -516,23 +508,32 @@ fun DigiVaultScreen(
                 // Determine owned species IDs
                 val ownedActiveId = activePetForDeposit?.speciesId
                 val ownedVaultIds = remember(vaultPets) { vaultPets.map { it.speciesId }.toSet() }
+                // Unified spoiler setting: same rule as DigiDex & evolution guides.
+                val maskSpoilers = remember(activeTab) { wearableManager.getMaskUndiscoveredSpecies() }
+                val isRevealed: (Int) -> Boolean = { id ->
+                    !maskSpoilers || discoveredIds.contains(id) || id == ownedActiveId || ownedVaultIds.contains(id)
+                }
 
                 val displayedRecipes = remember(
-                    JogressEngine.BASE_RECIPES,
+                    JogressEngine.RECIPES,
                     fusionSearchQuery,
                     fusionTypeFilter,
                     onlyShowCanFuseNow,
                     ownedVaultIds,
-                    ownedActiveId
+                    ownedActiveId,
+                    discoveredIds,
+                    maskSpoilers
                 ) {
-                    JogressEngine.BASE_RECIPES.filter { recipe ->
+                    JogressEngine.RECIPES.filter { recipe ->
                         val primarySp = PetSpecies.getById(recipe.primarySpeciesId)
                         val secondarySp = PetSpecies.getById(recipe.secondarySpeciesId)
                         val targetSp = PetSpecies.getById(recipe.targetSpeciesId)
 
-                        val matchesSearch = primarySp.name.contains(fusionSearchQuery, ignoreCase = true) ||
-                                secondarySp.name.contains(fusionSearchQuery, ignoreCase = true) ||
-                                targetSp.name.contains(fusionSearchQuery, ignoreCase = true)
+                        // Only match names that are revealed, so search can't leak hidden species.
+                        val matchesSearch = fusionSearchQuery.isBlank() ||
+                                (isRevealed(primarySp.id) && primarySp.name.contains(fusionSearchQuery, ignoreCase = true)) ||
+                                (isRevealed(secondarySp.id) && secondarySp.name.contains(fusionSearchQuery, ignoreCase = true)) ||
+                                (isRevealed(targetSp.id) && targetSp.name.contains(fusionSearchQuery, ignoreCase = true))
 
                         val matchesType = fusionTypeFilter == null || recipe.fusionType == fusionTypeFilter
 
@@ -650,8 +651,8 @@ fun DigiVaultScreen(
                                     ) {
                                         // Component 1
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            SpriteCanvasRenderer(speciesId = primarySp.id, frame = SpriteFrame.IDLE_A, size = 36.dp)
-                                            Text(primarySp.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            SpriteCanvasRenderer(speciesId = primarySp.id, frame = SpriteFrame.IDLE_A, isSilhouette = !isRevealed(primarySp.id), size = 36.dp)
+                                            Text(if (isRevealed(primarySp.id)) primarySp.name else "???", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             Text(
                                                 text = when {
                                                     hasPrimaryInActive -> "Active"
@@ -668,8 +669,8 @@ fun DigiVaultScreen(
 
                                         // Component 2
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            SpriteCanvasRenderer(speciesId = secondarySp.id, frame = SpriteFrame.IDLE_A, size = 36.dp)
-                                            Text(secondarySp.name, fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            SpriteCanvasRenderer(speciesId = secondarySp.id, frame = SpriteFrame.IDLE_A, isSilhouette = !isRevealed(secondarySp.id), size = 36.dp)
+                                            Text(if (isRevealed(secondarySp.id)) secondarySp.name else "???", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                             Text(
                                                 text = when {
                                                     hasSecondaryInActive -> "Active"
@@ -686,15 +687,15 @@ fun DigiVaultScreen(
 
                                         // Target
                                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                            SpriteCanvasRenderer(speciesId = targetSp.id, frame = SpriteFrame.IDLE_A, size = 42.dp)
-                                            Text(targetSp.name, fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color(0xFF80D8FF))
+                                            SpriteCanvasRenderer(speciesId = targetSp.id, frame = SpriteFrame.IDLE_A, isSilhouette = !isRevealed(targetSp.id), size = 42.dp)
+                                            Text(if (isRevealed(targetSp.id)) targetSp.name else "???", fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color(0xFF80D8FF))
                                             Text(targetSp.stage.displayName, fontSize = 8.sp, color = Color.Gray)
                                         }
                                     }
 
                                     Spacer(modifier = Modifier.height(6.dp))
                                     Text(
-                                        text = recipe.description,
+                                        text = if (isRevealed(targetSp.id)) recipe.description else "Discover the fusion result to unlock its lore.",
                                         fontSize = 9.5.sp,
                                         color = Color.LightGray
                                     )
@@ -727,7 +728,7 @@ fun DigiVaultScreen(
                                         ) {
                                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                                 DigiVectorIcon(type = DigiIconType.DNA_HELIX, size = 11.dp, tint = Color.Black)
-                                                Text("AWAKEN ${targetSp.name.uppercase()}", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.Black, fontFamily = FontFamily.Monospace)
+                                                Text("AWAKEN ${if (isRevealed(targetSp.id)) targetSp.name.uppercase() else "???"}", fontSize = 10.sp, fontWeight = FontWeight.Black, color = Color.Black, fontFamily = FontFamily.Monospace)
                                             }
                                         }
                                     }
@@ -903,23 +904,10 @@ fun DigiVaultScreen(
                     onClick = {
                         scope.launch {
                             db.phoneDao().insertVaultPet(
-                                StoredDigimonEntity(
-                                    speciesId = p.speciesId,
-                                    speciesName = spec.name,
-                                    customNickname = nicknameInput.trim(),
-                                    stageName = spec.stage.displayName,
-                                    attributeName = spec.attribute.displayName,
-                                    currentHp = p.currentHp,
-                                    maxHp = p.maxHp,
-                                    hunger = p.hunger,
-                                    strength = p.strength,
-                                    weight = p.weight,
-                                    ageSeconds = p.ageSeconds,
-                                    careMistakes = p.careMistakes,
-                                    effort = p.effort,
-                                    overfeedCount = p.overfeedCount,
-                                    totalBattles = p.totalBattles,
-                                    victories = p.victories
+                                StoredDigimonEntity.fromDomain(
+                                    state = p,
+                                    species = spec,
+                                    nickname = nicknameInput.trim()
                                 )
                             )
                             db.phoneDao().clearActivePet()
@@ -1152,65 +1140,57 @@ fun DigiVaultScreen(
                                         secondaryVictories = executionCandidate.vaultPet.victories,
                                         secondaryEffort = executionCandidate.vaultPet.effort
                                     )
+                                    if (fusedState.speciesId != targetSp.id) {
+                                        pendingFusionExecution = null
+                                        actionStatusMessage = "Fusion requires at least 4 Effort or 15 Victories on either partner!"
+                                        return@launch
+                                    }
                                     activePetForDeposit = fusedState
-                                    wearableManager.sendPetStateToWatch(fusedState)
+                                    val sentToWatch = wearableManager.sendPetStateToWatch(fusedState)
                                     db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(fusedState))
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPet.id)
                                     DigiWearAppWidgetProvider.updateAllWidgets(context)
+                                    pendingFusionExecution = null
+                                    activeCelebrationSpeciesId = targetSp.id
+                                    activeCelebrationTitle = "DNA JOGRESS AWAKENING"
+                                    buzzerManager.playVictoryFanfare()
+                                    actionStatusMessage = if (sentToWatch) {
+                                        "Awakened ${targetSp.name} via ${recipe.fusionType.displayName} & synced to Watch!"
+                                    } else {
+                                        "Awakened ${targetSp.name} locally (Watch offline)."
+                                    }
                                 }
                                 is FusionExecutionCandidate.VaultWithVault -> {
-                                    val primaryState = PetState(
-                                        speciesId = executionCandidate.vaultPetA.speciesId,
-                                        currentHp = executionCandidate.vaultPetA.currentHp,
-                                        maxHp = executionCandidate.vaultPetA.maxHp,
-                                        hunger = executionCandidate.vaultPetA.hunger,
-                                        strength = executionCandidate.vaultPetA.strength,
-                                        weight = executionCandidate.vaultPetA.weight,
-                                        ageSeconds = executionCandidate.vaultPetA.ageSeconds,
-                                        careMistakes = executionCandidate.vaultPetA.careMistakes,
-                                        effort = executionCandidate.vaultPetA.effort,
-                                        overfeedCount = executionCandidate.vaultPetA.overfeedCount,
-                                        totalBattles = executionCandidate.vaultPetA.totalBattles,
-                                        victories = executionCandidate.vaultPetA.victories
-                                    )
+                                    val primaryState = executionCandidate.vaultPetA.toDomain().copy(isFrozen = false)
                                     val fusedState = JogressEngine.executeFusion(
                                         primary = primaryState,
                                         secondarySpeciesId = executionCandidate.vaultPetB.speciesId,
                                         secondaryVictories = executionCandidate.vaultPetB.victories,
                                         secondaryEffort = executionCandidate.vaultPetB.effort
                                     )
+                                    if (fusedState.speciesId != targetSp.id) {
+                                        pendingFusionExecution = null
+                                        actionStatusMessage = "Fusion requires at least 4 Effort or 15 Victories on either Vault partner!"
+                                        return@launch
+                                    }
                                     // Insert resulting fused monster into Vault
                                     db.phoneDao().insertVaultPet(
-                                        StoredDigimonEntity(
-                                            speciesId = fusedState.speciesId,
-                                            speciesName = targetSp.name,
-                                            customNickname = "Awakened ${targetSp.name}",
-                                            stageName = targetSp.stage.displayName,
-                                            attributeName = targetSp.attribute.displayName,
-                                            currentHp = fusedState.currentHp,
-                                            maxHp = fusedState.maxHp,
-                                            hunger = fusedState.hunger,
-                                            strength = fusedState.strength,
-                                            weight = fusedState.weight,
-                                            ageSeconds = fusedState.ageSeconds,
-                                            careMistakes = fusedState.careMistakes,
-                                            effort = fusedState.effort,
-                                            overfeedCount = fusedState.overfeedCount,
-                                            totalBattles = fusedState.totalBattles,
-                                            victories = fusedState.victories
+                                        StoredDigimonEntity.fromDomain(
+                                            state = fusedState,
+                                            species = targetSp,
+                                            nickname = "Awakened ${targetSp.name}"
                                         )
                                     )
                                     // Remove both consumed vault partners
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPetA.id)
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPetB.id)
+                                    pendingFusionExecution = null
+                                    activeCelebrationSpeciesId = targetSp.id
+                                    activeCelebrationTitle = "DNA JOGRESS AWAKENING"
+                                    buzzerManager.playVictoryFanfare()
+                                    actionStatusMessage = "Awakened ${targetSp.name} in Cryo-Vault via ${recipe.fusionType.displayName}!"
                                 }
                             }
-
-                            pendingFusionExecution = null
-                            activeCelebrationSpeciesId = targetSp.id
-                            activeCelebrationTitle = "DNA JOGRESS AWAKENING"
-                            buzzerManager.playVictoryFanfare()
-                            actionStatusMessage = "Awakened ${targetSp.name} via ${recipe.fusionType.displayName}!"
                         }
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00E676)),

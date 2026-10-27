@@ -44,6 +44,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontFamily
@@ -109,13 +110,20 @@ fun SpriteStudioScreen(
     val scrollState = rememberScrollState()
     val context = LocalContext.current
 
+    LaunchedEffect(Unit) {
+        com.digiwear.companion.render.PixelArtMatrices.loadCustomMatrices(context)
+    }
+
     val discoveredEntities by db.phoneDao().getAllDiscoveredFlow().collectAsState(initial = emptyList())
     val discoveredMap = remember(discoveredEntities) { discoveredEntities.associateBy { it.speciesId } }
     val summary = remember(discoveredMap) { DigiDexEngine.calculateSummary(discoveredMap.keys) }
+    val maskSpoilers = remember { wearableManager.getMaskUndiscoveredSpecies() }
 
     val selectedSpecies = remember(selectedSpeciesId) { PetSpecies.getById(selectedSpeciesId) }
+    val isCurrentDiscovered = discoveredMap.containsKey(selectedSpeciesId)
+    val isCurrentRevealed = !maskSpoilers || isCurrentDiscovered
 
-    val filteredRoster = remember(searchQuery, selectedStageFilter, discoveryFilterMode, discoveredMap) {
+    val filteredRoster = remember(searchQuery, selectedStageFilter, discoveryFilterMode, discoveredMap, maskSpoilers) {
         PetSpecies.SPECIES_REGISTRY.values.filter { sp ->
             val isDiscovered = discoveredMap.containsKey(sp.id)
             val matchesDiscovery = when (discoveryFilterMode) {
@@ -123,7 +131,9 @@ fun SpriteStudioScreen(
                 "UNDISCOVERED" -> !isDiscovered
                 else -> true
             }
-            val matchesSearch = sp.name.contains(searchQuery, ignoreCase = true) ||
+            // While masked, only match names of revealed species so searching can't leak hidden names.
+            val nameSearchable = !maskSpoilers || isDiscovered
+            val matchesSearch = (nameSearchable && sp.name.contains(searchQuery, ignoreCase = true)) ||
                     sp.id.toString().contains(searchQuery.trim())
             val matchesStage = selectedStageFilter == null || sp.stage == selectedStageFilter
             matchesDiscovery && matchesSearch && matchesStage
@@ -304,12 +314,13 @@ fun SpriteStudioScreen(
                 items(filteredRoster, key = { it.id }) { sp ->
                     val selected = selectedSpeciesId == sp.id
                     val isDiscovered = discoveredMap.containsKey(sp.id)
+                    val isRevealed = !maskSpoilers || isDiscovered
                     Row(
                         modifier = Modifier
                             .background(
                                 when {
                                     selected -> Color(0xFF2E220D)
-                                    isDiscovered -> DigiWearPalette.CardSurface
+                                    isRevealed -> DigiWearPalette.CardSurface
                                     else -> Color(0xFF0B1017)
                                 },
                                 RoundedCornerShape(10.dp)
@@ -318,7 +329,7 @@ fun SpriteStudioScreen(
                                 1.dp,
                                 when {
                                     selected -> DigiWearPalette.CrestGold
-                                    isDiscovered -> DigiWearPalette.CardBorder
+                                    isRevealed -> DigiWearPalette.CardBorder
                                     else -> Color(0xFF1E2836)
                                 },
                                 RoundedCornerShape(10.dp)
@@ -327,21 +338,20 @@ fun SpriteStudioScreen(
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        if (isDiscovered) {
-                            SpriteCanvasRenderer(
-                                speciesId = sp.id,
-                                frame = SpriteFrame.IDLE_A,
-                                size = 18.dp
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                        }
+                        SpriteCanvasRenderer(
+                            speciesId = sp.id,
+                            frame = SpriteFrame.IDLE_A,
+                            isSilhouette = !isRevealed,
+                            size = 18.dp
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (isDiscovered) "#${sp.id} ${sp.name}" else "#${sp.id} ???",
+                            text = if (isRevealed) "#${sp.id} ${sp.name}" else "#${sp.id} ???",
                             fontSize = 11.sp,
                             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                             color = when {
                                 selected -> DigiWearPalette.CrestGold
-                                isDiscovered -> Color.White
+                                isRevealed -> Color.White
                                 else -> Color(0xFF546E7A)
                             },
                             fontFamily = FontFamily.Monospace
@@ -363,7 +373,6 @@ fun SpriteStudioScreen(
                 modifier = Modifier.padding(14.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                val isCurrentDiscovered = discoveredMap.containsKey(selectedSpeciesId)
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
@@ -371,13 +380,13 @@ fun SpriteStudioScreen(
                 ) {
                     Column {
                         Text(
-                            text = if (isCurrentDiscovered) "#${selectedSpecies.id} ${selectedSpecies.name}" else "#${selectedSpecies.id} ???",
+                            text = if (isCurrentRevealed) "#${selectedSpecies.id} ${selectedSpecies.name}" else "#${selectedSpecies.id} ???",
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Black,
-                            color = if (isCurrentDiscovered) Color.White else Color(0xFFFFD54F)
+                            color = if (isCurrentRevealed) Color.White else Color(0xFFFFD54F)
                         )
                         Text(
-                            text = if (isCurrentDiscovered) {
+                            text = if (isCurrentRevealed) {
                                 "HP ${selectedSpecies.baseHp} • PWR ${selectedSpecies.basePower} • WT ${selectedSpecies.baselineWeight}G"
                             } else {
                                 "UNDISCOVERED SPECIES ENTRY"
@@ -386,7 +395,7 @@ fun SpriteStudioScreen(
                             color = Color(0xFF80CBC4),
                             fontFamily = FontFamily.Monospace
                         )
-                        if (isCurrentDiscovered) {
+                        if (isCurrentRevealed) {
                             val ent = discoveredMap[selectedSpeciesId]
                             Text(
                                 text = "Times Raised: ${ent?.timesRaised ?: 0} • Defeated: ${ent?.timesDefeated ?: 0}",
@@ -398,11 +407,11 @@ fun SpriteStudioScreen(
                     }
                     Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         StageBadge(selectedSpecies.stage.displayName)
-                        AttributeBadge(selectedSpecies.attribute.displayName)
+                        AttributeBadge(if (isCurrentRevealed) selectedSpecies.attribute.displayName else "???")
                     }
                 }
 
-                if (!isCurrentDiscovered) {
+                if (!isCurrentRevealed) {
                     Spacer(modifier = Modifier.height(6.dp))
                     Surface(
                         shape = RoundedCornerShape(8.dp),
@@ -444,13 +453,23 @@ fun SpriteStudioScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                             DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 10.dp, tint = Color(0xFFFFB74D))
                             Text("SPECIAL MOVE:", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFB74D), fontFamily = FontFamily.Monospace)
-                            Text(signatureAttack, fontSize = 11.sp, fontWeight = FontWeight.Black, color = Color.White, fontFamily = FontFamily.Monospace)
+                            Text(
+                                text = if (isCurrentRevealed) signatureAttack else "???",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                fontFamily = FontFamily.Monospace
+                            )
                         }
-                        val attrAdvantage = when (selectedSpecies.attribute.displayName.uppercase()) {
-                            "VACCINE" -> "STRONG VS VIRUS"
-                            "DATA" -> "STRONG VS VACCINE"
-                            "VIRUS" -> "STRONG VS DATA"
-                            else -> "NEUTRAL MATCHUP"
+                        val attrAdvantage = if (!isCurrentRevealed) {
+                            "???"
+                        } else {
+                            when (selectedSpecies.attribute.displayName.uppercase()) {
+                                "VACCINE" -> "STRONG VS VIRUS"
+                                "DATA" -> "STRONG VS VACCINE"
+                                "VIRUS" -> "STRONG VS DATA"
+                                else -> "NEUTRAL MATCHUP"
+                            }
                         }
                         Text(attrAdvantage, fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF80CBC4), fontFamily = FontFamily.Monospace)
                     }
@@ -460,6 +479,7 @@ fun SpriteStudioScreen(
 
                 StudioSpritePreviewShell(
                     selectedSpeciesId = selectedSpeciesId,
+                    isDiscovered = isCurrentRevealed,
                     previewMode = previewMode,
                     onPreviewModeChange = { previewMode = it },
                     selectedFrameIndex = selectedFrameIndex,
@@ -490,19 +510,23 @@ fun SpriteStudioScreen(
 
                 Spacer(modifier = Modifier.height(10.dp))
                 Button(
-                    onClick = { showCutInPortrait = true },
+                    onClick = { if (isCurrentRevealed) showCutInPortrait = true },
+                    enabled = isCurrentRevealed,
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF1E2A38)),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = Color(0xFF1E2A38),
+                        disabledContainerColor = Color(0xFF141B24)
+                    ),
                     shape = RoundedCornerShape(8.dp),
-                    border = BorderStroke(1.dp, Color(0xFFFFD54F))
+                    border = BorderStroke(1.dp, if (isCurrentRevealed) Color(0xFFFFD54F) else Color(0xFF37474F))
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 12.dp, tint = Color(0xFFFFD54F))
+                        DigiVectorIcon(type = DigiIconType.LIGHTNING_BOLT, size = 12.dp, tint = if (isCurrentRevealed) Color(0xFFFFD54F) else Color.Gray)
                         Text(
-                            text = "VIEW OFFICIAL ALBUM CUT-IN PORTRAIT",
+                            text = if (isCurrentRevealed) "VIEW OFFICIAL ALBUM CUT-IN PORTRAIT" else "CUT-IN PORTRAIT LOCKED (DISCOVER FIRST)",
                             fontSize = 11.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFFFD54F),
+                            color = if (isCurrentRevealed) Color(0xFFFFD54F) else Color.Gray,
                             fontFamily = FontFamily.Monospace
                         )
                     }
@@ -551,6 +575,8 @@ fun SpriteStudioScreen(
                     ) {
                         eggLineage.forEachIndexed { idx, stepSp ->
                             val isCurrent = stepSp.id == selectedSpeciesId
+                            val stepDiscovered = discoveredMap.containsKey(stepSp.id)
+                            val stepRevealed = !maskSpoilers || stepDiscovered
                             Row(
                                 modifier = Modifier
                                     .background(
@@ -566,14 +592,20 @@ fun SpriteStudioScreen(
                                     .padding(horizontal = 8.dp, vertical = 4.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                SpriteCanvasRenderer(speciesId = stepSp.id, frame = SpriteFrame.IDLE_A, size = 22.dp)
+                                SpriteCanvasRenderer(
+                                    speciesId = stepSp.id,
+                                    frame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !stepRevealed,
+                                    size = 22.dp
+                                )
                                 Spacer(modifier = Modifier.width(4.dp))
                                 if (idx == 0) {
                                     DigiVectorIcon(type = DigiIconType.EGG, size = 11.dp, tint = Color(0xFFFFD54F))
                                     Spacer(modifier = Modifier.width(3.dp))
                                 }
+                                val displayName = if (stepRevealed) stepSp.name else "???"
                                 Text(
-                                    text = "${if (idx > 0) "-> " else ""}${stepSp.name} (${stepSp.stage.displayName})",
+                                    text = "${if (idx > 0) "-> " else ""}$displayName (${stepSp.stage.displayName})",
                                     fontSize = 9.5.sp,
                                     fontWeight = if (isCurrent) FontWeight.Bold else FontWeight.Normal,
                                     color = if (isCurrent) Color(0xFF80D8FF) else Color.White,
@@ -596,6 +628,8 @@ fun SpriteStudioScreen(
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         preEvolutions.forEach { pre ->
+                            val preDiscovered = discoveredMap.containsKey(pre.id)
+                            val preRevealed = !maskSpoilers || preDiscovered
                             val rule = pre.evolutionRules.firstOrNull { it.targetSpeciesId == selectedSpeciesId }
                             Row(
                                 modifier = Modifier
@@ -605,12 +639,17 @@ fun SpriteStudioScreen(
                                     .padding(horizontal = 8.dp, vertical = 5.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                SpriteCanvasRenderer(speciesId = pre.id, frame = SpriteFrame.IDLE_A, size = 24.dp)
+                                SpriteCanvasRenderer(
+                                    speciesId = pre.id,
+                                    frame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !preRevealed,
+                                    size = 24.dp
+                                )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Column {
                                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                         DigiVectorIcon(type = DigiIconType.ARROW_LEFT, size = 10.dp, tint = Color.White)
-                                        Text("${pre.name} (${pre.stage.displayName})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                        Text("${if (preRevealed) pre.name else "???"} (${pre.stage.displayName})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
                                     rule?.let {
                                         Text(
@@ -635,14 +674,16 @@ fun SpriteStudioScreen(
                 } else {
                     selectedSpecies.evolutionRules.forEach { rule ->
                         val target = PetSpecies.getById(rule.targetSpeciesId)
+                        val targetDiscovered = discoveredMap.containsKey(target.id)
+                        val targetRevealed = !maskSpoilers || targetDiscovered
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 3.dp)
                                 .background(DigiWearPalette.CardInner, RoundedCornerShape(8.dp))
                                 .border(1.dp, Color(0xFF222E3C), RoundedCornerShape(8.dp))
-                                .clickable { selectedSpeciesId = target.id }
-                                .padding(8.dp),
+                            .clickable { selectedSpeciesId = target.id }
+                            .padding(8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
@@ -650,11 +691,16 @@ fun SpriteStudioScreen(
                                 modifier = Modifier.weight(1f),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                SpriteCanvasRenderer(speciesId = target.id, frame = SpriteFrame.IDLE_A, size = 34.dp)
+                                SpriteCanvasRenderer(
+                                    speciesId = target.id,
+                                    frame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !targetRevealed,
+                                    size = 34.dp
+                                )
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Column {
                                     Text(
-                                        text = "-> #${target.id} ${target.name} (${target.stage.displayName} • ${target.attribute.displayName})",
+                                        text = "-> #${target.id} ${if (targetRevealed) target.name else "???"} (${target.stage.displayName} • ${if (targetRevealed) target.attribute.displayName else "???"})",
                                         fontSize = 12.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color.White
@@ -684,6 +730,12 @@ fun SpriteStudioScreen(
                         val spA = PetSpecies.getById(recipe.primarySpeciesId)
                         val spB = PetSpecies.getById(recipe.secondarySpeciesId)
                         val target = PetSpecies.getById(recipe.targetSpeciesId)
+                        val aDisc = discoveredMap.containsKey(spA.id)
+                        val bDisc = discoveredMap.containsKey(spB.id)
+                        val tDisc = discoveredMap.containsKey(target.id)
+                        val aRevealed = !maskSpoilers || aDisc
+                        val bRevealed = !maskSpoilers || bDisc
+                        val tRevealed = !maskSpoilers || tDisc
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -699,21 +751,36 @@ fun SpriteStudioScreen(
                                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                                     DigiVectorIcon(type = DigiIconType.DNA_HELIX, size = 11.dp, tint = Color(recipe.fusionType.badgeColorHex))
                                     Text(
-                                        text = "${spA.name} + ${spB.name} = ${target.name}",
+                                        text = "${if (aRevealed) spA.name else "???"} + ${if (bRevealed) spB.name else "???"} = ${if (tRevealed) target.name else "???"}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
                                         color = Color(recipe.fusionType.badgeColorHex)
                                     )
                                 }
-                                Text(text = recipe.description, fontSize = 9.sp, color = Color.LightGray)
+                                Text(text = if (tRevealed) recipe.description else "Discover fusion partners to unlock lore.", fontSize = 9.sp, color = Color.LightGray)
                             }
                             Spacer(modifier = Modifier.width(8.dp))
-                            SpriteCanvasRenderer(speciesId = target.id, frame = SpriteFrame.IDLE_A, size = 36.dp)
+                            SpriteCanvasRenderer(
+                                speciesId = target.id,
+                                frame = SpriteFrame.IDLE_A,
+                                isSilhouette = !tRevealed,
+                                size = 36.dp
+                            )
                         }
                     }
                 }
             }
         }
+
+        Spacer(modifier = Modifier.height(14.dp))
+
+        // Interactive 16x16 Custom Pixel Art Matrix Override Card
+        CustomSpriteMatrixEditorCard(
+            speciesId = selectedSpeciesId,
+            frame = SpriteFrame.fromIndex(selectedFrameIndex),
+            isDiscovered = isCurrentRevealed,
+            context = context
+        )
 
         if (BuildConfig.DEBUG) {
             Spacer(modifier = Modifier.height(16.dp))
@@ -835,26 +902,10 @@ fun SpriteStudioScreen(
                                         weight = selectedSpecies.baselineWeight,
                                         effort = 4,
                                         victories = 10,
-                                        totalBattles = 12
+                                        totalBattles = 12,
+                                        lastProcessedTimestampUtc = System.currentTimeMillis() / 1000L
                                     )
-                                    db.phoneDao().insertSnapshot(
-                                        SyncedPetEntity(
-                                            syncedTimestampUtc = System.currentTimeMillis() / 1000L,
-                                            speciesId = morphedState.speciesId,
-                                            speciesName = selectedSpecies.name,
-                                            currentHp = morphedState.currentHp,
-                                            maxHp = morphedState.maxHp,
-                                            hunger = morphedState.hunger,
-                                            strength = morphedState.strength,
-                                            weight = morphedState.weight,
-                                            ageSeconds = morphedState.ageSeconds,
-                                            careMistakes = morphedState.careMistakes,
-                                            effort = morphedState.effort,
-                                            overfeedCount = morphedState.overfeedCount,
-                                            totalBattles = morphedState.totalBattles,
-                                            victories = morphedState.victories
-                                        )
-                                    )
+                                    db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(morphedState))
                                     val sentToWatch = wearableManager.sendPetStateToWatch(morphedState)
                                     DigiWearAppWidgetProvider.updateAllWidgets(context)
                                     syncMessage = if (sentToWatch) {
@@ -877,23 +928,25 @@ fun SpriteStudioScreen(
                         OutlinedButton(
                             onClick = {
                                 scope.launch {
+                                    val vaultState = PetState(
+                                        speciesId = selectedSpecies.id,
+                                        currentHp = selectedSpecies.baseHp,
+                                        maxHp = selectedSpecies.baseHp,
+                                        hunger = 4,
+                                        strength = 4,
+                                        weight = selectedSpecies.baselineWeight,
+                                        ageSeconds = 3600L,
+                                        careMistakes = 0,
+                                        effort = 4,
+                                        overfeedCount = 0,
+                                        totalBattles = 10,
+                                        victories = 8,
+                                        lastProcessedTimestampUtc = System.currentTimeMillis() / 1000L
+                                    )
                                     db.phoneDao().insertVaultPet(
-                                        StoredDigimonEntity(
-                                            speciesId = selectedSpecies.id,
-                                            speciesName = selectedSpecies.name,
-                                            stageName = selectedSpecies.stage.displayName,
-                                            attributeName = selectedSpecies.attribute.displayName,
-                                            currentHp = selectedSpecies.baseHp,
-                                            maxHp = selectedSpecies.baseHp,
-                                            hunger = 4,
-                                            strength = 4,
-                                            weight = selectedSpecies.baselineWeight,
-                                            ageSeconds = 3600L,
-                                            careMistakes = 0,
-                                            effort = 4,
-                                            overfeedCount = 0,
-                                            totalBattles = 10,
-                                            victories = 8,
+                                        StoredDigimonEntity.fromDomain(
+                                            state = vaultState,
+                                            species = selectedSpecies,
                                             notes = "Synthesized via DigiDex Sprite Studio (Debug)"
                                         )
                                     )
@@ -960,6 +1013,7 @@ private fun StageFilterChip(text: String, isSelected: Boolean, onClick: () -> Un
 @Composable
 private fun StudioSpritePreviewShell(
     selectedSpeciesId: Int,
+    isDiscovered: Boolean,
     previewMode: String,
     onPreviewModeChange: (String) -> Unit,
     selectedFrameIndex: Int,
@@ -1034,13 +1088,25 @@ private fun StudioSpritePreviewShell(
         }
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            SpriteCanvasRenderer(
-                speciesId = selectedSpeciesId,
-                frame = SpriteFrame.fromIndex(animFrame),
-                size = 106.dp
-            )
+            Box(contentAlignment = Alignment.Center) {
+                SpriteCanvasRenderer(
+                    speciesId = selectedSpeciesId,
+                    frame = SpriteFrame.fromIndex(animFrame),
+                    isSilhouette = !isDiscovered,
+                    size = 106.dp
+                )
+                if (!isDiscovered) {
+                    Text(
+                        text = "???",
+                        fontSize = 26.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF00E5FF),
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+            }
             Text(
-                text = SPRITE_GRID_FRAMES[animFrame].name.uppercase(),
+                text = if (isDiscovered) SPRITE_GRID_FRAMES[animFrame].name.uppercase() else "UNDISCOVERED SPECIMEN",
                 fontSize = 8.sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFF81C784),
@@ -1049,3 +1115,166 @@ private fun StudioSpritePreviewShell(
         }
     }
 }
+
+@Composable
+private fun CustomSpriteMatrixEditorCard(
+    speciesId: Int,
+    frame: SpriteFrame,
+    isDiscovered: Boolean,
+    context: android.content.Context
+) {
+    var expanded by remember { mutableStateOf(false) }
+    var activeBrush by remember { mutableStateOf('#') }
+    var editableRows by remember(speciesId, frame) {
+        val currentMatrix = com.digiwear.companion.render.PixelArtMatrices.getCustomMatrix(speciesId, frame)
+            ?: com.digiwear.core.render.SpriteMatrixRegistry.getMatrix(speciesId, frame)
+        mutableStateOf(currentMatrix.toList())
+    }
+    var statusNote by remember(speciesId, frame) { mutableStateOf<String?>(null) }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
+    ) {
+        Column(modifier = Modifier.padding(14.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "▸ 16x16 PIXEL ART MATRIX STUDIO",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = DigiWearPalette.DigiviceCyan,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Customize & persist 16x16 dot-matrix frame overrides locally",
+                        fontSize = 8.5.sp,
+                        color = Color.Gray,
+                        fontFamily = FontFamily.Monospace
+                    )
+                }
+                OutlinedButton(
+                    onClick = { if (isDiscovered) expanded = !expanded },
+                    enabled = isDiscovered,
+                    border = BorderStroke(1.dp, if (isDiscovered) DigiWearPalette.DigiviceCyan else Color.DarkGray)
+                ) {
+                    Text(
+                        text = if (!isDiscovered) "LOCKED" else if (expanded) "HIDE GRID" else "EDIT 16x16",
+                        fontSize = 9.sp,
+                        fontFamily = FontFamily.Monospace,
+                        color = if (isDiscovered) DigiWearPalette.DigiviceCyan else Color.Gray
+                    )
+                }
+            }
+
+            if (expanded && isDiscovered) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    val brushes = listOf('#' to "PRIMARY", 'S' to "SECOND", 'E' to "EYE", 'B' to "OUTLINE", '.' to "ERASE")
+                    brushes.forEach { (ch, label) ->
+                        val selected = activeBrush == ch
+                        Box(
+                            modifier = Modifier
+                                .background(if (selected) Color(0xFF00897B) else Color(0xFF1B2430), RoundedCornerShape(6.dp))
+                                .border(1.dp, if (selected) Color(0xFF64FFDA) else Color(0xFF37474F), RoundedCornerShape(6.dp))
+                                .clickable { activeBrush = ch }
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(label, fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = Color.White, fontFamily = FontFamily.Monospace)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.CenterHorizontally)
+                        .background(Color(0xFF0B1017), RoundedCornerShape(8.dp))
+                        .border(1.dp, Color(0xFF263238), RoundedCornerShape(8.dp))
+                        .padding(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(1.dp)
+                ) {
+                    for (r in 0 until 16) {
+                        val rowStr = editableRows.getOrElse(r) { "................" }.padEnd(16, '.')
+                        Row(horizontalArrangement = Arrangement.spacedBy(1.dp)) {
+                            for (c in 0 until 16) {
+                                val pixelChar = rowStr[c]
+                                val cellColor = when (pixelChar) {
+                                    '#' -> Color(0xFF00E5FF)
+                                    'S' -> Color(0xFFFFB74D)
+                                    'T' -> Color(0xFFBA68C8)
+                                    'E' -> Color(0xFFFF5252)
+                                    'W' -> Color.White
+                                    'B', 'K' -> Color(0xFF546E7A)
+                                    else -> Color(0xFF141C26)
+                                }
+                                Box(
+                                    modifier = Modifier
+                                        .size(14.dp)
+                                        .background(cellColor)
+                                        .clickable {
+                                            val updated = editableRows.toMutableList()
+                                            val currentRow = updated.getOrElse(r) { "................" }.padEnd(16, '.').toCharArray()
+                                            currentRow[c] = if (currentRow[c] == activeBrush) '.' else activeBrush
+                                            updated[r] = String(currentRow)
+                                            editableRows = updated
+                                        }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Button(
+                        onClick = {
+                            com.digiwear.companion.render.PixelArtMatrices.setCustomMatrix(
+                                context = context,
+                                speciesId = speciesId,
+                                frame = frame,
+                                matrixRows = editableRows.toTypedArray()
+                            )
+                            statusNote = "Saved custom 16x16 matrix for #$speciesId (${frame.name})!"
+                        },
+                        modifier = Modifier.weight(1f),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
+                    ) {
+                        Text("SAVE OVERRIDE", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    }
+                    OutlinedButton(
+                        onClick = {
+                            com.digiwear.companion.render.PixelArtMatrices.clearCustomMatrix(context, speciesId, frame)
+                            editableRows = com.digiwear.core.render.SpriteMatrixRegistry.getMatrix(speciesId, frame).toList()
+                            statusNote = "Restored canonical Bandai sprite matrix for #$speciesId."
+                        },
+                        modifier = Modifier.weight(1f),
+                        border = BorderStroke(1.dp, Color(0xFFFF8A80))
+                    ) {
+                        Text("RESET DEFAULT", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFF8A80), fontFamily = FontFamily.Monospace)
+                    }
+                }
+
+                statusNote?.let {
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Text(it, fontSize = 9.sp, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                }
+            }
+        }
+    }
+}
+

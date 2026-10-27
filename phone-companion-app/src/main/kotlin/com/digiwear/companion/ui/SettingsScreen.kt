@@ -98,6 +98,12 @@ fun SettingsScreen(
     val clipboardManager = LocalClipboardManager.current
     val buzzerManager = remember { com.digiwear.companion.sound.BuzzerManager(context) }
 
+    androidx.compose.runtime.DisposableEffect(buzzerManager) {
+        onDispose {
+            buzzerManager.release()
+        }
+    }
+
     // Connected Smartwatch Detection State
     var connectedWatchNodeCount by remember { mutableIntStateOf(0) }
     var hasCheckedConnection by remember { mutableStateOf(false) }
@@ -123,6 +129,7 @@ fun SettingsScreen(
     var clockFormat24h by remember { mutableStateOf(false) }
     var lifespanCanonicalEnabled by remember { mutableStateOf(true) }
     var combatInjuriesEnabled by remember { mutableStateOf(true) }
+    var maskUndiscoveredSpecies by remember { mutableStateOf(wearableManager.getMaskUndiscoveredSpecies()) }
     var aospWatchIp by remember { mutableStateOf("") }
     var isAutoDetectingAosp by remember { mutableStateOf(false) }
 
@@ -172,7 +179,8 @@ fun SettingsScreen(
                         clockFormat24h = clockFormat24h,
                         lifespanCanonicalEnabled = lifespanCanonicalEnabled,
                         combatInjuriesEnabled = combatInjuriesEnabled,
-                        soundpack = soundpack.id
+                        soundpack = soundpack.id,
+                        maskUndiscoveredSpecies = maskUndiscoveredSpecies
                     )
                     syncStatus = if (sentAsset || sentSettings) "Wallpaper imported & beamed to Smartwatch!" else "Wallpaper saved locally on Phone."
                 } else {
@@ -230,6 +238,11 @@ fun SettingsScreen(
         watchSettings["clock_format_24h"]?.let { clockFormat24h = it.toBoolean() }
         watchSettings["lifespan_canonical_enabled"]?.let { lifespanCanonicalEnabled = it.toBoolean() }
         watchSettings["combat_injuries_enabled"]?.let { combatInjuriesEnabled = it.toBoolean() }
+        watchSettings["mask_undiscovered_species"]?.let {
+            val masked = it.toBoolean()
+            maskUndiscoveredSpecies = masked
+            wearableManager.setMaskUndiscoveredSpecies(masked)
+        }
     }
 
     // Initial load
@@ -870,7 +883,8 @@ fun SettingsScreen(
                                             clockFormat24h = clockFormat24h,
                                             lifespanCanonicalEnabled = lifespanCanonicalEnabled,
                                             combatInjuriesEnabled = combatInjuriesEnabled,
-                                            soundpack = soundpack.id
+                                            soundpack = soundpack.id,
+                                            maskUndiscoveredSpecies = maskUndiscoveredSpecies
                                         )
                                         syncStatus = if (sent) "Custom matrix theme beamed to Smartwatch!" else "Custom theme saved locally."
                                     }
@@ -967,7 +981,8 @@ fun SettingsScreen(
                                                     clockFormat24h = clockFormat24h,
                                                     lifespanCanonicalEnabled = lifespanCanonicalEnabled,
                                                     combatInjuriesEnabled = combatInjuriesEnabled,
-                                                    soundpack = soundpack.id
+                                                    soundpack = soundpack.id,
+                                                    maskUndiscoveredSpecies = maskUndiscoveredSpecies
                                                 )
                                                 syncStatus = if (sentAsset || sentSettings) "Wallpaper beamed to Smartwatch!" else "Wallpaper saved locally."
                                             }
@@ -1224,6 +1239,48 @@ fun SettingsScreen(
                     onCheckedChange = { combatInjuriesEnabled = it }
                 )
 
+                SettingSwitchRow(
+                    title = "MASK UNDISCOVERED DIGIMON",
+                    subtitle = "Show question marks & silhouettes for undiscovered species in DigiDex and evolution lines. Turn off to reveal all.",
+                    checked = maskUndiscoveredSpecies,
+                    onCheckedChange = {
+                        maskUndiscoveredSpecies = it
+                        wearableManager.setMaskUndiscoveredSpecies(it)
+                        // Auto-beam (like the sleep picker / theme builder) so a later settings reload
+                        // from the watch or cache can't silently revert this toggle.
+                        scope.launch {
+                            val activeThemeId = when (selectedTheme) {
+                                BackgroundTheme.CUSTOM_MATRIX -> {
+                                    val sec = CustomThemeConfig.deriveSecondaryColorHex(customPrimaryHex, customGridHex)
+                                    CustomThemeConfig(customPrimaryHex, sec, customGridHex, customPattern).toThemeId()
+                                }
+                                BackgroundTheme.CUSTOM_WALLPAPER -> CustomThemeConfig.WALLPAPER_THEME_ID
+                                else -> selectedTheme.id
+                            }
+                            wearableManager.sendSettingsToWatch(
+                                themeId = activeThemeId,
+                                vibrationEnabled = vibrationEnabled,
+                                threeButtonMode = threeButtonMode,
+                                buttonPlacement = buttonPlacement,
+                                pendulumShakeMode = pendulumShakeMode,
+                                soundEnabled = soundEnabled,
+                                nfcBridgeMode = nfcBridgeMode,
+                                displayShapeOverride = displayShapeOverride,
+                                dailyStepGoal = dailyStepGoal,
+                                contrastLevel = contrastLevel,
+                                sleepSchedule = sleepSchedule,
+                                ambientStyle = ambientStyle,
+                                hazardAlertsEnabled = hazardAlertsEnabled,
+                                clockFormat24h = clockFormat24h,
+                                lifespanCanonicalEnabled = lifespanCanonicalEnabled,
+                                combatInjuriesEnabled = combatInjuriesEnabled,
+                                soundpack = soundpack.id,
+                                maskUndiscoveredSpecies = it
+                            )
+                        }
+                    }
+                )
+
                 Spacer(modifier = Modifier.height(10.dp))
 
                 // Sleep Schedule
@@ -1419,7 +1476,8 @@ fun SettingsScreen(
                                 clockFormat24h = clockFormat24h,
                                 lifespanCanonicalEnabled = lifespanCanonicalEnabled,
                                 combatInjuriesEnabled = combatInjuriesEnabled,
-                                soundpack = soundpack.id
+                                soundpack = soundpack.id,
+                                maskUndiscoveredSpecies = maskUndiscoveredSpecies
                             )
                             syncStatus = if (sent) "Successfully beamed settings to Smartwatch!" else "Settings saved locally on Phone."
                         }
@@ -1577,8 +1635,10 @@ fun SettingsScreen(
                 Button(
                     onClick = {
                         scope.launch {
-                            // Clear local database
-                            db.clearAllTables()
+                            // Clear local database on IO thread
+                            kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                                db.clearAllTables()
+                            }
                             showResetConfirmDialog = false
                             syncStatus = "Companion database reset to clean state."
                         }
@@ -1875,7 +1935,8 @@ fun SettingsScreen(
                                 clockFormat24h = clockFormat24h,
                                 lifespanCanonicalEnabled = lifespanCanonicalEnabled,
                                 combatInjuriesEnabled = combatInjuriesEnabled,
-                                soundpack = soundpack.id
+                                soundpack = soundpack.id,
+                                maskUndiscoveredSpecies = maskUndiscoveredSpecies
                             )
                             syncStatus = if (sent) "Custom sleep schedule $formatted beamed to Smartwatch!" else "Saved schedule locally."
                         }

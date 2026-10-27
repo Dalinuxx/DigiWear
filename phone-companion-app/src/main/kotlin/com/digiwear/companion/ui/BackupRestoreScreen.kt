@@ -91,20 +91,7 @@ fun BackupRestoreScreen(
     LaunchedEffect(Unit) {
         val latest = db.phoneDao().getLatestSnapshot()
         if (latest != null) {
-            val loadedState = PetState(
-                speciesId = latest.speciesId,
-                currentHp = latest.currentHp,
-                maxHp = latest.maxHp,
-                hunger = latest.hunger,
-                strength = latest.strength,
-                weight = latest.weight,
-                ageSeconds = latest.ageSeconds,
-                careMistakes = latest.careMistakes,
-                effort = latest.effort,
-                overfeedCount = latest.overfeedCount,
-                totalBattles = latest.totalBattles,
-                victories = latest.victories
-            )
+            val loadedState = latest.toDomain()
             jsonExportString = json.encodeToString(loadedState)
         }
     }
@@ -228,22 +215,7 @@ fun BackupRestoreScreen(
                         OutlinedButton(
                             onClick = {
                                 val latest = snapshots.firstOrNull()
-                                val activePet = if (latest != null) {
-                                    PetState(
-                                        speciesId = latest.speciesId,
-                                        currentHp = latest.currentHp,
-                                        maxHp = latest.maxHp,
-                                        hunger = latest.hunger,
-                                        strength = latest.strength,
-                                        weight = latest.weight,
-                                        ageSeconds = latest.ageSeconds,
-                                        careMistakes = latest.careMistakes,
-                                        effort = latest.effort,
-                                        overfeedCount = latest.overfeedCount,
-                                        totalBattles = latest.totalBattles,
-                                        victories = latest.victories
-                                    )
-                                } else PetState()
+                                val activePet = latest?.toDomain() ?: PetState()
                                 val archive = FullCompanionArchive(
                                     activePet = activePet,
                                     vaultPets = vaultPets.map { it.copy(id = 0) },
@@ -255,7 +227,7 @@ fun BackupRestoreScreen(
                             },
                             modifier = Modifier.height(30.dp)
                         ) {
-                            Text("FULL ARCHIVE", fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            Text("FULL ARCHIVE", color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
                         }
                         OutlinedButton(
                             onClick = {
@@ -266,7 +238,7 @@ fun BackupRestoreScreen(
                         ) {
                             DigiVectorIcon(type = DigiIconType.COPY, size = 13.dp, tint = DigiWearPalette.DigiviceCyan)
                             Spacer(modifier = Modifier.width(4.dp))
-                            Text("COPY", fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            Text("COPY", color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
                         }
                     }
                 }
@@ -319,7 +291,7 @@ fun BackupRestoreScreen(
                             }
                         }
                     ) {
-                        Text("RESTORE BACKUP", fontSize = 10.sp, fontFamily = FontFamily.Monospace)
+                        Text("RESTORE BACKUP", color = Color.White, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                     }
 
                     Button(
@@ -339,9 +311,9 @@ fun BackupRestoreScreen(
                                 statusMessage = "New Digi-Egg (Botamon) hatched & saved!"
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E24AA))
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF8E24AA), contentColor = Color.White)
                     ) {
-                        Text("HATCH NEW EGG", fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                        Text("HATCH NEW EGG", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                     }
                 }
             }

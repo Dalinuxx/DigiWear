@@ -17,8 +17,69 @@ import com.digiwear.core.render.SpriteMatrixRegistry
 object PixelArtMatrices {
 
     private const val MAX_CACHE_ENTRIES = 512
+    private const val CUSTOM_SPRITES_PREFS = "custom_sprites_prefs"
     private val cache = android.util.LruCache<Int, ImageBitmap>(MAX_CACHE_ENTRIES)
     private val androidBitmapCache = android.util.LruCache<Int, Bitmap>(MAX_CACHE_ENTRIES)
+    private val customMatrixOverrides = java.util.concurrent.ConcurrentHashMap<String, Array<String>>()
+
+    fun loadCustomMatrices(context: android.content.Context) {
+        val prefs = context.getSharedPreferences(CUSTOM_SPRITES_PREFS, android.content.Context.MODE_PRIVATE)
+        for ((key, value) in prefs.all) {
+            val str = value as? String ?: continue
+            val rows = str.lines().filter { it.isNotEmpty() }.toTypedArray()
+            if (rows.isNotEmpty()) {
+                customMatrixOverrides[key] = rows
+                // Drop any stock bitmap rendered before this async load finished.
+                key.substringBefore('_').toIntOrNull()?.let { invalidateSpeciesCache(it) }
+            }
+        }
+    }
+
+    fun setCustomMatrix(
+        context: android.content.Context,
+        speciesId: Int,
+        frame: SpriteFrame,
+        matrixRows: Array<String>
+    ) {
+        val prefKey = "${speciesId}_${frame.frameIndex}"
+        customMatrixOverrides[prefKey] = matrixRows
+        context.getSharedPreferences(CUSTOM_SPRITES_PREFS, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .putString(prefKey, matrixRows.joinToString("\n"))
+            .apply()
+        invalidateSpeciesCache(speciesId)
+    }
+
+    fun clearCustomMatrix(
+        context: android.content.Context,
+        speciesId: Int,
+        frame: SpriteFrame
+    ) {
+        val prefKey = "${speciesId}_${frame.frameIndex}"
+        customMatrixOverrides.remove(prefKey)
+        context.getSharedPreferences(CUSTOM_SPRITES_PREFS, android.content.Context.MODE_PRIVATE)
+            .edit()
+            .remove(prefKey)
+            .apply()
+        invalidateSpeciesCache(speciesId)
+    }
+
+    fun getCustomMatrix(speciesId: Int, frame: SpriteFrame): Array<String>? {
+        return customMatrixOverrides["${speciesId}_${frame.frameIndex}"]
+    }
+
+    fun invalidateSpeciesCache(speciesId: Int) {
+        for (f in SpriteFrame.entries) {
+            val activeKey = (speciesId shl 5) or (f.frameIndex shl 1)
+            val ambientKey = activeKey or 1
+            cache.remove(activeKey)
+            cache.remove(ambientKey)
+            synchronized(androidBitmapCache) {
+                androidBitmapCache.remove(activeKey)
+                androidBitmapCache.remove(ambientKey)
+            }
+        }
+    }
 
     fun getFrameBitmap(speciesId: Int, frame: SpriteFrame, isAmbient: Boolean = false): ImageBitmap {
         val key = (speciesId shl 5) or (frame.frameIndex shl 1) or (if (isAmbient) 1 else 0)
@@ -92,7 +153,10 @@ object PixelArtMatrices {
         isAmbient: Boolean
     ) {
         val palette = SpriteMatrixRegistry.getPalette(speciesId)
-        val matrix = if (isAmbient) {
+        val customOverride = getCustomMatrix(speciesId, frame) ?: getCustomMatrix(speciesId, SpriteFrame.IDLE_A)
+        val matrix = if (customOverride != null) {
+            customOverride
+        } else if (isAmbient) {
             SpriteMatrixRegistry.getAmbientOutlineMatrix(speciesId, frame)
         } else {
             SpriteMatrixRegistry.getMatrix(speciesId, frame)
@@ -130,7 +194,8 @@ object PixelArtMatrices {
             val rowStr = matrix[r]
             val py = startY + r * cellSize
             for (c in 0 until cols) {
-                val ch = rowStr[c]
+                // Tolerate ragged custom matrices (rows shorter than row 0) instead of crashing.
+                val ch = rowStr.getOrNull(c) ?: break
                 if (ch == '.') continue
                 val px = startX + c * cellSize
 

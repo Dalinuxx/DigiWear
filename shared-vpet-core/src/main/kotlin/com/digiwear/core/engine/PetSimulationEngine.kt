@@ -162,8 +162,8 @@ object PetSimulationEngine {
         }
 
         // Attention Call logic:
-        // Triggered by: empty hunger meter, empty strength meter, or unextinguished lights during sleep window
-        val needsAttention = (currentHunger == 0 || currentStrength == 0 || (inSleepWindow && !effectiveLightsOff))
+        // Triggered by: empty hunger/strength meter when awake, or unextinguished lights during sleep window
+        val needsAttention = (!inSleepWindow && (currentHunger == 0 || currentStrength == 0)) || (inSleepWindow && !effectiveLightsOff)
 
         var callActive = currentState.attentionCallActive
         var callTimestamp = currentState.attentionCallTimestampUtc
@@ -330,16 +330,14 @@ object PetSimulationEngine {
     /**
      * Cleans all waste units and prevents injury buildup.
      */
-    fun cleanWaste(state: PetState): PetState {
+    fun cleanWaste(state: PetState, currentTimestampUtc: Long = state.lastProcessedTimestampUtc): PetState {
         return state.copy(
             wasteCount = 0,
-            wasteAccumulatedSeconds = 0L
+            wasteAccumulatedSeconds = 0L,
+            lastProcessedTimestampUtc = if (currentTimestampUtc > 0L) currentTimestampUtc else state.lastProcessedTimestampUtc
         )
     }
 
-    /**
-     * Toggles lights on or off (essential during sleep windows to prevent care mistakes).
-     */
     /**
      * Toggles Cold Sleep (Rest Mode / Freezer Mode).
      * Pauses all aging, hunger decay, strength decay, and care mistake accumulation.
@@ -365,17 +363,19 @@ object PetSimulationEngine {
 
     /**
      * Executes mini-game training session.
-     * Win grants strength +1, effort +1, reduces weight by 1g.
+     * Win grants strength +1, effort +1, +25 Vital Points, reduces weight by 1g.
      */
     fun train(state: PetState, success: Boolean, currentTimestampUtc: Long): PetState {
         val newStrength = if (success) min(4, state.strength + 1) else state.strength
         val newEffort = if (success) min(4, state.effort + 1) else state.effort
         val newWeight = max(PetSpecies.getById(state.speciesId).baselineWeight, state.weight - 1)
+        val vpGain = if (success) 25 else 5
 
         val updated = state.copy(
             strength = newStrength,
             effort = newEffort,
             weight = newWeight,
+            vitalPoints = state.vitalPoints + vpGain,
             lastProcessedTimestampUtc = currentTimestampUtc
         )
         return resolveAttentionCall(updated, currentTimestampUtc)
@@ -384,14 +384,16 @@ object PetSimulationEngine {
     /**
      * Treats illness or combat injury.
      */
-    fun cureInjury(state: PetState): PetState {
-        return state.copy(isInjured = false)
+    fun cureInjury(state: PetState, currentTimestampUtc: Long = state.lastProcessedTimestampUtc): PetState {
+        return state.copy(
+            isInjured = false,
+            lastProcessedTimestampUtc = if (currentTimestampUtc > 0L) currentTimestampUtc else state.lastProcessedTimestampUtc
+        )
     }
 
     private fun resolveAttentionCall(state: PetState, currentTimestampUtc: Long): PetState {
-        val species = PetSpecies.getById(state.speciesId)
         val inSleep = state.isSleeping
-        val needsAttention = (state.hunger == 0 || state.strength == 0 || (inSleep && !state.lightsOff))
+        val needsAttention = (!inSleep && (state.hunger == 0 || state.strength == 0)) || (inSleep && !state.lightsOff)
 
         return if (!needsAttention && state.attentionCallActive) {
             state.copy(
@@ -482,11 +484,13 @@ object PetSimulationEngine {
         val newWins = if (won) state.victories + 1 else state.victories
         val getsInjured = !won && combatInjuriesEnabled && (injuryRoll < 25)
         val finalInjured = state.isInjured || getsInjured
+        val vpGain = if (won) 50 else 10
 
         val updated = state.copy(
             totalBattles = newBattles,
             victories = newWins,
-            isInjured = finalInjured
+            isInjured = finalInjured,
+            vitalPoints = state.vitalPoints + vpGain
         )
         return Pair(updated, getsInjured)
     }
