@@ -812,38 +812,35 @@ class DigiCanvasRenderer(
             canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
         }
 
-        // 4. Top Header Status Bar: Battery • Partner Name • Step Target
-        val batteryPct = getBatteryPercentage(context)
-        textPaint.color = darkPixelColor
-        textPaint.textSize = (w * 0.040f).coerceIn(11f, 16f)
-
-        val topHeaderY = if (isRound) centerY - (h * 0.33f) else (w * 0.06f) + 18f
+        // 4. Top Header Status Bar: Drawn when top complication slot is empty
         val hasTopSlotData = DigiWatchFaceService.hasDisplayableData(
             complicationSlotsManager[DigiWatchFaceService.SLOT_TOP_ID]?.complicationData?.value
         )
+        if (!hasTopSlotData) {
+            val batteryPct = getBatteryPercentage(context)
+            textPaint.color = darkPixelColor
+            textPaint.textSize = (w * 0.040f).coerceIn(11f, 16f)
+            val topHeaderY = if (isRound) centerY - (h * 0.33f) else (w * 0.06f) + 18f
 
-        if (isRound) {
-            // Safe chord placement avoiding circular bezel clipping
-            textPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText("⚡${batteryPct}%", centerX - w * 0.30f, topHeaderY, textPaint)
+            if (isRound) {
+                // Safe chord placement avoiding circular bezel clipping
+                textPaint.textAlign = Paint.Align.LEFT
+                canvas.drawText("⚡${batteryPct}%", centerX - w * 0.30f, topHeaderY, textPaint)
 
-            textPaint.textAlign = Paint.Align.RIGHT
-            canvas.drawText("${currentSteps}st", centerX + w * 0.30f, topHeaderY, textPaint)
+                textPaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText("${currentSteps}st", centerX + w * 0.30f, topHeaderY, textPaint)
 
-            if (!hasTopSlotData) {
                 textPaint.textAlign = Paint.Align.CENTER
                 textPaint.textSize = (w * 0.044f).coerceIn(12f, 18f)
                 canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
-            }
-        } else {
-            val bezelMargin = w * 0.06f
-            textPaint.textAlign = Paint.Align.LEFT
-            canvas.drawText("⚡${batteryPct}%", bezelMargin + 8f, topHeaderY, textPaint)
+            } else {
+                val bezelMargin = w * 0.06f
+                textPaint.textAlign = Paint.Align.LEFT
+                canvas.drawText("⚡${batteryPct}%", bezelMargin + 8f, topHeaderY, textPaint)
 
-            textPaint.textAlign = Paint.Align.RIGHT
-            canvas.drawText("${currentSteps}/${dailyStepGoal}st", w - bezelMargin - 8f, topHeaderY, textPaint)
+                textPaint.textAlign = Paint.Align.RIGHT
+                canvas.drawText("${currentSteps}/${dailyStepGoal}st", w - bezelMargin - 8f, topHeaderY, textPaint)
 
-            if (!hasTopSlotData) {
                 textPaint.textAlign = Paint.Align.CENTER
                 textPaint.textSize = w * 0.046f
                 canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
@@ -1224,11 +1221,6 @@ class RetroLcdCanvasComplication(
 
         val instant = zonedDateTime.toInstant()
         reusableRectF.set(bounds)
-
-        // Draw subtle retro LCD slot frame outline (1px rounded rect)
-        framePaint.color = primaryColor
-        framePaint.alpha = if (isAmbient) 80 else 110
-        canvas.drawRoundRect(reusableRectF, 4f, 4f, framePaint)
 
         when (data) {
             is ShortTextComplicationData -> {
