@@ -998,7 +998,7 @@ private fun RoundDialPetView(
     }
 
     // Sprite geometry & walking boundaries hugging bezel edge
-    val spriteSize = (diameter * 0.35f).dp
+    val spriteSize = (diameter * 0.30f).dp
     val spriteHalf = spriteSize * 0.40f
     val railBtn = (diameter * 0.125f).dp
     val railOffsetY = railBtn * 1.30f
@@ -1019,7 +1019,7 @@ private fun RoundDialPetView(
     val iconDiameter = (diameter * 0.125f).dp.coerceIn(24.dp, 29.dp)
     val chipSize = (diameter * 0.120f).dp.coerceIn(24.dp, 29.dp)
     val chipHalf = chipSize * 0.5f
-    val chipR = r * 0.80f
+    val chipR = r * 0.84f
     val chipOffsetY = r * 0.18f
     val chipX = chipR * (if (railOnRight) -1f else 1f) * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat()
     val chipInnerEdge = (kotlin.math.abs(chipX.value) - chipHalf.value).dp
@@ -1105,8 +1105,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Menu care icons on the outside circle (0.80f * r) hugging face edge with zero bezel clipping ----
-        val ringRadius = 0.80f
+        // ---- Menu care icons on the outside circle (0.84f * r) hugging face edge with zero bezel clipping ----
+        val ringRadius = 0.84f
         val topAngles = floatArrayOf(-48f, -16f, 16f, 48f)
         val bottomAngles = floatArrayOf(-48f, -16f, 16f, 48f)
         for (k in 0..3) {
@@ -1209,7 +1209,7 @@ private fun RoundDialPetView(
 
         // ---- Authentic V-Pet Waste on the floor beside the pet ----
         if (petState.wasteCount > 0) {
-            DialSlot(r * 0.38f, r * 0.15f) {
+            DialSlot(r * 0.35f, r * 0.12f) {
                 VPetWasteRow(
                     wasteCount = petState.wasteCount,
                     iconSize = (fontBase + 1.5f).dp
@@ -1217,8 +1217,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Prompt / feedback / RIP (just below pet) ----
-        DialSlot(0.dp, r * 0.32f) {
+        // ---- Prompt / feedback / RIP (comfortably below pet with clear clearance) ----
+        DialSlot(0.dp, r * 0.38f) {
             if (petState.isDeceased) {
                 Box(
                     modifier = Modifier
@@ -1270,7 +1270,7 @@ private fun RoundDialPetView(
         }
 
         // ---- Hunger & Strength (lower chord, perfectly centered with ample bezel margin) ----
-        DialSlot(0.dp, r * 0.46f) {
+        DialSlot(0.dp, r * 0.54f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)

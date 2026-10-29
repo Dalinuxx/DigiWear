@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
@@ -14,6 +15,7 @@ import android.graphics.RectF
 import android.graphics.Typeface
 import android.os.BatteryManager
 import android.view.SurfaceHolder
+import java.io.File
 import androidx.wear.watchface.CanvasComplication
 import androidx.wear.watchface.CanvasComplicationFactory
 import androidx.wear.watchface.CanvasType
@@ -252,6 +254,20 @@ class DigiWatchFaceService : WatchFaceService() {
         }
 
         serviceScope.launch {
+            repository.elementContrastFlow.collect {
+                renderer.updateElementContrast(it)
+                renderer.invalidate()
+            }
+        }
+
+        serviceScope.launch {
+            repository.wallpaperVersionFlow.collect {
+                renderer.invalidateWallpaper()
+                renderer.invalidate()
+            }
+        }
+
+        serviceScope.launch {
             repository.soundEnabledFlow.collect {
                 bm.isEnabled = it
             }
@@ -328,9 +344,16 @@ class DigiWatchFaceService : WatchFaceService() {
         fun getThemeForegroundColors(
             theme: BackgroundTheme,
             customConfig: CustomThemeConfig?,
-            baseBgColor: Int
+            baseBgColor: Int,
+            elementContrast: String = "AUTO"
         ): Pair<Int, Int> { // (darkPixelColor, gridDotColor / ghostShadow)
-            if (theme == BackgroundTheme.OLED_MINIMAL || baseBgColor == Color.BLACK) {
+            if (elementContrast.equals("INVERT", ignoreCase = true)) {
+                return Pair(Color.WHITE, Color.rgb(60, 60, 60))
+            }
+            if (elementContrast.equals("RETRO", ignoreCase = true)) {
+                return Pair(Color.rgb(20, 32, 18), Color.rgb(126, 138, 98))
+            }
+            if (theme == BackgroundTheme.OLED_MINIMAL || baseBgColor == Color.BLACK || theme == BackgroundTheme.CUSTOM_WALLPAPER) {
                 return Pair(Color.WHITE, Color.rgb(45, 45, 45))
             }
             if (theme == BackgroundTheme.CLASSIC_VPET_LCD) {
@@ -444,6 +467,12 @@ class DigiCanvasRenderer(
     private var currentSteps: Int = 0
 
     @Volatile
+    private var elementContrast: String = "AUTO"
+
+    private var cachedWallpaperBmp: android.graphics.Bitmap? = null
+    private var wallpaperNeedsReload: Boolean = true
+
+    @Volatile
     private var bounceUntilTimestampMs: Long = 0L
 
     private var bounceJob: Job? = null
@@ -514,6 +543,16 @@ class DigiCanvasRenderer(
 
     fun updateAdventureSteps(steps: Int) {
         currentSteps = steps
+    }
+
+    fun updateElementContrast(contrast: String) {
+        elementContrast = contrast
+    }
+
+    fun invalidateWallpaper() {
+        wallpaperNeedsReload = true
+        cachedWallpaperBmp?.recycle()
+        cachedWallpaperBmp = null
     }
 
     fun triggerBounce(scope: CoroutineScope) {
@@ -774,7 +813,8 @@ class DigiCanvasRenderer(
         val (darkPixelColor, gridDotColor) = DigiWatchFaceService.getThemeForegroundColors(
             activeTheme,
             customThemeConfig,
-            baseLcdColor
+            baseLcdColor,
+            elementContrast
         )
 
         // 1 & 2. Cached LCD Matrix Pattern Overlay (DOT_MATRIX, GRID, SCANLINES, OLED)
@@ -795,6 +835,22 @@ class DigiCanvasRenderer(
         )
         canvas.drawBitmap(bgBitmap, 0f, 0f, null)
 
+        // Custom gallery photo wallpaper if active
+        if (activeTheme == BackgroundTheme.CUSTOM_WALLPAPER) {
+            if (wallpaperNeedsReload || cachedWallpaperBmp == null || cachedWallpaperBmp!!.isRecycled) {
+                val wpFile = File(context.filesDir, "custom_wallpaper.png")
+                cachedWallpaperBmp = if (wpFile.exists()) {
+                    try { BitmapFactory.decodeFile(wpFile.absolutePath) } catch (_: Throwable) { null }
+                } else null
+                wallpaperNeedsReload = false
+            }
+            val wp = cachedWallpaperBmp
+            if (wp != null) {
+                reusableDstRect.set(0, 0, w.toInt(), h.toInt())
+                canvas.drawBitmap(wp, null, reusableDstRect, null)
+            }
+        }
+
         val isRound = kotlin.math.abs(w - h) < 12f
 
         // 3. LCD Screen Bezel Frame (Circular accent ring on round dials, rounded rect on square displays)
@@ -814,20 +870,47 @@ class DigiCanvasRenderer(
             canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
         }
 
-        // 4. Top Header: Battery percentage centered at top
+        // 4. Top Header: Retro Battery indicator & percentage centered at top
         val batteryPct = getBatteryPercentage(context)
-        textPaint.color = darkPixelColor
-        textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
         val topHeaderY = if (isRound) centerY - (h * 0.36f) else (w * 0.06f) + 16f
-        canvas.drawText("⚡${batteryPct}%", centerX, topHeaderY, textPaint)
+        textPaint.color = darkPixelColor
+        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+
+        val battText = "${batteryPct}%"
+        val battTextWidth = textPaint.measureText(battText)
+        val battIconW = (w * 0.045f).coerceIn(13f, 18f)
+        val battIconH = battIconW * 0.55f
+        val battTotalW = battIconW + 5f + battTextWidth
+        val battStartX = centerX - (battTotalW / 2f)
+
+        // Battery outer shell
+        reusableBezelRect.set(battStartX, topHeaderY - battIconH + 1f, battStartX + battIconW - 2f, topHeaderY + 1f)
+        framePaint.color = darkPixelColor
+        framePaint.alpha = 255
+        framePaint.strokeWidth = 1.2f
+        framePaint.style = Paint.Style.STROKE
+        canvas.drawRoundRect(reusableBezelRect, 2f, 2f, framePaint)
+        // Battery positive nib
+        val nibRect = RectF(battStartX + battIconW - 2f, topHeaderY - (battIconH * 0.70f), battStartX + battIconW, topHeaderY - (battIconH * 0.30f))
+        framePaint.style = Paint.Style.FILL
+        canvas.drawRoundRect(nibRect, 1f, 1f, framePaint)
+        // Battery charge fill
+        val fillW = (reusableBezelRect.width() - 3f) * (batteryPct / 100f)
+        if (fillW > 0f) {
+            val fillRect = RectF(reusableBezelRect.left + 1.5f, reusableBezelRect.top + 1.5f, reusableBezelRect.left + 1.5f + fillW, reusableBezelRect.bottom - 1.5f)
+            canvas.drawRect(fillRect, framePaint)
+        }
+        // Battery text
+        textPaint.textAlign = Paint.Align.LEFT
+        canvas.drawText(battText, battStartX + battIconW + 5f, topHeaderY, textPaint)
+        textPaint.textAlign = Paint.Align.CENTER
 
         // Calendar Date centered directly above 7-segment digital time
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()
         textPaint.color = darkPixelColor
         textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
-        val dateY = if (isRound) centerY - (h * 0.25f) else (w * 0.06f) + 38f
+        textPaint.textSize = (w * 0.042f).coerceIn(13f, 17f)
+        val dateY = if (isRound) centerY - (h * 0.21f) else (w * 0.06f) + 38f
         canvas.drawText(dateStr, centerX, dateY, textPaint)
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
@@ -835,7 +918,7 @@ class DigiCanvasRenderer(
         val amPmStr = if (!is24hFormat) amPmFormatter.format(zonedDateTime) else ""
         val clockWidth = w * 0.54f
         val clockHeight = h * 0.16f
-        val clockY = centerY - h * 0.11f
+        val clockY = centerY - h * 0.10f
 
         draw7SegmentTime(
             canvas = canvas,

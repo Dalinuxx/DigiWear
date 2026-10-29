@@ -251,6 +251,11 @@ class PetRepository private constructor(context: Context) {
     )
     val contrastLevelFlow: StateFlow<String> = _contrastLevelFlow.asStateFlow()
 
+    private val _elementContrastFlow = MutableStateFlow(
+        prefs.getString("element_contrast_mode", "AUTO") ?: "AUTO"
+    )
+    val elementContrastFlow: StateFlow<String> = _elementContrastFlow.asStateFlow()
+
     private val rawStoredSleep = prefs.getString("sleep_schedule", "21:00_07:00") ?: "21:00_07:00"
     private val _sleepScheduleFlow = MutableStateFlow(rawStoredSleep)
     val sleepScheduleFlow: StateFlow<String> = _sleepScheduleFlow.asStateFlow()
@@ -383,6 +388,11 @@ class PetRepository private constructor(context: Context) {
         _contrastLevelFlow.value = level
     }
 
+    fun setElementContrast(mode: String) {
+        prefs.edit().putString("element_contrast_mode", mode).apply()
+        _elementContrastFlow.value = mode
+    }
+
     fun setSleepSchedule(schedule: String) {
         val sanitized = if (PetSimulationEngine.calculateSleepDurationMinutes(schedule) != null) {
             if (PetSimulationEngine.isValidSleepDuration(schedule)) schedule else "21:00_07:00"
@@ -447,6 +457,7 @@ class PetRepository private constructor(context: Context) {
         "display_shape_override" to _displayShapeOverrideFlow.value,
         "daily_step_goal" to _dailyStepGoalFlow.value.toString(),
         "lcd_contrast_level" to _contrastLevelFlow.value,
+        "element_contrast_mode" to _elementContrastFlow.value,
         "sleep_schedule" to _sleepScheduleFlow.value,
         "ambient_display_style" to _ambientStyleFlow.value,
         "hazard_alerts_enabled" to _hazardAlertsFlow.value.toString(),

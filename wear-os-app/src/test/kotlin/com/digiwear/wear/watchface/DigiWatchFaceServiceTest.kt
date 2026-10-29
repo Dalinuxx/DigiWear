@@ -230,6 +230,25 @@ class DigiWatchFaceServiceTest {
     }
 
     @Test
+    fun testInvertContrastOption() {
+        val (invertedPixelColor, _) = DigiWatchFaceService.getThemeForegroundColors(
+            BackgroundTheme.CLASSIC_VPET_LCD,
+            null,
+            0xFF8B956D.toInt(),
+            elementContrast = "INVERT"
+        )
+        assertEquals("Invert contrast must produce pure white pixels", android.graphics.Color.WHITE, invertedPixelColor)
+
+        val (retroPixelColor, _) = DigiWatchFaceService.getThemeForegroundColors(
+            BackgroundTheme.OLED_MINIMAL,
+            null,
+            0xFF000000.toInt(),
+            elementContrast = "RETRO"
+        )
+        assertTrue("Retro contrast must produce dark charcoal ink", android.graphics.Color.red(retroPixelColor) < 50)
+    }
+
+    @Test
     fun testClassicLcdHighContrastForeground() {
         val classicTheme = BackgroundTheme.CLASSIC_VPET_LCD
         val (activeInk, ghostShadow) = DigiWatchFaceService.getThemeForegroundColors(

@@ -70,6 +70,7 @@ fun SettingsScreen(
     val displayShapeOverride by repository.displayShapeOverrideFlow.collectAsState(initial = "AUTO")
     val dailyStepGoal by repository.dailyStepGoalFlow.collectAsState(initial = 5000)
     val contrastLevel by repository.contrastLevelFlow.collectAsState(initial = "MEDIUM")
+    val elementContrast by repository.elementContrastFlow.collectAsState(initial = "AUTO")
     val sleepSchedule by repository.sleepScheduleFlow.collectAsState(initial = "21:00_07:00")
     val customSleepSched by repository.customSleepScheduleFlow.collectAsState(initial = null)
     val ambientStyle by repository.ambientStyleFlow.collectAsState(initial = "MINIMAL_DOT")
@@ -103,6 +104,11 @@ fun SettingsScreen(
         "LOW" to "Soft Matrix",
         "MEDIUM" to "Standard (Def)",
         "HIGH" to "Deep Crisp"
+    )
+    val elementContrastOptions = listOf(
+        "AUTO" to "Auto-Adapt",
+        "INVERT" to "Light / White",
+        "RETRO" to "Dark Ink"
     )
     val stepGoalOptions = listOf(3000, 5000, 7500, 10000)
     val sleepScheduleOptions = listOf(
@@ -302,6 +308,54 @@ fun SettingsScreen(
                 ) {
                     Text(
                         text = contrastLevel,
+                        fontSize = 8.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color.White
+                    )
+                }
+            }
+        }
+
+        // ==========================================
+        // 2b. Invert / Element Contrast Mode (for Dark Wallpapers)
+        // ==========================================
+        item {
+            Spacer(modifier = Modifier.height(6.dp))
+            val currentElemContrast = elementContrastOptions.find { it.first == elementContrast } ?: elementContrastOptions[0]
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = displayConfig.horizontalPadding),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "ELEMENT CONTRAST",
+                        fontSize = 9.5.sp,
+                        color = Color.White,
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = currentElemContrast.second,
+                        fontSize = 8.sp,
+                        color = Color(0xFF69F0AE)
+                    )
+                }
+                Button(
+                    onClick = {
+                        val idx = elementContrastOptions.indexOfFirst { it.first == elementContrast }.coerceAtLeast(0)
+                        val next = elementContrastOptions[(idx + 1) % elementContrastOptions.size].first
+                        repository.setElementContrast(next)
+                        if (isVibrationEnabled) hapticManager.playStepMilestone()
+                    },
+                    modifier = Modifier
+                        .size(width = 54.dp, height = 30.dp)
+                        .border(1.5.dp, Color(0xFF69F0AE), CircleShape),
+                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1E3A2F))
+                ) {
+                    Text(
+                        text = elementContrast,
                         fontSize = 8.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color.White
