@@ -146,7 +146,7 @@ class DigiWatchFaceService : WatchFaceService() {
                 SystemDataSources.DATA_SOURCE_STEP_COUNT,
                 ComplicationType.SHORT_TEXT
             ),
-            bounds = ComplicationSlotBounds(RectF(0.24f, 0.80f, 0.76f, 0.94f))
+            bounds = ComplicationSlotBounds(RectF(0.24f, 0.81f, 0.76f, 0.95f))
         ).build()
 
         // Slot Left (102): Heart rate / Steps (optional)
@@ -1363,12 +1363,12 @@ class RetroLcdCanvasComplication(
                 } else if (hasTitle) {
                     textPaint.color = primaryColor
                     textPaint.textAlign = Paint.Align.CENTER
-                    textPaint.textSize = (bounds.height() * 0.28f).coerceIn(7f, 10f)
-                    val titleY = bounds.top + bounds.height() * 0.38f
+                    textPaint.textSize = (bounds.height() * 0.25f).coerceIn(8f, 11f)
+                    val titleY = bounds.top + bounds.height() * 0.52f
                     canvas.drawText(title!!.uppercase(), bounds.exactCenterX(), titleY, textPaint)
 
-                    textPaint.textSize = (bounds.height() * 0.42f).coerceIn(8f, 13f)
-                    val textY = bounds.top + bounds.height() * 0.82f
+                    textPaint.textSize = (bounds.height() * 0.38f).coerceIn(10f, 15f)
+                    val textY = bounds.top + bounds.height() * 0.80f
                     canvas.drawText(text.uppercase(), bounds.exactCenterX(), textY, textPaint)
                 } else {
                     textPaint.color = primaryColor
