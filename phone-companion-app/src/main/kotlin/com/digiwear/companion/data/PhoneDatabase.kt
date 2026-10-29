@@ -88,6 +88,19 @@ interface PhoneDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun recordDiscovery(entity: DiscoveredSpeciesEntity)
 
+    // Workout History & Health Connect Logging
+    @Query("SELECT * FROM workout_history ORDER BY timestampUtc DESC")
+    fun getAllWorkoutsFlow(): Flow<List<WorkoutHistoryEntity>>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertWorkout(workout: WorkoutHistoryEntity): Long
+
+    @Query("SELECT * FROM workout_history ORDER BY timestampUtc DESC LIMIT :limit")
+    suspend fun getRecentWorkouts(limit: Int = 10): List<WorkoutHistoryEntity>
+
+    @Query("UPDATE workout_history SET syncedToHealthConnect = 1 WHERE sessionId = :sessionId")
+    suspend fun markWorkoutSyncedToHealthConnect(sessionId: Long)
+
     suspend fun recordEncounter(speciesId: Int, isRaised: Boolean = false, isDefeated: Boolean = false) {
         val existing = getDiscovered(speciesId)
         val now = System.currentTimeMillis() / 1000L
@@ -195,15 +208,36 @@ val MIGRATION_4_5 = object : Migration(4, 5) {
     }
 }
 
+val MIGRATION_5_6 = object : Migration(5, 6) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("""
+            CREATE TABLE IF NOT EXISTS workout_history (
+                sessionId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                workoutType TEXT NOT NULL,
+                timestampUtc INTEGER NOT NULL,
+                durationSeconds INTEGER NOT NULL,
+                avgBpm INTEGER NOT NULL,
+                peakBpm INTEGER NOT NULL,
+                calories INTEGER NOT NULL,
+                steps INTEGER NOT NULL,
+                evolutionMinutesAccelerated INTEGER NOT NULL DEFAULT 0,
+                syncedToHealthConnect INTEGER NOT NULL DEFAULT 0
+            )
+        """.trimIndent())
+        db.execSQL("CREATE INDEX IF NOT EXISTS index_workout_history_timestampUtc ON workout_history(timestampUtc)")
+    }
+}
+
 @Database(
     entities = [
         SyncedPetEntity::class,
         CustomCampaignEntity::class,
         StoredDigimonEntity::class,
         CompanionMemorialEntity::class,
-        DiscoveredSpeciesEntity::class
+        DiscoveredSpeciesEntity::class,
+        WorkoutHistoryEntity::class
     ],
-    version = 5,
+    version = 6,
     exportSchema = false
 )
 abstract class PhoneDatabase : RoomDatabase() {
@@ -220,7 +254,7 @@ abstract class PhoneDatabase : RoomDatabase() {
                     PhoneDatabase::class.java,
                     "digiwear_companion.db"
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
                     .apply {
                         if (BuildConfig.DEBUG) {
                             fallbackToDestructiveMigration()

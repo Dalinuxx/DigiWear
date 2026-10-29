@@ -511,7 +511,7 @@ fun ExpeditionScreen(
 
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // Button B: Story Architect & JSON Schema Editor
+                    // Button B: Story Architect & Visual Saga Creator
                     OutlinedButton(
                         onClick = { showEditorModal = true },
                         modifier = Modifier.fillMaxWidth(),
@@ -522,7 +522,7 @@ fun ExpeditionScreen(
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             DigiVectorIcon(type = DigiIconType.ARCHITECT_PEN, size = 14.dp, tint = Color(0xFF80CBC4))
                             Text(
-                                text = "STORY ARCHITECT & JSON EDITOR",
+                                text = "🛠️ VISUAL SAGA CREATOR & ARCHITECT",
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Bold,
                                 fontFamily = FontFamily.Monospace,
@@ -781,156 +781,12 @@ fun ExpeditionScreen(
             onDismissRequest = { showEditorModal = false },
             properties = DialogProperties(usePlatformDefaultWidth = false)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(DigiWearPalette.CyberBg)
-                    .statusBarsPadding()
-            ) {
-                Column(modifier = Modifier.fillMaxSize()) {
-                    // Modal Top Bar
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .background(Color(0xFF101923))
-                            .padding(horizontal = 16.dp, vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier
-                                .weight(1f)
-                                .padding(end = 12.dp)
-                        ) {
-                            DigiVectorIcon(type = DigiIconType.ARCHITECT_PEN, size = 14.dp, tint = Color(0xFF80CBC4))
-                            Text(
-                                text = "STORY ARCHITECT // JSON EDITOR",
-                                fontSize = 11.5.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                fontFamily = FontFamily.Monospace,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-
-                        OutlinedButton(
-                            onClick = { showEditorModal = false },
-                            shape = RoundedCornerShape(8.dp),
-                            border = BorderStroke(1.dp, Color(0xFF546E7A)),
-                            contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-                            modifier = Modifier.defaultMinSize(minWidth = 72.dp, minHeight = 32.dp)
-                        ) {
-                            Text("CLOSE", fontSize = 10.sp, color = Color.White, fontFamily = FontFamily.Monospace, maxLines = 1)
-                        }
-                    }
-
-                    val editorScrollState = rememberScrollState()
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                            .verticalScroll(editorScrollState)
-                    ) {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
-                            shape = RoundedCornerShape(16.dp),
-                            border = BorderStroke(1.dp, DigiWearPalette.CardBorder)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = "RAW JSON STORY SCHEMA",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFF80CBC4),
-                                    fontFamily = FontFamily.Monospace
-                                )
-                                Text(
-                                    text = "Edit campaign JSON directly or paste custom campaigns below:",
-                                    fontSize = 9.sp,
-                                    color = Color.Gray
-                                )
-                                Spacer(modifier = Modifier.height(8.dp))
-
-                                OutlinedTextField(
-                                    value = rawJson,
-                                    onValueChange = { rawJson = it },
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(300.dp),
-                                    textStyle = androidx.compose.ui.text.TextStyle(
-                                        fontFamily = FontFamily.Monospace,
-                                        fontSize = 10.sp,
-                                        color = Color(0xFFE0E0E0)
-                                    )
-                                )
-
-                                parseError?.let {
-                                    Text(
-                                        text = it,
-                                        fontSize = 11.sp,
-                                        color = Color(0xFFFF5252),
-                                        modifier = Modifier.padding(top = 4.dp)
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                                ) {
-                                    OutlinedButton(
-                                        onClick = {
-                                            rawJson = AdventureEngine.DEFAULT_CAMPAIGN_JSON.trim()
-                                        },
-                                        modifier = Modifier.weight(1f).height(40.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        border = BorderStroke(1.dp, Color(0xFF546E7A)),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp)
-                                    ) {
-                                        Text("RESET DEFAULT", fontSize = 10.sp, color = Color(0xFFB0BEC5), fontFamily = FontFamily.Monospace, fontWeight = FontWeight.Bold)
-                                    }
-
-                                    Button(
-                                        onClick = {
-                                            scope.launch {
-                                                parsedStory?.let { story ->
-                                                    db.phoneDao().insertOrUpdateCampaign(
-                                                        CustomCampaignEntity(
-                                                            campaignId = story.campaignId,
-                                                            title = story.title,
-                                                            jsonContent = rawJson
-                                                        )
-                                                    )
-                                                    val ok = wearableManager.sendCampaignToWatch(rawJson)
-                                                    deployStatus = if (ok) {
-                                                        "Campaign '${story.title}' deployed to Smartwatch!"
-                                                    } else {
-                                                        "Campaign saved locally (Smartwatch offline)"
-                                                    }
-                                                    showEditorModal = false
-                                                }
-                                            }
-                                        },
-                                        modifier = Modifier.weight(1f).height(40.dp),
-                                        shape = RoundedCornerShape(8.dp),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF00897B))
-                                    ) {
-                                        DigiVectorIcon(type = DigiIconType.BEAM_ANTENNA, size = 15.dp, tint = Color.White)
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text("SAVE & DEPLOY", fontSize = 10.5.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, color = Color.White)
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+            SagaBuilderScreen(
+                initialStory = parsedStory,
+                db = db,
+                wearableManager = wearableManager,
+                onClose = { showEditorModal = false }
+            )
 
             Spacer(modifier = Modifier.height(28.dp))
         }

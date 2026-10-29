@@ -5,6 +5,7 @@ import com.digiwear.companion.data.MIGRATION_1_2
 import com.digiwear.companion.data.MIGRATION_2_3
 import com.digiwear.companion.data.MIGRATION_3_4
 import com.digiwear.companion.data.MIGRATION_4_5
+import com.digiwear.companion.data.MIGRATION_5_6
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -37,6 +38,9 @@ class PhoneDatabaseMigrationTest {
 
         assertEquals("MIGRATION_4_5 must transition v4 to v5", 4, MIGRATION_4_5.startVersion)
         assertEquals("MIGRATION_4_5 must transition v4 to v5", 5, MIGRATION_4_5.endVersion)
+
+        assertEquals("MIGRATION_5_6 must transition v5 to v6", 5, MIGRATION_5_6.startVersion)
+        assertEquals("MIGRATION_5_6 must transition v5 to v6", 6, MIGRATION_5_6.endVersion)
     }
 
     @Test
@@ -97,6 +101,25 @@ class PhoneDatabaseMigrationTest {
         assertTrue(
             "Must create index_companion_memorial_graveyard_timestampUtc",
             sqlList[1].contains("index_companion_memorial_graveyard_timestampUtc") && sqlList[1].contains("companion_memorial_graveyard(timestampUtc)")
+        )
+    }
+
+    @Test
+    fun testMigration5To6CreatesWorkoutHistoryTableAndIndex() {
+        val sqlList = mutableListOf<String>()
+        val db = createRecordingDb(sqlList)
+
+        MIGRATION_5_6.migrate(db)
+
+        assertEquals(2, sqlList.size)
+        assertTrue("Must create workout_history table", sqlList[0].contains("workout_history"))
+        assertTrue("workout_history must have sessionId primary key", sqlList[0].contains("sessionId INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL"))
+        assertTrue("workout_history must have workoutType", sqlList[0].contains("workoutType TEXT NOT NULL"))
+        assertTrue("workout_history must have evolutionMinutesAccelerated", sqlList[0].contains("evolutionMinutesAccelerated INTEGER NOT NULL DEFAULT 0"))
+        assertTrue("workout_history must have syncedToHealthConnect", sqlList[0].contains("syncedToHealthConnect INTEGER NOT NULL DEFAULT 0"))
+        assertTrue(
+            "Must create index_workout_history_timestampUtc",
+            sqlList[1].contains("index_workout_history_timestampUtc") && sqlList[1].contains("workout_history(timestampUtc)")
         )
     }
 }

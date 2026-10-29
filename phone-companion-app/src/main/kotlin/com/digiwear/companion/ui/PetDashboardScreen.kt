@@ -119,6 +119,7 @@ fun PetDashboardScreen(
         }
     }
 
+    val workouts by db.phoneDao().getAllWorkoutsFlow().collectAsState(initial = emptyList())
     val stanceNames = listOf("IDLE", "WALK", "HAPPY", "ATTACK")
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -712,6 +713,106 @@ fun PetDashboardScreen(
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (currentPet.isFrozen) Color(0xFF00E5FF) else Color(0xFF80D8FF),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Physical Workout & Cardio Evolution Card
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = DigiWearPalette.CardSurface),
+                    shape = RoundedCornerShape(12.dp),
+                    border = BorderStroke(1.dp, Color(0xFF1E2E3E))
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(14.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "WORKOUT & CARDIO ACCELERATION",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color(0xFF00E5FF)
+                            )
+                            Text(
+                                text = "${workouts.size} SESSIONS",
+                                fontSize = 9.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                color = Color(0xFFB0BEC5)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        val totalCalories = workouts.sumOf { it.calories }
+                        val totalEvoMin = workouts.sumOf { it.evolutionMinutesAccelerated }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFF0E1622), RoundedCornerShape(8.dp))
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("TOTAL BURN", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                Text("$totalCalories kcal", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFB300), fontFamily = FontFamily.Monospace)
+                            }
+                            Column(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .background(Color(0xFF0E1622), RoundedCornerShape(8.dp))
+                                    .padding(8.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text("EVO GROWTH", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                Text("+${totalEvoMin}m", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD600), fontFamily = FontFamily.Monospace)
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        if (workouts.isEmpty()) {
+                            Text(
+                                text = "💡 Tip: Start a workout on your smartwatch to burn calories, max effort hearts, and accelerate your partner's evolution!",
+                                fontSize = 9.sp,
+                                color = Color(0xFF90A4AE),
+                                fontFamily = FontFamily.Monospace,
+                                lineHeight = 13.sp
+                            )
+                        } else {
+                            val recent = workouts.first()
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Latest: ${recent.workoutType} (${recent.durationSeconds / 60}m, ${recent.calories} kcal)",
+                                    fontSize = 8.5.sp,
+                                    color = Color(0xFF80D8FF),
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Text(
+                                    text = if (recent.syncedToHealthConnect) "✓ Health Connect" else "Local Stored",
+                                    fontSize = 8.sp,
+                                    color = if (recent.syncedToHealthConnect) Color(0xFF00E676) else Color.Gray,
                                     fontFamily = FontFamily.Monospace
                                 )
                             }

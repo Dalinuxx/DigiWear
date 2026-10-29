@@ -55,9 +55,11 @@ class MainActivity : ComponentActivity() {
     private lateinit var buzzerManager: com.digiwear.wear.sound.BuzzerManager
     private lateinit var stepTracker: StepTrackerManager
     private val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
+    private val requestedScreenState = androidx.compose.runtime.mutableStateOf(WearScreen.MAIN)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        parseTargetScreen(intent)
 
         repository = PetRepository.getInstance(applicationContext)
         hapticManager = HapticManager(this)
@@ -97,7 +99,12 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             ) {
-                WearNavigationHost(repository, hapticManager, buzzerManager)
+                WearNavigationHost(
+                    repository = repository,
+                    hapticManager = hapticManager,
+                    buzzerManager = buzzerManager,
+                    requestedScreen = requestedScreenState.value
+                )
             }
         }
     }
@@ -161,11 +168,24 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        parseTargetScreen(intent)
         val tag = androidx.core.content.IntentCompat.getParcelableExtra(intent, NfcAdapter.EXTRA_TAG, Tag::class.java)
         if (tag != null) {
             val opponentCode = NfcDuelManager.extractCommCodeFromTag(tag)
             repository.setBeamedCommCode(opponentCode)
             hapticManager.playStepMilestone()
+        }
+    }
+
+    private fun parseTargetScreen(intent: Intent?) {
+        when (intent?.getStringExtra("target_screen")) {
+            "ADVENTURE" -> requestedScreenState.value = WearScreen.ADVENTURE
+            "WORKOUT" -> requestedScreenState.value = WearScreen.WORKOUT
+            "BATTLE" -> requestedScreenState.value = WearScreen.BATTLE
+            "STATUS" -> requestedScreenState.value = WearScreen.STATUS
+            "SETTINGS" -> requestedScreenState.value = WearScreen.SETTINGS
+            "DIGIDEX" -> requestedScreenState.value = WearScreen.DIGIDEX
+            else -> {}
         }
     }
 
@@ -264,10 +284,17 @@ class MainActivity : ComponentActivity() {
 fun WearNavigationHost(
     repository: PetRepository,
     hapticManager: HapticManager,
-    buzzerManager: com.digiwear.wear.sound.BuzzerManager = remember { com.digiwear.wear.sound.BuzzerManager() }
+    buzzerManager: com.digiwear.wear.sound.BuzzerManager = remember { com.digiwear.wear.sound.BuzzerManager() },
+    requestedScreen: WearScreen = WearScreen.MAIN
 ) {
     val ambientState = LocalAmbientState.current
-    var currentScreen by remember { mutableStateOf(WearScreen.MAIN) }
+    var currentScreen by remember { mutableStateOf(requestedScreen) }
+
+    LaunchedEffect(requestedScreen) {
+        if (requestedScreen != WearScreen.MAIN) {
+            currentScreen = requestedScreen
+        }
+    }
 
     // Intercept system back gesture / back button on AOSP & Wear OS watches when on a sub-screen
     androidx.activity.compose.BackHandler(enabled = currentScreen != WearScreen.MAIN) {

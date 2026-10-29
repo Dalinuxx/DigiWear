@@ -470,6 +470,12 @@ fun WorkoutScreen(
                                 Text("-${res.weightGramsBurned}g", fontSize = 8.sp, color = Color(0xFF00E5FF), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                             }
                         }
+                        if (res.evolutionMinutesAccelerated > 0) {
+                            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                Text("EVO BOOST", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)
+                                Text("+${res.evolutionMinutesAccelerated}m Growth", fontSize = 8.sp, color = Color(0xFFFFD600), fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                            }
+                        }
                         if (workoutType == WorkoutType.EXPEDITION_TREK) {
                             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 Text("ADV STEPS", fontSize = 8.sp, color = Color.Gray, fontFamily = FontFamily.Monospace)

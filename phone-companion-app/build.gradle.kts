@@ -123,6 +123,12 @@ dependencies {
     implementation("org.conscrypt:conscrypt-android:2.5.3")
     implementation("org.bouncycastle:bcpkix-jdk15to18:1.81")
 
+    // Guava / ListenableFuture
+    implementation("com.google.guava:guava:31.1-android")
+
+    // Android Health Connect Client (Optional Opt-In Fitness Sync)
+    implementation("androidx.health.connect:connect-client:1.1.0-alpha11")
+
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)
 }

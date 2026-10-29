@@ -228,6 +228,10 @@ See the full [v2.6.0 Release Notes](RELEASE_NOTES_v2.6.md) for detailed benchmar
 * **Watch Face 12fps Loop Hardening**: 30-second TTL battery percentage caching and zero-allocation scratch rect re-use eliminate Binder IPC overhead and GC pauses.
 * **Cryo-Vault Tile & Widget Fallbacks**: Phone widget and Wear OS tile gracefully fall back to Cryo-Vault stasis status when disconnected, preventing default Botamon resets.
 * **Embedded Direct Sideloading**: Companion app includes built-in release APKs for 1-tap wireless watch flashing over Wi-Fi without a PC.
+* **Dedicated Wear OS Adventure & Radar Tile**: Glanceable sector progression, distance remaining to apex bosses, and 1-tap battle launch right from the wrist carousel.
+* **Calorie-Based Evolution Growth Acceleration**: Physical workouts convert active calories burned into real partner growth (+15m evolution progression per 50 kcal burned) with optional Health Connect sync.
+* **In-App Visual Saga Creator & Architect**: Design custom adventure sagas, pick environmental hazards, select boss encounters from all 550 monsters, and beam them to your watch over Wi-Fi.
+* **100% Hardware-Independent & Optional**: All fitness features, tiles, and Health Connect sync operate with seamless no-sensor fallbacks, ensuring complete playability on any watch model.
 
 ---
 

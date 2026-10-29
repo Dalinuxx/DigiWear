@@ -2,6 +2,8 @@
 <resources>
     <string name="app_name">DigiWear</string>
     <string name="tile_description">Glanceable Digimon partner status, hunger/strength hearts, and adventure steps</string>
+    <string name="adventure_tile_label">DigiWear Radar</string>
+    <string name="adventure_tile_description">Glanceable step expedition radar, sector distance, and boss encounter alert</string>
     <string name="complication_label">DigiWear Status</string>
     <string name="watch_face_name">DigiWatch Retro LCD</string>
     <string name="watch_face_editor_label">DigiWatch Face Editor</string>

@@ -276,3 +276,22 @@ data class StoredDigimonEntity(
         vitalPoints = vitalPoints
     )
 }
+
+@Serializable
+@Entity(
+    tableName = "workout_history",
+    indices = [Index(value = ["timestampUtc"])]
+)
+data class WorkoutHistoryEntity(
+    @PrimaryKey(autoGenerate = true)
+    val sessionId: Long = 0,
+    val workoutType: String,
+    val timestampUtc: Long = System.currentTimeMillis() / 1000L,
+    val durationSeconds: Long,
+    val avgBpm: Int,
+    val peakBpm: Int,
+    val calories: Int,
+    val steps: Int,
+    val evolutionMinutesAccelerated: Long = 0L,
+    val syncedToHealthConnect: Boolean = false
+)

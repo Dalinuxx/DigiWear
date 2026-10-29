@@ -108,5 +108,30 @@ class WorkoutEngineTest {
         assertEquals(0, updatedPet.vitalPoints)
         assertEquals(0, summary.averageBpm)
         assertEquals(0, summary.weightGramsBurned)
+        assertEquals(0L, summary.evolutionMinutesAccelerated)
+    }
+
+    @Test
+    fun testWorkoutCalorieEvolutionAcceleration() {
+        val initialPet = PetState(
+            speciesId = 201,
+            ageSeconds = 10_000L
+        )
+
+        val (updatedPet, summary) = WorkoutEngine.finishSession(
+            currentState = initialPet,
+            type = WorkoutType.CARDIO_RUN,
+            durationSeconds = 1000L,
+            rawSteps = 1500,
+            bpmSamples = listOf(140, 142, 138)
+        )
+
+        assertTrue("Must calculate calories", summary.estimatedCalories >= 50)
+        assertTrue("Must accelerate evolution", summary.evolutionMinutesAccelerated > 0L)
+        assertTrue("Age must increase by evolution bonus seconds", updatedPet.ageSeconds > initialPet.ageSeconds)
+        assertEquals(
+            initialPet.ageSeconds + (summary.evolutionMinutesAccelerated * 60L),
+            updatedPet.ageSeconds
+        )
     }
 }

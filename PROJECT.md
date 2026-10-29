@@ -42,6 +42,10 @@
 | M4 | E2E Testing, Adversarial Hardening & Audit | JVM unit test config across all modules, unit/integration test suites for M1-M3, full ./gradlew test verification, Challenger verification, Forensic Audit | M1, M2, M3 | DONE |
 | M5 | Wireless ADB Watch Sideloading | Direct socket ADB client engine (dadb 2.0.0), AdbKeyManager, WatchApkSourceManager, WatchSideloadScreen, real-time logs | M1, M4 | DONE |
 | M6 | UI Safe-Zone Architecture, Performance Audit & v2.6.0 Release | Circular bezel geometry, O(1) recipe indexing, 12-frame animation matrix, widget Cryo-Vault fallback, release_bin sync | M4, M5 | DONE |
+| M7 | Wear OS Adventure & Radar Tile | Dedicated glanceable ProtoLayout radar tile, sector distance remaining, boss encounter ready indicator | M3, M6 | DONE |
+| M8 | Health Connect & Workout Engine 2.0 | Calorie burn evolution acceleration (+15m growth per 50 kcal), Room workout_history migration v6, HealthConnectManager | M6 | DONE |
+| M9 | Visual Campaign & Saga Creator | In-app visual node architect in companion app, 550-monster boss selector, schema validator, wireless beam to watch | M5, M6 | DONE |
+| M10 | Live Real-Time Multiplayer Duel Hub | WebSocket/WebRTC room-based matchmaking lobby for real-time QTE duels | M1, M6 | DEFERRED |
 
 ## Interface Contracts
 

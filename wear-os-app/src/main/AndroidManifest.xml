@@ -98,6 +98,17 @@
         </service>
 
         <service
+            android:name=".tile.DigiWearAdventureTileService"
+            android:exported="true"
+            android:label="@string/adventure_tile_label"
+            android:description="@string/adventure_tile_description"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+        </service>
+
+        <service
             android:name=".complication.DigiWearComplicationService"
             android:exported="true"
             android:label="@string/complication_label"

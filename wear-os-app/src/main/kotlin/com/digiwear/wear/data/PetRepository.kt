@@ -572,6 +572,7 @@ class PetRepository private constructor(context: Context) {
     private fun notifySurfaceUpdates() {
         DigiWearComplicationService.requestUpdate(appContext)
         DigiWearTileService.requestUpdate(appContext)
+        com.digiwear.wear.tile.DigiWearAdventureTileService.requestUpdate(appContext)
     }
 
     suspend fun savePetState(state: PetState) = withContext(Dispatchers.IO) {

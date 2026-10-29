@@ -13,7 +13,9 @@ import kotlin.math.min
 enum class WorkoutType(val displayName: String, val description: String) {
     FREE_TRAINING("Free Training", "Gym, weights & sparring session to burn weight and max effort"),
     EXPEDITION_TREK("Expedition Trek", "Jogging or fast-walking to accelerate Adventure Mode sector progress"),
-    SHADOW_BOXING("Shadow Boxing", "High-cadence HIIT wrist movement to sharpen battle reflex and attack power")
+    SHADOW_BOXING("Shadow Boxing", "High-cadence HIIT wrist movement to sharpen battle reflex and attack power"),
+    CARDIO_RUN("Cardio Run", "Outdoor or treadmill running for high-intensity calorie burn & evolution acceleration"),
+    POWER_WALK("Power Walk", "Steady brisk walking to build vital points and clear adventure sectors")
 }
 
 /**
@@ -57,7 +59,8 @@ data class WorkoutSummary(
     val weightGramsBurned: Int,
     val effortGained: Int,
     val energizedBuffGranted: Boolean,
-    val vitalPointsGained: Int = 0
+    val vitalPointsGained: Int = 0,
+    val evolutionMinutesAccelerated: Long = 0L
 )
 
 /**
@@ -146,6 +149,15 @@ object WorkoutEngine {
         }
         val newVitalPoints = currentState.vitalPoints + vpGained
 
+        // Evolution timer acceleration from calories burned: 15 min (900s) growth per 50 kcal, up to 120 min (7200s)
+        val evoMinutesBonus = if (safeDuration >= 30L && calories >= 20) {
+            min(120L, ((calories.toLong() * 15L) / 50L))
+        } else {
+            0L
+        }
+        val evoSecondsBonus = evoMinutesBonus * 60L
+        val newAgeSeconds = currentState.ageSeconds + evoSecondsBonus
+
         val needsAttentionStill = currentState.hunger == 0 || (currentState.isSleeping && !currentState.lightsOff)
 
         val updatedState = currentState.copy(
@@ -153,6 +165,7 @@ object WorkoutEngine {
             weight = newWeight,
             effort = newEffort,
             vitalPoints = newVitalPoints,
+            ageSeconds = newAgeSeconds,
             attentionCallActive = if (!needsAttentionStill) false else currentState.attentionCallActive,
             attentionCallTimestampUtc = if (!needsAttentionStill) null else currentState.attentionCallTimestampUtc,
             lastProcessedTimestampUtc = currentTimestampUtc
@@ -169,7 +182,8 @@ object WorkoutEngine {
             weightGramsBurned = weightBurned,
             effortGained = effortGained,
             energizedBuffGranted = energized,
-            vitalPointsGained = vpGained
+            vitalPointsGained = vpGained,
+            evolutionMinutesAccelerated = evoMinutesBonus
         )
 
         return Pair(updatedState, summary)
