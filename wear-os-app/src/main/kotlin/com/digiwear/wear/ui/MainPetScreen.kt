@@ -1043,7 +1043,7 @@ private fun RoundDialPetView(
     val iconDiameter = (diameter * 0.125f).dp.coerceIn(24.dp, 29.dp)
     val chipSize = (diameter * 0.120f).dp.coerceIn(24.dp, 29.dp)
     val chipHalf = chipSize * 0.5f
-    val chipR = r * 0.84f
+    val chipR = r * 0.865f
     val chipOffsetY = r * 0.18f
     val chipX = chipR * (if (railOnRight) -1f else 1f) * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat()
     val chipInnerEdge = (kotlin.math.abs(chipX.value) - chipHalf.value).dp
@@ -1065,7 +1065,7 @@ private fun RoundDialPetView(
     Box(modifier = Modifier.fillMaxSize()) {
 
         // ---- Live Clock (top centre, comfortably under top menu icons) ----
-        DialSlot(0.dp, -(r * 0.58f)) {
+        DialSlot(0.dp, -(r * 0.63f)) {
             Text(
                 text = clockText,
                 fontSize = (diameter * 0.080f).sp,
@@ -1129,8 +1129,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Menu care icons on the outside circle (0.84f * r) hugging face edge with zero bezel clipping ----
-        val ringRadius = 0.84f
+        // ---- Menu care icons on the outside circle (0.865f * r) hugging face edge with zero bezel clipping ----
+        val ringRadius = 0.865f
         val topAngles = floatArrayOf(-48f, -16f, 16f, 48f)
         val bottomAngles = floatArrayOf(-48f, -16f, 16f, 48f)
         for (k in 0..3) {
@@ -1171,7 +1171,7 @@ private fun RoundDialPetView(
         }
 
         // ---- Name / attribute / weight (upper chord, condensed under clock) ----
-        DialSlot(0.dp, -(r * 0.42f)) {
+        DialSlot(0.dp, -(r * 0.47f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = species.name.take(if (diameter < 220f) 8 else 10),
@@ -1208,8 +1208,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Pet (exact screen centre) ----
-        DialSlot(0.dp, 0.dp) {
+        // ---- Pet (central stage with generous roaming headroom) ----
+        DialSlot(0.dp, -(r * 0.05f)) {
             Box(
                 modifier = Modifier
                     .size(spriteSize)
@@ -1231,9 +1231,9 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Authentic V-Pet Waste on the floor beside the pet ----
+        // ---- Authentic V-Pet Waste on the floor below the pet (never clipped by roaming) ----
         if (petState.wasteCount > 0) {
-            DialSlot(r * 0.35f, r * 0.12f) {
+            DialSlot(0.dp, r * 0.30f) {
                 VPetWasteRow(
                     wasteCount = petState.wasteCount,
                     iconSize = (fontBase + 1.5f).dp
@@ -1241,8 +1241,9 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Prompt / feedback / RIP (comfortably below pet with clear clearance) ----
-        DialSlot(0.dp, r * 0.38f) {
+        // ---- Prompt / feedback / RIP (comfortably below waste and pet) ----
+        val promptOffsetY = if (petState.wasteCount > 0) r * 0.44f else r * 0.38f
+        DialSlot(0.dp, promptOffsetY) {
             if (petState.isDeceased) {
                 Box(
                     modifier = Modifier
@@ -1292,7 +1293,7 @@ private fun RoundDialPetView(
         }
 
         // ---- Hunger & Strength (lower chord, perfectly centered with ample bezel margin) ----
-        DialSlot(0.dp, r * 0.54f) {
+        DialSlot(0.dp, r * 0.58f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)

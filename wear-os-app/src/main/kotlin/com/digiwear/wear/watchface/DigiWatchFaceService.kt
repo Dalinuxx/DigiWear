@@ -872,7 +872,7 @@ class DigiCanvasRenderer(
 
         // 4. Top Header: Retro Battery indicator & percentage centered at top
         val batteryPct = getBatteryPercentage(context)
-        val topHeaderY = if (isRound) centerY - (h * 0.37f) else (w * 0.06f) + 14f
+        val topHeaderY = if (isRound) centerY - (h * 0.415f) else (w * 0.06f) + 12f
         textPaint.color = darkPixelColor
         textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
 
@@ -910,7 +910,7 @@ class DigiCanvasRenderer(
         textPaint.color = darkPixelColor
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
-        val dateY = if (isRound) centerY - (h * 0.27f) else (w * 0.06f) + 36f
+        val dateY = if (isRound) centerY - (h * 0.335f) else (w * 0.06f) + 32f
         canvas.drawText(dateStr, centerX, dateY, textPaint)
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
@@ -918,7 +918,7 @@ class DigiCanvasRenderer(
         val amPmStr = if (!is24hFormat) amPmFormatter.format(zonedDateTime) else ""
         val clockWidth = w * 0.54f
         val clockHeight = h * 0.15f
-        val clockY = centerY - h * 0.16f
+        val clockY = centerY - h * 0.215f
 
         draw7SegmentTime(
             canvas = canvas,
@@ -961,18 +961,18 @@ class DigiCanvasRenderer(
         val spriteBitmap = PixelArtMatrices.getAndroidBitmap(petState.speciesId, activeFrame, isAmbient = false)
         val spriteSize = (w * 0.34f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
-        val spriteTop = (centerY - spriteSize / 2f + h * 0.06f + bounceOffset).toInt()
+        val spriteTop = (centerY - spriteSize / 2f + h * 0.075f + bounceOffset).toInt()
         reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
         canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
             val heartOffset = bounceOffset - 12f - (bounceProgress * 8f)
-            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.06f) + heartOffset, darkPixelColor, w)
+            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.075f) + heartOffset, darkPixelColor, w)
         }
 
         // 7. Physiological Hearts (Hunger & Strength) - Mathematically centered
-        val metersY = centerY + h * 0.28f
+        val metersY = centerY + h * 0.325f
         val hgrWidth = measureHeartRowWidth("HGR", w)
         val strWidth = measureHeartRowWidth("STR", w)
         val midGap = w * 0.045f
@@ -987,7 +987,7 @@ class DigiCanvasRenderer(
             complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
         )
         if (!hasBottomSlotData) {
-            val bottomY = if (isRound) centerY + h * 0.38f else h - (w * 0.06f) - 10f
+            val bottomY = if (isRound) centerY + h * 0.415f else h - (w * 0.06f) - 8f
             textPaint.textSize = (w * 0.038f).coerceIn(11f, 16f)
             textPaint.color = darkPixelColor
             textPaint.textAlign = Paint.Align.CENTER
@@ -1159,23 +1159,37 @@ class DigiCanvasRenderer(
         var hX = startX + textPaint.measureText(label) + (screenW * 0.018f)
         for (i in 0 until 4) {
             val isFilled = i < filledCount
-            drawHeartIcon(canvas, hX, y - (heartRadius * 0.8f), heartRadius, if (isFilled) activeColor else emptyColor, isFilled)
+            drawHeartIcon(canvas, hX, y - (heartRadius * 0.8f), heartRadius, activeColor, isFilled)
             hX += heartSpacing
         }
         textPaint.textAlign = Paint.Align.CENTER
     }
 
     private fun drawHeartIcon(canvas: Canvas, cx: Float, cy: Float, radius: Float, color: Int, filled: Boolean) {
-        heartPaint.color = color
-        heartPaint.style = if (filled) Paint.Style.FILL else Paint.Style.STROKE
-        heartPaint.strokeWidth = 1.2f
-
         reusableHeartPath.reset()
         reusableHeartPath.moveTo(cx, cy + radius * 0.8f)
         reusableHeartPath.cubicTo(cx - radius * 1.5f, cy - radius * 0.8f, cx - radius, cy - radius * 1.8f, cx, cy - radius * 0.7f)
         reusableHeartPath.cubicTo(cx + radius, cy - radius * 1.8f, cx + radius * 1.5f, cy - radius * 0.8f, cx, cy + radius * 0.8f)
         reusableHeartPath.close()
-        canvas.drawPath(reusableHeartPath, heartPaint)
+
+        if (filled) {
+            heartPaint.style = Paint.Style.FILL
+            heartPaint.color = color
+            heartPaint.alpha = 255
+            canvas.drawPath(reusableHeartPath, heartPaint)
+        } else {
+            // Shaded empty heart: authentic LCD ghost shaded fill + crisp stroke
+            heartPaint.style = Paint.Style.FILL
+            heartPaint.color = color
+            heartPaint.alpha = 65 // Clear shaded interior
+            canvas.drawPath(reusableHeartPath, heartPaint)
+
+            heartPaint.style = Paint.Style.STROKE
+            heartPaint.strokeWidth = 1.4f
+            heartPaint.color = color
+            heartPaint.alpha = 190 // Crisp boundary outline
+            canvas.drawPath(reusableHeartPath, heartPaint)
+        }
     }
 
     private fun drawJoyHeart(canvas: Canvas, cx: Float, cy: Float, color: Int, screenW: Float = 400f) {

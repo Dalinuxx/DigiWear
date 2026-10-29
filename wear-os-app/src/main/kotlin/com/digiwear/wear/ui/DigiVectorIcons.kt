@@ -733,6 +733,8 @@ private fun DrawScope.drawHeartIcon(w: Float, h: Float, s: Float, filled: Boolea
     if (filled) {
         drawPath(path, color = color)
     } else {
+        // Shaded interior + crisp outline
+        drawPath(path, color = color.copy(alpha = 0.28f))
         drawPath(path, color = color, style = Stroke(width = (s * 0.11f).coerceAtLeast(1.1f), join = StrokeJoin.Round))
     }
 }
@@ -754,6 +756,8 @@ private fun DrawScope.drawStarIcon(w: Float, h: Float, s: Float, filled: Boolean
     if (filled) {
         drawPath(path, color = color)
     } else {
+        // Shaded interior + crisp outline
+        drawPath(path, color = color.copy(alpha = 0.28f))
         drawPath(path, color = color, style = Stroke(width = (s * 0.10f).coerceAtLeast(1.1f), join = StrokeJoin.Round))
     }
 }
