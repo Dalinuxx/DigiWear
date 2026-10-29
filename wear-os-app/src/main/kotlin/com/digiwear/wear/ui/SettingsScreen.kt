@@ -61,7 +61,6 @@ fun SettingsScreen(
     val currentTheme by repository.themeFlow.collectAsState(initial = BackgroundTheme.CLASSIC_VPET_LCD)
     val customThemeConfig by repository.customThemeConfigFlow.collectAsState(initial = null)
     val isVibrationEnabled by repository.vibrationFlow.collectAsState(initial = true)
-    val isThreeButtonMode by repository.threeButtonModeFlow.collectAsState(initial = true)
     val buttonPlacement by repository.buttonPlacementFlow.collectAsState(initial = "RIGHT")
     val isPendulumShakeMode by repository.pendulumShakeModeFlow.collectAsState(initial = false)
     val isSoundEnabled by repository.soundEnabledFlow.collectAsState(initial = false)
@@ -415,7 +414,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "CHIPTUNE BUZZER",
                         fontSize = 9.5.sp,
@@ -785,7 +784,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "CLOCK TIME FORMAT",
                         fontSize = 9.5.sp,
@@ -828,7 +827,7 @@ fun SettingsScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Column {
+                Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = "HAZARD NOTIFICATIONS",
                         fontSize = 9.sp,

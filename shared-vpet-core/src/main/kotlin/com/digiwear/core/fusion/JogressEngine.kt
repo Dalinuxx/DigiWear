@@ -268,6 +268,28 @@ object JogressEngine {
         map
     }
 
+    private val RECIPES_BY_TARGET: Map<Int, List<JogressRecipe>> by lazy {
+        val map = mutableMapOf<Int, MutableList<JogressRecipe>>()
+        for (recipe in RECIPES) {
+            map.getOrPut(recipe.targetSpeciesId) { mutableListOf() }.add(recipe)
+        }
+        map
+    }
+
+    private val RECIPES_BY_ANY_SPECIES: Map<Int, List<JogressRecipe>> by lazy {
+        val map = mutableMapOf<Int, MutableList<JogressRecipe>>()
+        for (recipe in RECIPES) {
+            map.getOrPut(recipe.primarySpeciesId) { mutableListOf() }.add(recipe)
+            if (recipe.secondarySpeciesId != recipe.primarySpeciesId) {
+                map.getOrPut(recipe.secondarySpeciesId) { mutableListOf() }.add(recipe)
+            }
+            if (recipe.targetSpeciesId != recipe.primarySpeciesId && recipe.targetSpeciesId != recipe.secondarySpeciesId) {
+                map.getOrPut(recipe.targetSpeciesId) { mutableListOf() }.add(recipe)
+            }
+        }
+        map
+    }
+
     /**
      * Looks up any valid fusion recipe between two species (commutative: order independent).
      */
@@ -284,6 +306,20 @@ object JogressEngine {
      */
     fun getCompatibleRecipesFor(speciesId: Int): List<JogressRecipe> {
         return RECIPES_BY_SPECIES[speciesId] ?: emptyList()
+    }
+
+    /**
+     * Returns all fusion recipes whose result is [targetSpeciesId] in O(1) time.
+     */
+    fun getRecipesByTarget(targetSpeciesId: Int): List<JogressRecipe> {
+        return RECIPES_BY_TARGET[targetSpeciesId] ?: emptyList()
+    }
+
+    /**
+     * Returns all fusion recipes where [speciesId] participates as primary, secondary, or target in O(1) time.
+     */
+    fun getRecipesForSpecies(speciesId: Int): List<JogressRecipe> {
+        return RECIPES_BY_ANY_SPECIES[speciesId] ?: emptyList()
     }
 
     /**

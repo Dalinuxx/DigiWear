@@ -41,6 +41,7 @@
 | M3 | Notification Quick-Care Actions | PetDecayWorker distress triggers, Wear OS NotificationQuickCareReceiver, 1-tap feed/flush actions, complication/tile refresh, companion widget fix | M2 | DONE |
 | M4 | E2E Testing, Adversarial Hardening & Audit | JVM unit test config across all modules, unit/integration test suites for M1-M3, full ./gradlew test verification, Challenger verification, Forensic Audit | M1, M2, M3 | DONE |
 | M5 | Wireless ADB Watch Sideloading | Direct socket ADB client engine (dadb 2.0.0), AdbKeyManager, WatchApkSourceManager, WatchSideloadScreen, real-time logs | M1, M4 | DONE |
+| M6 | UI Safe-Zone Architecture, Performance Audit & v2.6.0 Release | Circular bezel geometry, O(1) recipe indexing, 12-frame animation matrix, widget Cryo-Vault fallback, release_bin sync | M4, M5 | DONE |
 
 ## Interface Contracts
 

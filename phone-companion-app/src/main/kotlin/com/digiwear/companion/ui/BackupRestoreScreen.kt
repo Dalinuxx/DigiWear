@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -88,11 +89,13 @@ fun BackupRestoreScreen(
     var jsonExportString by remember { mutableStateOf(json.encodeToString(PetState())) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        val latest = db.phoneDao().getLatestSnapshot()
+    LaunchedEffect(snapshots, vaultPets) {
+        val latest = snapshots.firstOrNull() ?: db.phoneDao().getLatestSnapshot()
         if (latest != null) {
             val loadedState = latest.toDomain()
             jsonExportString = json.encodeToString(loadedState)
+        } else if (vaultPets.isNotEmpty()) {
+            jsonExportString = json.encodeToString(vaultPets.first().toDomain())
         }
     }
 
@@ -135,13 +138,13 @@ fun BackupRestoreScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
 
-                if (snapshots.isEmpty()) {
+                if (snapshots.isEmpty() && vaultPets.isEmpty()) {
                     Text(
                         text = "No saved snapshots yet. Sync with watch on dashboard to create backups.",
                         fontSize = 12.sp,
                         color = Color.LightGray
                     )
-                } else {
+                } else if (snapshots.isNotEmpty()) {
                     snapshots.take(5).forEach { snap ->
                         val dateStr = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
                             .format(Date(snap.syncedTimestampUtc * 1000L))
@@ -185,6 +188,50 @@ fun BackupRestoreScreen(
                             )
                         }
                     }
+                } else {
+                    vaultPets.take(5).forEach { vPet ->
+                        val dateStr = SimpleDateFormat("MMM dd, HH:mm", Locale.getDefault())
+                            .format(Date(vPet.storedTimestampUtc * 1000L))
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 3.dp)
+                                .background(DigiWearPalette.CardInner, RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF222E3C), RoundedCornerShape(8.dp))
+                                .padding(8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                SpriteCanvasRenderer(
+                                    speciesId = vPet.speciesId,
+                                    frame = SpriteFrame.IDLE_A,
+                                    size = 32.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "#${vPet.speciesId} ${vPet.speciesName} [VAULT]",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White
+                                    )
+                                    Text(
+                                        text = "Wt: ${vPet.weight}g • CM: ${vPet.careMistakes} • Wins: ${vPet.victories}/${vPet.totalBattles}",
+                                        fontSize = 10.sp,
+                                        color = Color.Gray,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
+                            Text(
+                                text = dateStr,
+                                fontSize = 10.sp,
+                                color = Color(0xFF80CBC4),
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -206,16 +253,17 @@ fun BackupRestoreScreen(
                 ) {
                     Text(
                         text = "▸ UNIFIED JSON STATE CONTRACT",
-                        fontSize = 11.sp,
+                        fontSize = 10.5.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFCE93D8),
-                        fontFamily = FontFamily.Monospace
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.weight(1f)
                     )
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         OutlinedButton(
                             onClick = {
                                 val latest = snapshots.firstOrNull()
-                                val activePet = latest?.toDomain() ?: PetState()
+                                val activePet = latest?.toDomain() ?: vaultPets.firstOrNull()?.toDomain() ?: PetState()
                                 val archive = FullCompanionArchive(
                                     activePet = activePet,
                                     vaultPets = vaultPets.map { it.copy(id = 0) },
@@ -225,20 +273,22 @@ fun BackupRestoreScreen(
                                 jsonExportString = json.encodeToString(archive)
                                 statusMessage = "Generated Full Companion Archive (${vaultPets.size} Vault pets, ${memorials.size} Memorials, ${customCampaigns.size} Campaigns)!"
                             },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
-                            Text("FULL ARCHIVE", color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            Text("FULL ARCHIVE", color = Color.White, fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                         }
                         OutlinedButton(
                             onClick = {
                                 clipboardManager.setText(AnnotatedString(jsonExportString))
                                 Toast.makeText(context, "JSON Backup copied!", Toast.LENGTH_SHORT).show()
                             },
+                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
                             modifier = Modifier.height(30.dp)
                         ) {
-                            DigiVectorIcon(type = DigiIconType.COPY, size = 13.dp, tint = DigiWearPalette.DigiviceCyan)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text("COPY", color = Color.White, fontSize = 9.sp, fontFamily = FontFamily.Monospace)
+                            DigiVectorIcon(type = DigiIconType.COPY, size = 12.dp, tint = DigiWearPalette.DigiviceCyan)
+                            Spacer(modifier = Modifier.width(3.dp))
+                            Text("COPY", color = Color.White, fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                         }
                     }
                 }

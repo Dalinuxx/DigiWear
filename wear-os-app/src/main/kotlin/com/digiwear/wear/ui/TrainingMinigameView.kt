@@ -408,7 +408,7 @@ fun TrainingMinigameView(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 12.dp),
+                    .padding(top = 18.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
@@ -512,7 +512,7 @@ fun TrainingMinigameView(
 
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(0.90f)
+                        .fillMaxWidth(0.82f)
                         .fillMaxHeight(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -658,7 +658,7 @@ fun TrainingMinigameView(
                         if (!isPendulumShakeMode) {
                             // --- RETRO OSCILLATING POWER GAUGE (Bandai Ver. 2/20th) ---
                             Row(
-                                modifier = Modifier.fillMaxWidth(0.72f),
+                                modifier = Modifier.fillMaxWidth(0.76f),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -683,7 +683,7 @@ fun TrainingMinigameView(
                             // Dynamic Oscillating Meter Bar (0 layout passes)
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.72f)
+                                    .fillMaxWidth(0.76f)
                                     .height(11.dp)
                                     .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(5.dp))
                                     .border(1.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(5.dp))
@@ -732,7 +732,7 @@ fun TrainingMinigameView(
                         } else {
                             // --- PENDULUM ACCELEROMETER SHAKE METER ---
                             Row(
-                                modifier = Modifier.fillMaxWidth(0.72f),
+                                modifier = Modifier.fillMaxWidth(0.76f),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
@@ -757,7 +757,7 @@ fun TrainingMinigameView(
                             // Shake Countdown Timer Bar (3500ms)
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.72f)
+                                    .fillMaxWidth(0.76f)
                                     .height(7.dp)
                                     .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(3.5.dp))
                                     .border(0.5.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(3.5.dp))

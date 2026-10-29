@@ -92,7 +92,7 @@ fun EnvironmentParticleCanvas(
                     val progress = (ticker * p.speed + p.phaseOffset) % 1f
                     val posX = (p.initX + progress) % 1f * w
                     val posY = (p.initY + sin((ticker + p.phaseOffset) * 6.28f) * 0.05f) * h
-                    val glitchColor = if (p.size > 4f) Color(0xFF00E676).copy(alpha = 0.40f) else Color(0xFFB388FF).copy(alpha = 0.45f)
+                    val glitchColor = if (p.size > 4f) Color(0xFF00E676).copy(alpha = 0.20f) else Color(0xFFB388FF).copy(alpha = 0.22f)
                     drawRect(
                         color = glitchColor,
                         topLeft = Offset(posX, posY),
@@ -105,7 +105,7 @@ fun EnvironmentParticleCanvas(
                     val progress = (ticker * p.speed + p.phaseOffset) % 1f
                     val posY = progress * h
                     val posX = ((p.initX + sin((ticker + p.phaseOffset) * 4f) * 0.08f) % 1f).coerceIn(0f, 1f) * w
-                    val frostAlpha = 0.35f + (sin((ticker + p.phaseOffset) * 3f) * 0.25f).coerceIn(0f, 0.45f)
+                    val frostAlpha = 0.18f + (sin((ticker + p.phaseOffset) * 3f) * 0.12f).coerceIn(0f, 0.22f)
                     drawCircle(
                         color = Color(0xFFE0F7FA).copy(alpha = frostAlpha),
                         radius = p.size,
@@ -120,7 +120,7 @@ fun EnvironmentParticleCanvas(
                     val posX = ((p.initX + sin((ticker + p.phaseOffset) * 5f) * 0.06f) % 1f).coerceIn(0f, 1f) * w
                     val emberColor = if (p.size > 3.5f) Color(0xFFFF3D00) else Color(0xFFFFD54F)
                     drawCircle(
-                        color = emberColor.copy(alpha = 0.50f),
+                        color = emberColor.copy(alpha = 0.25f),
                         radius = p.size * 0.9f,
                         center = Offset(posX, posY)
                     )
@@ -132,7 +132,7 @@ fun EnvironmentParticleCanvas(
                     val posX = p.initX * w
                     val posY = p.initY * h
                     drawCircle(
-                        color = Color(0xFF7C4DFF).copy(alpha = 0.30f * pulse),
+                        color = Color(0xFF7C4DFF).copy(alpha = 0.15f * pulse),
                         radius = p.size * (1f + pulse * 1.2f),
                         center = Offset(posX, posY)
                     )
@@ -144,7 +144,7 @@ fun EnvironmentParticleCanvas(
                     val posY = progress * h
                     val posX = ((p.initX + sin((ticker + p.phaseOffset) * 3f) * 0.04f) % 1f).coerceIn(0f, 1f) * w
                     drawCircle(
-                        color = Color(0xFFFFD700).copy(alpha = 0.45f),
+                        color = Color(0xFFFFD700).copy(alpha = 0.22f),
                         radius = p.size * 0.85f,
                         center = Offset(posX, posY)
                     )

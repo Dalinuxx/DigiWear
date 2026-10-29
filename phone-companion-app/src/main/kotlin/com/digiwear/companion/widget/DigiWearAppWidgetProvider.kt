@@ -97,14 +97,23 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
             try {
                 val db = PhoneDatabase.getInstance(context)
                 val latest = db.phoneDao().getLatestSnapshot()
-                val speciesId = latest?.speciesId ?: 101
+                val vaultPet = if (latest == null) db.phoneDao().getAllVaultPets().firstOrNull() else null
+
+                val speciesId = latest?.speciesId ?: vaultPet?.speciesId ?: 101
                 val species = PetSpecies.SPECIES_REGISTRY[speciesId] ?: PetSpecies.SPECIES_REGISTRY[101]!!
-                val hunger = latest?.hunger ?: 4
-                val strength = latest?.strength ?: 4
-                val weight = latest?.weight ?: 5
-                val careMistakes = latest?.careMistakes ?: 0
-                val battles = latest?.totalBattles ?: 0
-                val victories = latest?.victories ?: 0
+                val hunger = latest?.hunger ?: vaultPet?.hunger ?: 4
+                val strength = latest?.strength ?: vaultPet?.strength ?: 4
+                val weight = latest?.weight ?: vaultPet?.weight ?: 5
+                val careMistakes = latest?.careMistakes ?: vaultPet?.careMistakes ?: 0
+                val battles = latest?.totalBattles ?: vaultPet?.totalBattles ?: 0
+                val victories = latest?.victories ?: vaultPet?.victories ?: 0
+                val stageText = if (latest != null) {
+                    "// ${species.stage.displayName}"
+                } else if (vaultPet != null) {
+                    "// CRYO-VAULT (${species.stage.displayName})"
+                } else {
+                    "// ${species.stage.displayName}"
+                }
 
                 val rawBitmap = PixelArtMatrices.getAndroidBitmap(speciesId, SpriteFrame.IDLE_A, false)
                 val bitmap = Bitmap.createScaledBitmap(rawBitmap, 192, 192, false)
@@ -114,7 +123,7 @@ class DigiWearAppWidgetProvider : AppWidgetProvider() {
 
                     views.setImageViewBitmap(R.id.widget_pet_sprite, bitmap)
                     views.setTextViewText(R.id.widget_pet_name, species.name)
-                    views.setTextViewText(R.id.widget_pet_stage_attr, "// ${species.stage.displayName}")
+                    views.setTextViewText(R.id.widget_pet_stage_attr, stageText)
                     val hClamped = hunger.coerceIn(0, 4)
                     val sClamped = strength.coerceIn(0, 4)
                     views.setTextViewText(

@@ -91,9 +91,17 @@ class SpriteMatrixRegistryTest {
             }
             assertNotEquals("IDLE_A and IDLE_B must differ for ${species.name}", frames[0], frames[1])
             assertNotEquals("WALK_A and WALK_B must differ for ${species.name}", frames[2], frames[3])
+            assertNotEquals("FEED_START and ATTACK_RELEASE must differ for ${species.name}", frames[4], frames[10])
             assertNotEquals("SLEEP_A and SLEEP_B must differ for ${species.name}", frames[6], frames[7])
+            assertNotEquals("IDLE_A and REFUSAL must differ for ${species.name}", frames[0], frames[8])
+            assertNotEquals("REFUSAL and ATTACK_CHARGE must differ for ${species.name}", frames[8], frames[9])
             assertNotEquals("ATTACK_CHARGE and ATTACK_RELEASE must differ for ${species.name}", frames[9], frames[10])
         }
+        // Verify Botamon (#101) INJURED and SLEEP frames close both upper ('W') and lower ('T') eye pixels
+        val botamonInjured = SpriteMatrixRegistry.getMatrix(101, SpriteFrame.INJURED).joinToString("\n")
+        val botamonIdleB = SpriteMatrixRegistry.getMatrix(101, SpriteFrame.IDLE_B).joinToString("\n")
+        assertNotEquals("Botamon INJURED must differ from IDLE_B", botamonIdleB, botamonInjured)
+        assertTrue("Botamon INJURED should squint 'W' and 'T' eye pixels", !botamonInjured.contains('W') && !botamonInjured.contains('T'))
     }
 
     @Test

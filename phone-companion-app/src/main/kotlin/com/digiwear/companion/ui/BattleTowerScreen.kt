@@ -99,11 +99,14 @@ fun BattleTowerScreen(
         }
     }
 
-    // Active partner from Room
+    // Active partner from Room (fall back to first stored Vault partner before default Greymon)
     val latestSnapshot by db.phoneDao().getAllSnapshotsFlow().collectAsState(initial = emptyList())
+    val vaultPets by db.phoneDao().getAllVaultPetsFlow().collectAsState(initial = emptyList())
     val activePartner = latestSnapshot.firstOrNull()
-    val playerSpecies = remember(activePartner?.speciesId) {
-        PetSpecies.getById(activePartner?.speciesId ?: 301) // Default Greymon
+    val fallbackVaultPartner = vaultPets.firstOrNull()
+    val effectiveSpeciesId = activePartner?.speciesId ?: fallbackVaultPartner?.speciesId ?: 301
+    val playerSpecies = remember(effectiveSpeciesId) {
+        PetSpecies.getById(effectiveSpeciesId)
     }
 
     val floor = remember(currentFloorNumber) {
@@ -115,7 +118,7 @@ fun BattleTowerScreen(
     }
 
     // Battle simulation state
-    val playerMaxHp = activePartner?.maxHp ?: playerSpecies.baseHp
+    val playerMaxHp = activePartner?.maxHp ?: fallbackVaultPartner?.maxHp ?: playerSpecies.baseHp
     var isBattling by remember { mutableStateOf(false) }
     var battleResult by remember { mutableStateOf<BattleResult?>(null) }
     var currentTurnIndex by remember { mutableIntStateOf(0) }
@@ -133,12 +136,12 @@ fun BattleTowerScreen(
             name = playerSpecies.name,
             stage = playerSpecies.stage,
             attribute = playerSpecies.attribute,
-            maxHp = activePartner?.maxHp ?: playerSpecies.baseHp,
-            currentHp = activePartner?.maxHp ?: playerSpecies.baseHp,
+            maxHp = playerMaxHp,
+            currentHp = playerMaxHp,
             basePower = playerSpecies.basePower,
-            victories = activePartner?.victories ?: 15,
-            effort = activePartner?.effort ?: 4,
-            strength = activePartner?.strength ?: 4,
+            victories = activePartner?.victories ?: fallbackVaultPartner?.victories ?: 15,
+            effort = activePartner?.effort ?: fallbackVaultPartner?.effort ?: 4,
+            strength = activePartner?.strength ?: fallbackVaultPartner?.strength ?: 4,
             battleSeed = System.currentTimeMillis().toInt()
         )
 

@@ -63,7 +63,7 @@ object DigiDexEngine {
                 }
             }
             species.stage == PetStage.ULTIMATE -> {
-                val recipes = JogressEngine.RECIPES.filter { it.targetSpeciesId == speciesId }
+                val recipes = JogressEngine.getRecipesByTarget(speciesId)
                 if (recipes.isNotEmpty()) {
                     val r = recipes.first()
                     val spA = PetSpecies.getById(r.primarySpeciesId).name

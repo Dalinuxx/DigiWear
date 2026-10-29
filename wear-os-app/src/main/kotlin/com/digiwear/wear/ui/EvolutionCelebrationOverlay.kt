@@ -127,7 +127,7 @@ fun EvolutionCelebrationOverlay(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.95f))
+            .background(Color(0xFF050811))
             .clickable {
                 if (phase == 2) onDismiss()
             },
@@ -210,7 +210,7 @@ fun EvolutionCelebrationOverlay(
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(vertical = 16.dp, horizontal = 12.dp),
+                        .padding(vertical = 22.dp, horizontal = 14.dp),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.SpaceBetween
                 ) {
@@ -233,13 +233,13 @@ fun EvolutionCelebrationOverlay(
                     // Portrait viewport
                     Box(
                         modifier = Modifier
-                            .size(90.dp)
+                            .size(76.dp)
                             .background(Color(0xFF0D1822), RoundedCornerShape(12.dp))
                             .border(1.5.dp, Color(0xFF00E5FF), RoundedCornerShape(12.dp)),
                         contentAlignment = Alignment.Center
                     ) {
                         if (highResBitmap != null) {
-                            Canvas(modifier = Modifier.size(92.dp)) {
+                            Canvas(modifier = Modifier.size(76.dp)) {
                                 drawImage(
                                     image = highResBitmap,
                                     srcOffset = IntOffset.Zero,
@@ -254,7 +254,7 @@ fun EvolutionCelebrationOverlay(
                                 speciesId = newSpeciesId,
                                 isAmbient = false,
                                 overrideFrame = SpriteFrame.IDLE_A,
-                                size = 70.dp
+                                size = 60.dp
                             )
                         }
                     }
@@ -288,9 +288,9 @@ fun EvolutionCelebrationOverlay(
                     Button(
                         onClick = onDismiss,
                         modifier = Modifier
-                            .fillMaxWidth(0.85f)
+                            .fillMaxWidth(0.76f)
                             .height(26.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00E676)),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00E5FF)),
                         shape = RoundedCornerShape(13.dp)
                     ) {
                         Text(

@@ -107,12 +107,13 @@ fun WatchDigiDexScreen(
         ScalingLazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
+            contentPadding = displayConfig.contentPadding,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             item {
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.padding(top = 10.dp, bottom = 4.dp)
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                 ) {
                     Text(
                         text = "DIGIDEX 550",
@@ -273,14 +274,14 @@ fun WatchDigiDexScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xEE050810))
+                    .background(Color(0xFF050810))
                     .clickable { selectedSpeciesId = null }
                     .padding(displayConfig.horizontalPadding),
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(0.92f)
+                        .fillMaxWidth(0.78f)
                         .background(Color(0xFF141D2B), RoundedCornerShape(10.dp))
                         .border(1.dp, Color(0xFF00E5FF), RoundedCornerShape(10.dp))
                         .padding(8.dp),
@@ -306,13 +307,13 @@ fun WatchDigiDexScreen(
                         )
                     }
 
-                    Spacer(modifier = Modifier.height(3.dp))
+                    Spacer(modifier = Modifier.height(2.dp))
                     SpriteCanvasRenderer(
                         speciesId = sp.id,
                         isAmbient = false,
                         overrideFrame = SpriteFrame.IDLE_A,
                         isSilhouette = !isRevealed,
-                        size = 36.dp
+                        size = 32.dp
                     )
                     Spacer(modifier = Modifier.height(2.dp))
 

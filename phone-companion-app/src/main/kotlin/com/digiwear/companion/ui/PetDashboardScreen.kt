@@ -32,6 +32,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -93,6 +94,14 @@ fun PetDashboardScreen(
     val persistPhoneSnapshot: suspend (PetState) -> Unit = { updated ->
         db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(updated))
         DigiWearAppWidgetProvider.updateAllWidgets(context)
+    }
+
+    val snapshots by db.phoneDao().getAllSnapshotsFlow().collectAsState(initial = emptyList())
+    LaunchedEffect(snapshots) {
+        val latest = snapshots.firstOrNull()
+        if (latest != null) {
+            petState = latest.toDomain()
+        }
     }
 
     // Load latest legitimate snapshot or sync from watch on start
@@ -357,36 +366,44 @@ fun PetDashboardScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                // Digivice Shell Edition Selector Chips
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                // Digivice Shell Edition Selector Chips (2x3 non-clipping grid)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    DigiviceShellStyle.entries.forEach { style ->
-                        val isSel = currentShellStyle == style
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isSel) style.borderColor.copy(alpha = 0.25f) else Color(0xFF141C24),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .border(
-                                    1.dp,
-                                    if (isSel) style.borderColor else Color(0xFF263238),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable { currentShellStyle = style }
-                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                    DigiviceShellStyle.entries.chunked(3).forEach { rowStyles ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Text(
-                                text = style.shortName,
-                                fontSize = 9.sp,
-                                fontWeight = if (isSel) FontWeight.Black else FontWeight.Normal,
-                                color = if (isSel) style.borderColor else Color.Gray,
-                                fontFamily = FontFamily.Monospace
-                            )
+                            rowStyles.forEach { style ->
+                                val isSel = currentShellStyle == style
+                                Box(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .background(
+                                            if (isSel) style.borderColor.copy(alpha = 0.25f) else Color(0xFF141C24),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .border(
+                                            1.dp,
+                                            if (isSel) style.borderColor else Color(0xFF263238),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { currentShellStyle = style }
+                                        .padding(horizontal = 6.dp, vertical = 5.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = style.shortName,
+                                        fontSize = 9.sp,
+                                        fontWeight = if (isSel) FontWeight.Black else FontWeight.Normal,
+                                        color = if (isSel) style.borderColor else Color.Gray,
+                                        fontFamily = FontFamily.Monospace,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
                         }
                     }
                 }

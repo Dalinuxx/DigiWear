@@ -59,8 +59,8 @@ class DigiWearTileService : TileService() {
                     hunger = pet.hunger,
                     strength = pet.strength,
                     weight = pet.weight,
-                    isSleeping = pet.isSleeping,
-                    activeSector = activeNode?.name ?: "File Island",
+                    isSleeping = pet.isSleeping || pet.isFrozen,
+                    activeSector = if (pet.isFrozen) "CRYO-STASIS" else (activeNode?.name ?: "File Island"),
                     currentSteps = progress.accumulatedStepsCurrentNode,
                     targetSteps = activeNode?.requiredSteps ?: 1000
                 )

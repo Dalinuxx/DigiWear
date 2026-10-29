@@ -581,40 +581,14 @@ fun SegmentedGaugeRow(
             text = label,
             fontSize = 11.sp,
             color = Color(0xFFB0BEC5),
-            fontFamily = FontFamily.Monospace,
-            modifier = Modifier.width(115.dp)
+            fontFamily = FontFamily.Monospace
         )
-
-        Row(
-            modifier = Modifier.weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            for (i in 0 until max) {
-                val isOn = i < safeFilled
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .height(10.dp)
-                        .background(
-                            if (isOn) activeColor else Color(0xFF111722),
-                            RoundedCornerShape(3.dp)
-                        )
-                        .border(
-                            1.dp,
-                            if (isOn) activeColor else Color(0xFF263238),
-                            RoundedCornerShape(3.dp)
-                        )
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.width(8.dp))
 
         VPetMeterBar(
             count = safeFilled,
             max = max,
             isHearts = isHearts,
-            iconSize = 10.dp,
+            iconSize = 12.dp,
             activeColor = activeColor
         )
     }

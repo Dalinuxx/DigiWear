@@ -107,6 +107,11 @@ fun DigiVaultScreen(
     var fusionTypeFilter by remember { mutableStateOf<FusionType?>(null) }
     var onlyShowCanFuseNow by remember { mutableStateOf(false) }
 
+    val snapshots by db.phoneDao().getAllSnapshotsFlow().collectAsState(initial = emptyList())
+    LaunchedEffect(snapshots) {
+        activePetForDeposit = snapshots.firstOrNull()?.toDomain()
+    }
+
     LaunchedEffect(Unit) {
         val latest = db.phoneDao().getLatestSnapshot()
         if (latest != null) {
@@ -319,7 +324,7 @@ fun DigiVaultScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     FilterChip("All", selectedStageFilter == null) { selectedStageFilter = null }
                     PetStage.entries.forEach { stage ->
@@ -457,12 +462,13 @@ fun DigiVaultScreen(
                 // =========================================================================
                 // SUB-TAB 1: 500-SPECIES MASTER DIGIDEX
                 // =========================================================================
+                Spacer(modifier = Modifier.height(6.dp))
                 Box(modifier = Modifier.fillMaxSize()) {
                     SpriteStudioScreen(
                         db = db,
                         wearableManager = wearableManager,
                         showHeader = false,
-                        contentPadding = PaddingValues(0.dp)
+                        contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)
                     )
                 }
             }
@@ -483,20 +489,35 @@ fun DigiVaultScreen(
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
-                    FilterChip("All (${JogressEngine.RECIPES.size})", fusionTypeFilter == null && !onlyShowCanFuseNow) {
+                    FilterChip(
+                        text = "All (${JogressEngine.RECIPES.size})",
+                        isSelected = fusionTypeFilter == null && !onlyShowCanFuseNow,
+                        modifier = Modifier.weight(1.15f)
+                    ) {
                         fusionTypeFilter = null
                         onlyShowCanFuseNow = false
                     }
-                    FilterChip("Can Fuse Now", onlyShowCanFuseNow) {
+                    FilterChip(
+                        text = "Ready",
+                        isSelected = onlyShowCanFuseNow,
+                        modifier = Modifier.weight(0.85f)
+                    ) {
                         onlyShowCanFuseNow = !onlyShowCanFuseNow
                     }
                     FusionType.entries.forEach { fType ->
-                        FilterChip(fType.displayName, fusionTypeFilter == fType && !onlyShowCanFuseNow) {
+                        val shortLabel = when (fType) {
+                            FusionType.DNA_JOGRESS -> "Jogress"
+                            FusionType.DIGIXROS -> "DigiXros"
+                            FusionType.MODE_CHANGE -> "Mode"
+                        }
+                        FilterChip(
+                            text = shortLabel,
+                            isSelected = fusionTypeFilter == fType && !onlyShowCanFuseNow,
+                            modifier = Modifier.weight(1f)
+                        ) {
                             onlyShowCanFuseNow = false
                             fusionTypeFilter = if (fusionTypeFilter == fType) null else fType
                         }
@@ -1181,6 +1202,10 @@ fun DigiVaultScreen(
                                             nickname = "Awakened ${targetSp.name}"
                                         )
                                     )
+                                    if (activePetForDeposit == null) {
+                                        activePetForDeposit = fusedState
+                                        db.phoneDao().insertSnapshot(SyncedPetEntity.fromDomain(fusedState))
+                                    }
                                     // Remove both consumed vault partners
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPetA.id)
                                     db.phoneDao().deleteVaultPet(executionCandidate.vaultPetB.id)
@@ -1267,7 +1292,7 @@ private fun VaultPetCard(
     onDelete: () -> Unit,
     onFuseWithActive: (StoredDigimonEntity, JogressRecipe) -> Unit
 ) {
-    val dateStr = SimpleDateFormat("MMM dd, yyyy • HH:mm", Locale.getDefault())
+    val dateStr = SimpleDateFormat("MMM dd, yyyy HH:mm", Locale.getDefault())
         .format(Date(pet.storedTimestampUtc * 1000L))
 
     Card(
@@ -1338,9 +1363,15 @@ private fun VaultPetCard(
                     }
 
                     Text(
-                        text = "Wt: ${pet.weight}g • Battles: ${pet.victories}W/${pet.totalBattles} • Stored: $dateStr",
+                        text = "Wt: ${pet.weight}g • Battles: ${pet.victories}W/${pet.totalBattles}B",
                         fontSize = 9.sp,
                         color = Color(0xFF90A4AE),
+                        fontFamily = FontFamily.Monospace
+                    )
+                    Text(
+                        text = "Stored: $dateStr",
+                        fontSize = 8.5.sp,
+                        color = Color(0xFF78909C),
                         fontFamily = FontFamily.Monospace
                     )
                 }
@@ -1444,9 +1475,14 @@ private fun VaultPetCard(
 }
 
 @Composable
-private fun FilterChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
+private fun FilterChip(
+    text: String,
+    isSelected: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .background(
                 if (isSelected) Color(0xFF00897B) else DigiWearPalette.CardSurface,
                 RoundedCornerShape(8.dp)
@@ -1457,14 +1493,17 @@ private fun FilterChip(text: String, isSelected: Boolean, onClick: () -> Unit) {
                 RoundedCornerShape(8.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .padding(horizontal = 5.dp, vertical = 4.dp),
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = text,
-            fontSize = 10.sp,
+            fontSize = 8.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Color.White else Color.LightGray,
-            fontFamily = FontFamily.Monospace
+            fontFamily = FontFamily.Monospace,
+            maxLines = 1,
+            softWrap = false
         )
     }
 }

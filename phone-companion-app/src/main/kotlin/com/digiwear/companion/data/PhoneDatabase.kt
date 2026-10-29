@@ -50,6 +50,9 @@ interface PhoneDao {
     @Query("SELECT * FROM digi_vault ORDER BY storedTimestampUtc DESC")
     fun getAllVaultPetsFlow(): Flow<List<StoredDigimonEntity>>
 
+    @Query("SELECT * FROM digi_vault ORDER BY storedTimestampUtc DESC")
+    suspend fun getAllVaultPets(): List<StoredDigimonEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertVaultPetInternal(pet: StoredDigimonEntity): Long
 

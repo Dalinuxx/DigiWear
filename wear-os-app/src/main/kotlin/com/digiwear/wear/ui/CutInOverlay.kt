@@ -128,7 +128,7 @@ fun CutInOverlay(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(10.dp),
+                .padding(horizontal = 12.dp, vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -159,8 +159,8 @@ fun CutInOverlay(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xEE0A121E), RoundedCornerShape(6.dp))
+                    .fillMaxWidth(0.72f)
+                    .background(Color(0xF50A121E), RoundedCornerShape(6.dp))
                     .border(0.5.dp, attrColor.copy(alpha = 0.6f), RoundedCornerShape(6.dp))
                     .padding(vertical = 3.dp, horizontal = 6.dp)
             ) {
@@ -320,34 +320,35 @@ private fun DrawScope.drawMangaActionFrame(
     val slant = 12.dp.toPx()
     val topY = center.y - (boxPx * 0.52f)
     val bottomY = center.y + (boxPx * 0.52f)
+    val insetX = size.width * 0.12f
 
     // Top primary diagonal slash
     drawLine(
         color = attrColor.copy(alpha = 0.95f),
-        start = Offset(0f, topY - slant),
-        end = Offset(size.width, topY + slant),
+        start = Offset(insetX, topY - slant),
+        end = Offset(size.width - insetX, topY + slant),
         strokeWidth = 2.5.dp.toPx()
     )
     // Top highlight line
     drawLine(
         color = Color.White.copy(alpha = 0.6f),
-        start = Offset(0f, topY - slant - 2.dp.toPx()),
-        end = Offset(size.width, topY + slant - 2.dp.toPx()),
+        start = Offset(insetX, topY - slant - 2.dp.toPx()),
+        end = Offset(size.width - insetX, topY + slant - 2.dp.toPx()),
         strokeWidth = 1.dp.toPx()
     )
 
     // Bottom primary diagonal slash
     drawLine(
         color = attrColor.copy(alpha = 0.95f),
-        start = Offset(0f, bottomY - slant),
-        end = Offset(size.width, bottomY + slant),
+        start = Offset(insetX, bottomY - slant),
+        end = Offset(size.width - insetX, bottomY + slant),
         strokeWidth = 2.5.dp.toPx()
     )
     // Bottom highlight line
     drawLine(
         color = Color.White.copy(alpha = 0.6f),
-        start = Offset(0f, bottomY - slant + 2.dp.toPx()),
-        end = Offset(size.width, bottomY + slant + 2.dp.toPx()),
+        start = Offset(insetX, bottomY - slant + 2.dp.toPx()),
+        end = Offset(size.width - insetX, bottomY + slant + 2.dp.toPx()),
         strokeWidth = 1.dp.toPx()
     )
 

@@ -1320,9 +1320,13 @@ fun BattleHubScreen(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    horizontalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
                                     WildScanEncounterGenerator.PRESET_BARCODES.forEach { (barcode, label) ->
+                                        val shortLabel = label
+                                            .replace("1997 Original V-Pet Ver.1", "1997 V-Pet V1")
+                                            .replace("Digimon Pendulum 1998", "Pendulum 1998")
+                                            .replace("Vital Bracelet BE", "Vital Bracelet")
                                         OutlinedButton(
                                             onClick = {
                                                 barcodeScanInput = barcode
@@ -1335,9 +1339,11 @@ fun BattleHubScreen(
                                                 inputCode = enc.commCode128
                                                 selectedEnvironment = enc.environmentHazard
                                                 decodedOpponent = CommCodeCodec.decodeAuto(enc.commCode128)
-                                            }
+                                            },
+                                            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 4.dp),
+                                            modifier = Modifier.height(30.dp)
                                         ) {
-                                            Text(label, fontSize = 9.5.sp, fontFamily = FontFamily.Monospace)
+                                            Text(shortLabel, fontSize = 8.5.sp, fontFamily = FontFamily.Monospace, maxLines = 1)
                                         }
                                     }
                                 }
@@ -1927,41 +1933,49 @@ fun BattleHubScreen(
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Spacer(modifier = Modifier.height(4.dp))
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                Column(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    verticalArrangement = Arrangement.spacedBy(5.dp)
                                 ) {
-                                    COLOSSEUM_ENVIRONMENTS.forEach { env ->
-                                        val active = selectedEnvironment == env
-                                        Box(
-                                            modifier = Modifier
-                                                .background(
-                                                    if (active) Color(0xFF00695C) else DigiWearPalette.CardInner,
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .border(
-                                                    1.dp,
-                                                    if (active) Color(0xFF64FFDA) else Color(0xFF263238),
-                                                    RoundedCornerShape(8.dp)
-                                                )
-                                                .clickable { selectedEnvironment = env }
-                                                .padding(horizontal = 8.dp, vertical = 5.dp)
+                                    COLOSSEUM_ENVIRONMENTS.chunked(3).forEach { rowEnvs ->
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(5.dp)
                                         ) {
-                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                                DigiVectorIcon(
-                                                    type = DigiIconType.LIGHTNING_BOLT,
-                                                    size = 10.dp,
-                                                    tint = if (active) Color(0xFF64FFDA) else Color.LightGray
-                                                )
-                                                Text(
-                                                    text = env,
-                                                    fontSize = 9.sp,
-                                                    fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
-                                                    color = if (active) Color.White else Color.LightGray,
-                                                    fontFamily = FontFamily.Monospace
-                                                )
+                                            rowEnvs.forEach { env ->
+                                                val active = selectedEnvironment == env
+                                                Box(
+                                                    modifier = Modifier
+                                                        .weight(1f)
+                                                        .background(
+                                                            if (active) Color(0xFF00695C) else DigiWearPalette.CardInner,
+                                                            RoundedCornerShape(8.dp)
+                                                        )
+                                                        .border(
+                                                            1.dp,
+                                                            if (active) Color(0xFF64FFDA) else Color(0xFF263238),
+                                                            RoundedCornerShape(8.dp)
+                                                        )
+                                                        .clickable { selectedEnvironment = env }
+                                                        .padding(horizontal = 6.dp, vertical = 5.dp),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                        DigiVectorIcon(
+                                                            type = DigiIconType.LIGHTNING_BOLT,
+                                                            size = 9.dp,
+                                                            tint = if (active) Color(0xFF64FFDA) else Color.LightGray
+                                                        )
+                                                        Text(
+                                                            text = env,
+                                                            fontSize = 8.sp,
+                                                            fontWeight = if (active) FontWeight.Bold else FontWeight.Normal,
+                                                            color = if (active) Color.White else Color.LightGray,
+                                                            fontFamily = FontFamily.Monospace,
+                                                            maxLines = 1
+                                                        )
+                                                    }
+                                                }
                                             }
                                         }
                                     }

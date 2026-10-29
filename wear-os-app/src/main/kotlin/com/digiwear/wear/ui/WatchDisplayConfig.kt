@@ -61,14 +61,14 @@ data class WatchDisplayConfig(
             return if (isRound) {
                 // Round watches (Wear OS or Round AOSP Full Android Watches): apply circular insets
                 val horizPad = when {
-                    width >= 300 -> 14.dp
-                    width >= 240 -> 10.dp
-                    else -> 8.dp
+                    width >= 300 -> 18.dp
+                    width >= 240 -> 16.dp
+                    else -> 14.dp
                 }
                 val vertPad = when {
-                    height >= 300 -> 20.dp
-                    height >= 240 -> 18.dp
-                    else -> 16.dp
+                    height >= 300 -> 30.dp
+                    height >= 240 -> 28.dp
+                    else -> 26.dp
                 }
                 val rightRail = when {
                     width >= 300 -> 40.dp

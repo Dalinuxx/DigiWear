@@ -564,51 +564,58 @@ fun SettingsScreen(
                 )
                 Spacer(modifier = Modifier.height(10.dp))
 
-                // LCD Theme Selector
+                // LCD Theme Selector (2-column equal-weight grid to prevent right-edge chip clipping)
                 Text(text = "LCD BACKLIGHT THEME:", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD54F), fontFamily = FontFamily.Monospace)
                 Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState()),
-                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(5.dp)
                 ) {
-                    BackgroundTheme.entries.forEach { theme ->
-                        val isSelected = selectedTheme == theme
-                        Box(
-                            modifier = Modifier
-                                .background(
-                                    if (isSelected) Color(0xFF004D40) else DigiWearPalette.CardInner,
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .border(
-                                    if (isSelected) 1.5.dp else 1.dp,
-                                    if (isSelected) Color(0xFF64FFDA) else Color(0xFF263238),
-                                    RoundedCornerShape(8.dp)
-                                )
-                                .clickable { selectedTheme = theme }
-                                .padding(horizontal = 9.dp, vertical = 7.dp)
+                    BackgroundTheme.entries.chunked(2).forEach { rowThemes ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp)
                         ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                val swatchColor = when (theme) {
-                                    BackgroundTheme.CUSTOM_MATRIX -> Color(customPrimaryHex)
-                                    BackgroundTheme.CUSTOM_WALLPAPER -> Color(0xFF00E5FF)
-                                    else -> Color(theme.primaryColorHex)
-                                }
+                            rowThemes.forEach { theme ->
+                                val isSelected = selectedTheme == theme
                                 Box(
                                     modifier = Modifier
-                                        .size(10.dp)
-                                        .background(swatchColor, CircleShape)
-                                        .border(0.75.dp, if (isSelected) Color(0xFF64FFDA) else Color(0xFF546E7A), CircleShape)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = theme.displayName,
-                                    fontSize = 9.5.sp,
-                                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
-                                    color = if (isSelected) Color.White else Color(0xFFB0BEC5),
-                                    fontFamily = FontFamily.Monospace
-                                )
+                                        .weight(1f)
+                                        .background(
+                                            if (isSelected) Color(0xFF004D40) else DigiWearPalette.CardInner,
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .border(
+                                            if (isSelected) 1.5.dp else 1.dp,
+                                            if (isSelected) Color(0xFF64FFDA) else Color(0xFF263238),
+                                            RoundedCornerShape(8.dp)
+                                        )
+                                        .clickable { selectedTheme = theme }
+                                        .padding(horizontal = 8.dp, vertical = 6.dp)
+                                ) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        val swatchColor = when (theme) {
+                                            BackgroundTheme.CUSTOM_MATRIX -> Color(customPrimaryHex)
+                                            BackgroundTheme.CUSTOM_WALLPAPER -> Color(0xFF00E5FF)
+                                            else -> Color(theme.primaryColorHex)
+                                        }
+                                        Box(
+                                            modifier = Modifier
+                                                .size(10.dp)
+                                                .background(swatchColor, CircleShape)
+                                                .border(0.75.dp, if (isSelected) Color(0xFF64FFDA) else Color(0xFF546E7A), CircleShape)
+                                        )
+                                        Spacer(modifier = Modifier.width(6.dp))
+                                        Text(
+                                            text = theme.displayName,
+                                            fontSize = 9.sp,
+                                            fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                            color = if (isSelected) Color.White else Color(0xFFB0BEC5),
+                                            fontFamily = FontFamily.Monospace,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
@@ -693,34 +700,35 @@ fun SettingsScreen(
                             Text(text = "BACKLIGHT COLOR:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFFD54F), fontFamily = FontFamily.Monospace)
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
                             ) {
                                 listOf(
-                                    0xFF8B956DL to "Olive 1997",
+                                    0xFF8B956DL to "Olive",
                                     0xFFDDAA33L to "Amber",
-                                    0xFF00E5FFL to "Cyber Cyan",
+                                    0xFF00E5FFL to "Cyan",
                                     0xFF00C853L to "Emerald",
-                                    0xFFA8B39BL to "Silver GB",
+                                    0xFFA8B39BL to "Silver",
                                     0xFF9C27B0L to "Violet",
-                                    0xFFFF5252L to "Coral Red",
-                                    0xFF80D8FFL to "Ice Blue",
-                                    0xFF000000L to "OLED Black"
+                                    0xFFFF5252L to "Coral",
+                                    0xFF80D8FFL to "Ice",
+                                    0xFF000000L to "OLED"
                                 ).forEach { (colorHex, name) ->
                                     val isSel = customPrimaryHex == colorHex
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier
+                                            .weight(1f)
                                             .clickable { customPrimaryHex = colorHex }
-                                            .padding(2.dp)
+                                            .padding(vertical = 2.dp)
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(28.dp)
+                                                .size(24.dp)
                                                 .background(Color(colorHex), RoundedCornerShape(6.dp))
                                                 .border(if (isSel) 2.dp else 1.dp, if (isSel) Color.White else Color(0xFF37474F), RoundedCornerShape(6.dp))
                                         )
-                                        Text(text = name, fontSize = 7.sp, color = if (isSel) Color.White else Color.Gray, fontFamily = FontFamily.Monospace)
+                                        Text(text = name, fontSize = 6.sp, color = if (isSel) Color.White else Color.Gray, fontFamily = FontFamily.Monospace, maxLines = 1)
                                     }
                                 }
                             }
@@ -730,32 +738,33 @@ fun SettingsScreen(
                             Text(text = "GRID / MATRIX COLOR:", fontSize = 9.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFF80CBC4), fontFamily = FontFamily.Monospace)
                             Spacer(modifier = Modifier.height(4.dp))
                             Row(
-                                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 listOf(
-                                    0xFF7A845CL to "Olive Shadow",
-                                    0xFF37474FL to "Matrix Shadow",
-                                    0xFF00E5FFL to "Neon Cyan",
+                                    0xFF7A845CL to "Olive",
+                                    0xFF37474FL to "Matrix",
+                                    0xFF00E5FFL to "Cyan",
                                     0xFF1A1A1AL to "Charcoal",
-                                    0xFF6C227EL to "Synth Twilight",
-                                    0xFFFFD54FL to "Gold Accent",
+                                    0xFF6C227EL to "Twilight",
+                                    0xFFFFD54FL to "Gold",
                                     0xFF000000L to "Black"
                                 ).forEach { (colorHex, name) ->
                                     val isSel = customGridHex == colorHex
                                     Column(
                                         horizontalAlignment = Alignment.CenterHorizontally,
                                         modifier = Modifier
+                                            .weight(1f)
                                             .clickable { customGridHex = colorHex }
-                                            .padding(2.dp)
+                                            .padding(vertical = 2.dp)
                                     ) {
                                         Box(
                                             modifier = Modifier
-                                                .size(28.dp)
+                                                .size(26.dp)
                                                 .background(Color(colorHex), RoundedCornerShape(6.dp))
                                                 .border(if (isSel) 2.dp else 1.dp, if (isSel) Color.White else Color(0xFF37474F), RoundedCornerShape(6.dp))
                                         )
-                                        Text(text = name, fontSize = 7.sp, color = if (isSel) Color.White else Color.Gray, fontFamily = FontFamily.Monospace)
+                                        Text(text = name, fontSize = 6.5.sp, color = if (isSel) Color.White else Color.Gray, fontFamily = FontFamily.Monospace, maxLines = 1)
                                     }
                                 }
                             }

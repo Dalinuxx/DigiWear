@@ -100,6 +100,15 @@ fun StatusScreen(
         else -> Color(0xFF69F0AE)
     }
 
+    val lineagePath = remember(species.id) { EvolutionEngine.findEggLineagePath(species.id).map { PetSpecies.getById(it) } }
+    val jogressRecipes = remember(species.id) { com.digiwear.core.fusion.JogressEngine.getCompatibleRecipesFor(species.id) }
+    val nextBranchJogress = remember(species.id) {
+        species.evolutionRules.flatMap { r ->
+            com.digiwear.core.fusion.JogressEngine.getCompatibleRecipesFor(r.targetSpeciesId)
+                .map { recipe -> PetSpecies.getById(r.targetSpeciesId) to recipe }
+        }.take(2)
+    }
+
     Box(modifier = Modifier.fillMaxSize()) {
         ScalingLazyColumn(
             modifier = Modifier
@@ -115,7 +124,8 @@ fun StatusScreen(
                     fontSize = displayConfig.headerFontSize,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFF00E676),
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(horizontal = 12.dp)
                 )
             }
 
@@ -263,34 +273,58 @@ fun StatusScreen(
                 }
             }
 
-            // Biological Gauges Card
+            // Biological Gauges Card (Part 1: Hunger & Strength)
             item {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
                         .background(Color(0xFF141C24), RoundedCornerShape(8.dp))
                         .padding(6.dp)
                 ) {
                     StatusMeterRow("HUNGER", petState.hunger, isHearts = true, Color(0xFFFF5252))
                     StatusMeterRow("STRENGTH", petState.strength, isHearts = false, Color(0xFFFFD700))
+                }
+            }
+
+            // Biological Gauges Card (Part 2: Effort & HP/Power)
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
+                        .background(Color(0xFF141C24), RoundedCornerShape(8.dp))
+                        .padding(6.dp)
+                ) {
                     StatusMeterRow("EFFORT", petState.effort, isHearts = false, Color(0xFFCE93D8))
                     StatusRow("HP / POWER", "${petState.currentHp}/${petState.maxHp} - ${species.basePower}P", Color(0xFF80D8FF))
                 }
             }
 
-            // Vitals & Care History Card
+            // Vitals & Care History Card (Part 1: Generation, Age/Wt, Mistakes)
             item {
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
                         .background(Color(0xFF141C24), RoundedCornerShape(8.dp))
                         .padding(6.dp)
                 ) {
                     StatusRow("GENERATION", "Gen ${petState.generation} (+${petState.traitedEggBonus} Trait)", Color(0xFFFFD54F))
                     StatusRow("AGE / WT", "${ageDays}d ${remHours}h - ${petState.weight}g", Color.White)
                     StatusRow("MISTAKES", "${petState.careMistakes} Care / ${petState.overfeedCount} Overfeed", Color(0xFFFFCC80))
+                }
+            }
+
+            // Vitals & Care History Card (Part 2: Record & Next Evo)
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
+                        .background(Color(0xFF141C24), RoundedCornerShape(8.dp))
+                        .padding(6.dp)
+                ) {
                     StatusRow("RECORD", "${petState.victories}W / ${petState.totalBattles}B ($winPct%)", Color(0xFF69F0AE))
                     StatusRow(
                         "NEXT EVO",
@@ -300,14 +334,12 @@ fun StatusScreen(
                 }
             }
 
-            // Evolution Targets & Lineage Guide Card
+            // Evolution Targets & Lineage Guide Header Item
             item {
-                val lineagePath = remember(species.id) { EvolutionEngine.findEggLineagePath(species.id).map { PetSpecies.getById(it) } }
-                val jogressRecipes = remember(species.id) { com.digiwear.core.fusion.JogressEngine.getCompatibleRecipesFor(species.id) }
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.5.dp)
                         .background(Color(0xFF161D28), RoundedCornerShape(8.dp))
                         .border(0.5.dp, Color(0x44FFD54F), RoundedCornerShape(8.dp))
                         .padding(6.dp)
@@ -327,58 +359,75 @@ fun StatusScreen(
                             fontFamily = FontFamily.Monospace
                         )
                     }
-                    Spacer(modifier = Modifier.height(3.dp))
                     if (species.evolutionRules.isEmpty()) {
+                        Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Apex Stage Reached!",
                             fontSize = 7.sp,
                             color = Color.LightGray,
                             fontFamily = FontFamily.Monospace
                         )
-                    } else {
-                        species.evolutionRules.forEach { rule ->
-                            val target = PetSpecies.getById(rule.targetSpeciesId)
-                            val isReady = nextEvo?.id == target.id
-                            val isRevealed = !maskSpoilers || discoveredIds.contains(target.id)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 1.5.dp)
-                                    .background(
-                                        if (isReady) Color(0xFF142E24) else Color(0xFF0F151D),
-                                        RoundedCornerShape(4.dp)
-                                    )
-                                    .padding(horizontal = 4.dp, vertical = 2.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                SpriteCanvasRenderer(
-                                    speciesId = target.id,
-                                    isAmbient = false,
-                                    overrideFrame = SpriteFrame.IDLE_A,
-                                    isSilhouette = !isRevealed,
-                                    size = 20.dp
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "-> ${if (isRevealed) target.name else "???"} ${if (isReady) "[READY]" else ""}",
-                                        fontSize = 7.5.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        color = if (isReady) Color(0xFF00E676) else Color.White,
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                    Text(
-                                        text = EvolutionEngine.describeRule(rule),
-                                        fontSize = 6.5.sp,
-                                        color = Color(0xFFB0BEC5),
-                                        fontFamily = FontFamily.Monospace
-                                    )
-                                }
-                            }
-                        }
                     }
-                    if (jogressRecipes.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(4.dp))
+                }
+            }
+
+            // Individual Evolution Rule Items (curved ScalingLazyColumn scaling per row)
+            items(species.evolutionRules, key = { "evo_${it.targetSpeciesId}" }) { rule ->
+                val target = PetSpecies.getById(rule.targetSpeciesId)
+                val isReady = nextEvo?.id == target.id
+                val isRevealed = !maskSpoilers || discoveredIds.contains(target.id)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.dp)
+                        .background(
+                            if (isReady) Color(0xFF142E24) else Color(0xFF161D28),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .border(
+                            0.5.dp,
+                            if (isReady) Color(0xFF00E676) else Color(0x33FFD54F),
+                            RoundedCornerShape(6.dp)
+                        )
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    SpriteCanvasRenderer(
+                        speciesId = target.id,
+                        isAmbient = false,
+                        overrideFrame = SpriteFrame.IDLE_A,
+                        isSilhouette = !isRevealed,
+                        size = 20.dp
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "-> ${if (isRevealed) target.name else "???"} ${if (isReady) "[READY]" else ""}",
+                            fontSize = 7.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isReady) Color(0xFF00E676) else Color.White,
+                            fontFamily = FontFamily.Monospace
+                        )
+                        Text(
+                            text = EvolutionEngine.describeRule(rule),
+                            fontSize = 6.5.sp,
+                            color = Color(0xFFB0BEC5),
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                }
+            }
+
+            // Jogress / DigiXros Items
+            if (jogressRecipes.isNotEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.dp)
+                            .background(Color(0xFF161D28), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(3.dp)
@@ -401,153 +450,157 @@ fun StatusScreen(
                                 fontFamily = FontFamily.Monospace
                             )
                         }
-                        jogressRecipes.forEach { recipe ->
-                            val partnerId = if (recipe.primarySpeciesId == species.id) recipe.secondarySpeciesId else recipe.primarySpeciesId
-                            val partner = PetSpecies.getById(partnerId)
-                            val target = PetSpecies.getById(recipe.targetSpeciesId)
-                            val partnerRevealed = !maskSpoilers || discoveredIds.contains(partner.id)
-                            val targetRevealed = !maskSpoilers || discoveredIds.contains(target.id)
-                            val partnerName = if (partnerRevealed) partner.name else "???"
-                            val targetName = if (targetRevealed) target.name else "???"
-                            val isSelfModeChange = recipe.primarySpeciesId == recipe.secondarySpeciesId
-                            val hasBackupPartner = backupPet?.speciesId == partner.id
-                            val canExecuteNow = if (isSelfModeChange) {
-                                petState.effort >= 4 && petState.victories >= 15
-                            } else {
-                                hasBackupPartner && com.digiwear.core.fusion.JogressEngine.findFusionRecipe(
-                                    petState.speciesId,
-                                    backupPet!!.speciesId
-                                ) != null
+                    }
+                }
+
+                items(
+                    jogressRecipes,
+                    key = { "jogress_${it.primarySpeciesId}_${it.secondarySpeciesId}_${it.targetSpeciesId}" }
+                ) { recipe ->
+                    val partnerId = if (recipe.primarySpeciesId == species.id) recipe.secondarySpeciesId else recipe.primarySpeciesId
+                    val partner = PetSpecies.getById(partnerId)
+                    val target = PetSpecies.getById(recipe.targetSpeciesId)
+                    val partnerRevealed = !maskSpoilers || discoveredIds.contains(partner.id)
+                    val targetRevealed = !maskSpoilers || discoveredIds.contains(target.id)
+                    val partnerName = if (partnerRevealed) partner.name else "???"
+                    val targetName = if (targetRevealed) target.name else "???"
+                    val isSelfModeChange = recipe.primarySpeciesId == recipe.secondarySpeciesId
+                    val hasBackupPartner = backupPet?.speciesId == partner.id
+                    val canExecuteNow = if (isSelfModeChange) {
+                        petState.effort >= 4 && petState.victories >= 15
+                    } else {
+                        hasBackupPartner && com.digiwear.core.fusion.JogressEngine.findFusionRecipe(
+                            petState.speciesId,
+                            backupPet!!.speciesId
+                        ) != null
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.dp)
+                            .background(Color(0xFF1F1630), RoundedCornerShape(6.dp))
+                            .border(0.5.dp, Color(recipe.fusionType.badgeColorHex), RoundedCornerShape(6.dp))
+                            .padding(4.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
+                                SpriteCanvasRenderer(
+                                    speciesId = partner.id,
+                                    isAmbient = false,
+                                    overrideFrame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !partnerRevealed,
+                                    size = 18.dp
+                                )
+                                Text(" -> ", fontSize = 7.sp, color = Color(0xFFFFD54F), fontWeight = FontWeight.Black)
+                                SpriteCanvasRenderer(
+                                    speciesId = target.id,
+                                    isAmbient = false,
+                                    overrideFrame = SpriteFrame.IDLE_A,
+                                    isSilhouette = !targetRevealed,
+                                    size = 20.dp
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Column {
+                                    Text(
+                                        text = if (isSelfModeChange) "MODE: ${targetName.take(10)}" else "+${partnerName.take(7)} -> ${targetName.take(8)}",
+                                        fontSize = 7.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = Color.White,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                    Text(
+                                        text = recipe.fusionType.displayName,
+                                        fontSize = 6.sp,
+                                        color = Color(recipe.fusionType.badgeColorHex),
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
                             }
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 2.dp)
-                                    .background(Color(0xFF1F1630), RoundedCornerShape(6.dp))
-                                    .border(0.5.dp, Color(recipe.fusionType.badgeColorHex), RoundedCornerShape(6.dp))
-                                    .padding(4.dp)
+                            Button(
+                                onClick = {
+                                    scope.launch {
+                                        if (isSelfModeChange && canExecuteNow) {
+                                            val fused = com.digiwear.core.fusion.JogressEngine.executeFusion(
+                                                primary = petState,
+                                                secondarySpeciesId = partner.id,
+                                                secondaryVictories = petState.victories,
+                                                secondaryEffort = petState.effort
+                                            )
+                                            repository.savePetState(fused)
+                                            fusionFeedback = "Awakened ${target.name}!"
+                                        } else if (hasBackupPartner) {
+                                            val fused = repository.performDirectJogress()
+                                            fusionFeedback = if (fused != null) {
+                                                "Awakened ${target.name}!"
+                                            } else {
+                                                "Needs 4 Effort or 15 Wins!"
+                                            }
+                                        } else {
+                                            fusionFeedback = if (isSelfModeChange) {
+                                                "Needs 4 Effort & 15 Wins!"
+                                            } else {
+                                                "Need ${partner.name} in Cryo!"
+                                            }
+                                        }
+                                    }
+                                },
+                                enabled = canExecuteNow,
+                                modifier = Modifier.height(22.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    backgroundColor = if (canExecuteNow) Color(recipe.fusionType.badgeColorHex) else Color(0xFF37474F)
+                                )
                             ) {
                                 Row(
-                                    modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                        SpriteCanvasRenderer(
-                                            speciesId = partner.id,
-                                            isAmbient = false,
-                                            overrideFrame = SpriteFrame.IDLE_A,
-                                            isSilhouette = !partnerRevealed,
-                                            size = 18.dp
-                                        )
-                                        Text(" -> ", fontSize = 7.sp, color = Color(0xFFFFD54F), fontWeight = FontWeight.Black)
-                                        SpriteCanvasRenderer(
-                                            speciesId = target.id,
-                                            isAmbient = false,
-                                            overrideFrame = SpriteFrame.IDLE_A,
-                                            isSilhouette = !targetRevealed,
-                                            size = 20.dp
-                                        )
-                                        Spacer(modifier = Modifier.width(3.dp))
-                                        Column {
-                                            Text(
-                                                text = if (isSelfModeChange) "MODE: ${targetName.take(10)}" else "+${partnerName.take(7)} -> ${targetName.take(8)}",
-                                                fontSize = 7.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                            Text(
-                                                text = recipe.fusionType.displayName,
-                                                fontSize = 6.sp,
-                                                color = Color(recipe.fusionType.badgeColorHex),
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                    }
-                                    Button(
-                                        onClick = {
-                                            scope.launch {
-                                                if (isSelfModeChange && canExecuteNow) {
-                                                    val fused = com.digiwear.core.fusion.JogressEngine.executeFusion(
-                                                        primary = petState,
-                                                        secondarySpeciesId = partner.id,
-                                                        secondaryVictories = petState.victories,
-                                                        secondaryEffort = petState.effort
-                                                    )
-                                                    repository.savePetState(fused)
-                                                    fusionFeedback = "Awakened ${target.name}!"
-                                                } else if (hasBackupPartner) {
-                                                    val fused = repository.performDirectJogress()
-                                                    fusionFeedback = if (fused != null) {
-                                                        "Awakened ${target.name}!"
-                                                    } else {
-                                                        "Needs 4 Effort or 15 Wins!"
-                                                    }
-                                                } else {
-                                                    fusionFeedback = if (isSelfModeChange) {
-                                                        "Needs 4 Effort & 15 Wins!"
-                                                    } else {
-                                                        "Need ${partner.name} in Cryo!"
-                                                    }
-                                                }
-                                            }
-                                        },
-                                        enabled = canExecuteNow,
-                                        modifier = Modifier.height(22.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            backgroundColor = if (canExecuteNow) Color(recipe.fusionType.badgeColorHex) else Color(0xFF37474F)
-                                        )
-                                    ) {
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(2.dp)
-                                        ) {
-                                            DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = if (canExecuteNow) Color.Black else Color.LightGray)
-                                            Text(
-                                                text = if (canExecuteNow) "FUSE" else "LOCKED",
-                                                fontSize = 6.5.sp,
-                                                fontWeight = FontWeight.Black,
-                                                color = if (canExecuteNow) Color.Black else Color.LightGray,
-                                                fontFamily = FontFamily.Monospace
-                                            )
-                                        }
-                                    }
+                                    DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = if (canExecuteNow) Color.Black else Color.LightGray)
+                                    Text(
+                                        text = if (canExecuteNow) "FUSE" else "LOCKED",
+                                        fontSize = 6.5.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = if (canExecuteNow) Color.Black else Color.LightGray,
+                                        fontFamily = FontFamily.Monospace
+                                    )
                                 }
                             }
                         }
-                    } else {
-                        // Show upcoming Jogress/DigiXros in immediate evolution branch
-                        val nextBranchJogress = remember(species.id) {
-                            species.evolutionRules.flatMap { r ->
-                                com.digiwear.core.fusion.JogressEngine.getCompatibleRecipesFor(r.targetSpeciesId)
-                                    .map { recipe -> PetSpecies.getById(r.targetSpeciesId) to recipe }
-                            }.take(2)
+                    }
+                }
+            } else if (nextBranchJogress.isNotEmpty()) {
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = displayConfig.horizontalPadding, vertical = 1.dp)
+                            .background(Color(0xFF161D28), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 3.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(3.dp)
+                        ) {
+                            DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = Color(0xFFEA80FC))
+                            Text(
+                                text = "NEXT STAGE JOGRESS / XROS UNLOCKS:",
+                                fontSize = 6.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEA80FC),
+                                fontFamily = FontFamily.Monospace
+                            )
                         }
-                        if (nextBranchJogress.isNotEmpty()) {
-                            Spacer(modifier = Modifier.height(3.dp))
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(3.dp)
-                            ) {
-                                DigiVectorIcon(type = DigiIconType.BOLT, size = 8.dp, tint = Color(0xFFEA80FC))
-                                Text(
-                                    text = "NEXT STAGE JOGRESS / XROS UNLOCKS:",
-                                    fontSize = 6.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = Color(0xFFEA80FC),
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
-                            nextBranchJogress.forEach { (branchSp, recipe) ->
-                                val targetSp = PetSpecies.getById(recipe.targetSpeciesId)
-                                Text(
-                                    text = "- Evolve to ${branchSp.name.take(8)} -> ${targetSp.name.take(10)} (${recipe.fusionType.displayName.take(8)})",
-                                    fontSize = 6.sp,
-                                    color = Color(0xFFCE93D8),
-                                    fontFamily = FontFamily.Monospace
-                                )
-                            }
+                        nextBranchJogress.forEach { (branchSp, recipe) ->
+                            val targetSp = PetSpecies.getById(recipe.targetSpeciesId)
+                            Text(
+                                text = "- Evolve to ${branchSp.name.take(8)} -> ${targetSp.name.take(10)} (${recipe.fusionType.displayName.take(8)})",
+                                fontSize = 6.sp,
+                                color = Color(0xFFCE93D8),
+                                fontFamily = FontFamily.Monospace
+                            )
                         }
                     }
                 }
@@ -773,7 +826,7 @@ fun StatusScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xFF03080E).copy(alpha = 0.96f)),
+                    .background(Color(0xFF03080E)),
                 contentAlignment = Alignment.Center
             ) {
                 ScalingLazyColumn(

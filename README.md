@@ -2,10 +2,11 @@
 ### The authentic 90s Virtual Pet experience, rebuilt for your smartwatch & phone.
 
 [![Platform](https://img.shields.io/badge/Platform-Wear%20OS%203.0%2B%20%7C%20Android%2013%2B-blue?logo=android&logoColor=white)](https://developer.android.com/wear)
+[![Version](https://img.shields.io/badge/Version-v2.6.0-teal.svg)](RELEASE_NOTES_v2.6.md)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-purple?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Wear%20%2B%20M3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Protocol](https://img.shields.io/badge/Digimon%200nl1ne-100%25%20Compatible-00C853?logo=codersrank&logoColor=white)](https://github.com)
-[![Roster](https://img.shields.io/badge/Species%20Roster-500%20Authentic%20Digimon-FF6D00)](https://humulos.com/digimon/)
+[![Roster](https://img.shields.io/badge/Species%20Roster-550%20Authentic%20Digimon-FF6D00)](https://humulos.com/digimon/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -18,27 +19,27 @@ DigiWear brings the full 1997 classic virtual pet experience to modern smartwatc
 
 ### 🌟 What makes DigiWear special:
 - ⌚ **100% Standalone on Your Wrist**: Your partner lives directly on your watch. Hunger, strength, sleep, and battles calculate in real time even when disconnected from your phone.
-- 🔋 **All-Day Battery Life**: Smart 60s sensor batching, off-body sleep detection, and ultra-low-power ambient wireframes (≤ 6% OPR) keep your battery running strong all day long.
-- 🔘 **Real Physical Button Support**: Got physical buttons or a rotating crown? Use them just like the original `[A]`, `[B]`, and `[C]` buttons with snappy, zero-lag timing.
-- 🥚 **500 Authentic Monsters & 16 Starter Eggs**: Complete roster from Baby I to Super Ultimate with canonical multi-tone pixel sprites and 12 animation frames each.
-- 🧬 **85 DNA Jogress & DigiXros Fusions**: Fuse partners together on your watch or in the companion app's dedicated Fusion Lab.
+- 🔋 **All-Day Battery Life**: Smart 60s sensor batching, off-body sleep detection, zero-allocation 12fps watch face rendering, and ultra-low-power ambient wireframes (≤ 6% OPR) keep your battery running strong all day long.
+- 🔘 **Real Physical & Molded Button Support**: Got physical buttons or a rotating crown? Use them just like the original `[A]`, `[B]`, and `[C]` buttons. Prefer touch? Disable the button rail to enjoy an evenly balanced 10-button perimeter frame with expanded pet roaming room.
+- 🥚 **550 Authentic Monsters & 16 Starter Eggs**: Complete roster from Baby I to Super Ultimate with canonical multi-tone pixel sprites and distinct 12-frame procedural animation matrices for every species.
+- 🧬 **85 DNA Jogress & DigiXros Fusions**: Instant O(1) indexed recipe lookup on your watch or in the companion app's dedicated Fusion Lab.
 - 🥊 **Battle Anyone, Anywhere**: Fight via NFC Tap-to-Duel, scan real barcodes with your phone camera for wild battles, or connect to **Digimon 0nl1ne / D-Com / A-Com / WiFiCom** using standard 128-bit CommCodes.
 - 🚶 **Step-Powered Adventure Sagas**: 114 sectors across 5 storyline sagas where your real-world walking steps unlock bosses, rare eggs, and crests.
 - 📱 **Direct Wireless Sideloading**: Update your watch app straight from the phone companion app over Wi-Fi—no PC or terminal needed!
 
 ---
 
-## 🧬 Evolution & DNA Jogress Guide (All 500 Species)
+## 🧬 Evolution & DNA Jogress Guide (All 550 Species)
 
-Every single one of the **500 Digimon** in DigiWear is naturally reachable from the **16 Starter Digi-Eggs** via canonical Bandai 1997 V-Pet, Digimon Pendulum, and Digimon Color evolution rules, or via **85 DNA Jogress / DigiXros / Mode Change** combinations.
+Every single one of the **550 Digimon** in DigiWear is naturally reachable from the **16 Starter Digi-Eggs** via canonical Bandai 1997 V-Pet, Digimon Pendulum, and Digimon Color evolution rules, or via **85 DNA Jogress / DigiXros / Mode Change** combinations.
 
 👉 **[Check out the complete Evolution Guide & Interactive Tables (`DIGIVOLUTION_GUIDE.md`)](DIGIVOLUTION_GUIDE.md)**
 
 ### Visual Evolution & DNA Jogress Chart
 ![DigiWear Full Sprite Sheet Evolution Guide](docs/digiwear_evolution_guide_chart.png)
 
-### Master 500-Species Full-Color Pixel-Art Sprite Sheet
-![DigiWear 500-Species Master Roster Sprite Sheet](docs/digiwear_roster_spritesheet.png)
+### Master 550-Species Full-Color Pixel-Art Sprite Sheet
+![DigiWear 550-Species Master Roster Sprite Sheet](docs/digiwear_roster_spritesheet.png)
 
 ---
 
@@ -94,14 +95,18 @@ Elapsed Time = Current UTC Time - Last Saved Time
 
 ### 2. Physical Button & Touch Controls
 
-1. **Authentic 3-Button LCD Mode**:
+1. **Authentic 3-Button LCD Mode (Right / Left Button Rail)**:
    - Iconic 8-icon Bandai LCD border:
-     - Top row: `[🍖 FOOD]`, `[💡 LIGHT]`, `[⚔ BATTLE]`, `[🧹 FLUSH]`
-     - Bottom row: `[📊 STATUS]`, `[🥊 TRAIN]`, `[💉 MEDS]`, `[🚨 ATTENTION]`
-   - Dedicated on-screen touch buttons: `[A]` (Select/Cycle), `[B]` (Confirm/Execute), and `[C]` (Cancel/Back).
-   - Tapping icons or your partner directly works seamlessly.
-2. **Modern Touch Mode**:
-   - Smooth wrist-optimized list navigation for quick one-handed care.
+     - Top arc: `[📊 STATUS]`, `[🍖 FEED]`, `[🥊 TRAIN]`, `[⚔ BATTLE]`
+     - Bottom arc: `[🧹 FLUSH]`, `[💡 LIGHT]`, `[💉 MEDS]`, `[🚨 ATTENTION]`
+   - Dedicated molded on-screen touch rail: `[A]` (Select/Cycle), `[B]` (Confirm/Execute), and `[C]` (Cancel/Back).
+   - Configurable wrist placement: Set button rail to `RIGHT` (left wrist) or `LEFT` (right wrist) with automatic utility chip balancing.
+2. **Modern Touch Mode (Button Rail OFF)**:
+   - When the button rail is disabled (`"OFF"`), the `[A]`, `[B]`, `[C]` rail buttons disappear and the two utility buttons split across the dial into **bilateral symmetry**:
+     - `Quest / Adventure` anchors at **9 o'clock (West)**
+     - `Settings` anchors at **3 o'clock (East)**
+   - Combined with the 4 top and 4 bottom care icons, this forms an evenly balanced **10-button perimeter frame** hugging the outer bezel.
+   - The pet's roaming boundary expands horizontally on both sides, providing maximum center display area for walking and idle animations.
 3. **Physical Hardware Key Support**:
    - **Button A (Select / Cycle)**: Primary stem button, D-Pad Up, Volume Up, or clockwise crown turn.
    - **Button B (Confirm / QTE Strike)**: Secondary stem button, Enter key, D-Pad Center, or Spacebar.
@@ -149,11 +154,11 @@ Turn your daily steps into adventure progression across 5 authentic sagas:
 
 The companion app gives you a clean 5-tab control center:
 1. **V-PET Tab**: Live viewport of your active partner inside a retro 1997 brick shell with biological gauges and remote care buttons.
-2. **VAULT Tab**: Cryo-storage to keep your favorite Digimon safe in stasis, plus a dedicated **Fusion Lab** listing all 85 Jogress recipes and a Memorial Hall of Fame.
+2. **VAULT Tab**: Cryo-storage to keep your favorite Digimon safe in stasis, plus a dedicated **Fusion Lab** listing all 85 Jogress recipes with O(1) indexed lookups and a Memorial Hall of Fame.
 3. **BATTLE Tab**: NFC duels, UPC barcode wild scanning, online D-Com packet battles, and 100-floor Colosseum tower gauntlet.
-4. **EXPEDITION Tab**: Master 500-species DigiDex and 114-sector saga exploration maps.
-5. **SETTINGS Tab**: Watch hardware toggles (3-button mode, wrist placement, haptics, buzzer, contrast), smartwatch connection diagnostics, AOSP Wi-Fi bridge, and full JSON database backup/restore.
-6. **Home Screen AppWidget**: Put your live partner right on your phone home screen with live hunger hearts (`♥♥♥♥`), strength stars (`★★★★`), and quick-care buttons.
+4. **EXPEDITION Tab**: Master 550-species DigiDex with species unlock guides, Sprite Studio Matrix Editor for custom 16x16 pixel sprites, and 114-sector saga exploration maps.
+5. **SETTINGS Tab**: Responsive 2-column theme picker and 6-shell selectors, watch hardware toggles (3-button mode, wrist placement, haptics, buzzer, contrast), smartwatch connection diagnostics, AOSP Wi-Fi bridge, and full JSON database backup/restore.
+6. **Home Screen AppWidget**: Put your live partner right on your phone home screen with live hunger hearts (`♥♥♥♥`), strength stars (`★★★★`), quick-care buttons, and seamless Cryo-Vault fallback when disconnected from your watch.
 
 ---
 
@@ -210,6 +215,19 @@ Pre-compiled, signed APKs are ready to install in the `release_bin/` directory a
 | `DigiWear-Companion-release.apk` | Android 13+ Phone | Official signed companion app with Wireless Sideloading & DigiVault |
 | `wear-os-app-debug.apk` | Development | Watch debug build with developer logging enabled |
 | `phone-companion-app-debug.apk` | Development | Phone debug build with developer logging enabled |
+
+---
+
+## 🆕 What's New in v2.6.0
+
+See the full [v2.6.0 Release Notes](RELEASE_NOTES_v2.6.md) for detailed benchmarks and technical breakdown:
+* **Circular Bezel Safe-Zone Geometry**: List headers, complication controls, and action buttons inset safely inside round watch bezels (`horizPad = 14.dp`, `vertPad = 26.dp`) with zero edge clipping.
+* **Bilateral Touch Symmetry**: Turning the button rail `OFF` repositions `Quest` to 9 o'clock and `Settings` to 3 o'clock, creating a balanced 10-button perimeter ring and expanding pet walking headroom.
+* **O(1) Indexed Jogress & DigiDex Lookups**: Pre-indexed target species lookups eliminate list lag across all 85+ fusion recipes and 550 species.
+* **12-Frame Procedural Animation Matrix**: Complete 12-frame procedural transforms across all 550 species ensuring every action (`IDLE_1/2`, `WALK_1/2`, `FEED_START`, `JOY_EAT`, `SLEEP_1/2`, `REFUSAL`, `ATTACK_CHARGE/RELEASE`, `INJURED`) is visually distinct.
+* **Watch Face 12fps Loop Hardening**: 30-second TTL battery percentage caching and zero-allocation scratch rect re-use eliminate Binder IPC overhead and GC pauses.
+* **Cryo-Vault Tile & Widget Fallbacks**: Phone widget and Wear OS tile gracefully fall back to Cryo-Vault stasis status when disconnected, preventing default Botamon resets.
+* **Embedded Direct Sideloading**: Companion app includes built-in release APKs for 1-tap wireless watch flashing over Wi-Fi without a PC.
 
 ---
 

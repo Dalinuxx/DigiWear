@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -215,7 +216,7 @@ fun WorkoutScreen(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = if (displayConfig.isRound) 16.dp else 0.dp),
+                        .padding(horizontal = if (displayConfig.isRound) 24.dp else 0.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -282,7 +283,7 @@ fun WorkoutScreen(
                         )
                         Text(
                             text = if (currentBpm > 0) "$currentBpm" else "--",
-                            fontSize = 24.sp,
+                            fontSize = 16.sp,
                             fontWeight = FontWeight.Black,
                             fontFamily = FontFamily.Monospace,
                             color = Color.White
@@ -363,20 +364,22 @@ fun WorkoutScreen(
                 }
 
                 // Bottom: Finish Workout Button
-                Button(
-                    onClick = { finishWorkoutSession() },
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth(if (displayConfig.isRound) 0.72f else 0.85f)
-                        .height(28.dp),
-                    colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD50000)),
-                    shape = RoundedCornerShape(14.dp)
+                        .fillMaxWidth(if (displayConfig.isRound) 0.76f else 0.86f)
+                        .height(28.dp)
+                        .background(Color(0xFFD50000), RoundedCornerShape(14.dp))
+                        .clickable { finishWorkoutSession() },
+                    contentAlignment = Alignment.Center
                 ) {
                     Text(
                         text = "[STOP] FINISH WORKOUT",
-                        fontSize = 9.sp,
+                        fontSize = 8.5.sp,
                         fontWeight = FontWeight.Bold,
                         fontFamily = FontFamily.Monospace,
-                        color = Color.White
+                        color = Color.White,
+                        maxLines = 1,
+                        textAlign = TextAlign.Center
                     )
                 }
             }

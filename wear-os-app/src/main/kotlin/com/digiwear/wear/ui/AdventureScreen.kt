@@ -580,7 +580,7 @@ fun AdventureScreen(
                 Spacer(modifier = Modifier.height(3.dp))
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(0.90f)
                         .padding(horizontal = 4.dp)
                         .background(
                             if (isActive) Color(0xFF004D40) else Color(0xFF141F28),
@@ -642,7 +642,7 @@ fun AdventureScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = { showSagaPicker = false },
-                    modifier = Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 4.dp),
+                    modifier = Modifier.fillMaxWidth(0.84f).height(26.dp).padding(horizontal = 4.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF37474F))
                 ) {
                     Text("BACK [C]", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
@@ -707,7 +707,7 @@ fun AdventureScreen(
                 Spacer(modifier = Modifier.height(3.dp))
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
+                        .fillMaxWidth(0.90f)
                         .padding(horizontal = 4.dp)
                         .background(cardBg, RoundedCornerShape(8.dp))
                         .border(1.dp, borderColor, RoundedCornerShape(8.dp))
@@ -762,7 +762,7 @@ fun AdventureScreen(
                 Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = { showSectorPicker = false },
-                    modifier = Modifier.fillMaxWidth().height(26.dp).padding(horizontal = 4.dp),
+                    modifier = Modifier.fillMaxWidth(0.84f).height(26.dp).padding(horizontal = 4.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF37474F))
                 ) {
                     Text("BACK [C]", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
@@ -893,8 +893,8 @@ fun AdventureScreen(
             Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = displayConfig.horizontalPadding, vertical = 4.dp)
+                    .fillMaxWidth(0.88f)
+                    .padding(vertical = 4.dp)
                     .background(Color(0xFF12221B), RoundedCornerShape(8.dp))
                     .border(0.75.dp, Color(0x5526A69A), RoundedCornerShape(8.dp))
                     .padding(6.dp)
@@ -937,7 +937,9 @@ fun AdventureScreen(
                 requiredSteps = currentNode.requiredSteps,
                 bossName = currentNode.bossEncounter?.bossName,
                 environmentEffect = currentNode.environmentEffect,
-                modifier = Modifier.padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                modifier = Modifier
+                    .fillMaxWidth(0.90f)
+                    .padding(vertical = 2.dp)
             )
         }
 

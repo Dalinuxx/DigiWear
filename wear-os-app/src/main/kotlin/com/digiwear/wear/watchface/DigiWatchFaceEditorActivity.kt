@@ -217,12 +217,14 @@ fun DigiWatchFaceEditorScreen(
         else -> currentTheme.primaryColorHex
     }
 
+    val displayConfig = com.digiwear.wear.ui.WatchDisplayConfig.current()
+
     ScalingLazyColumn(
         modifier = Modifier
             .fillMaxSize()
             .background(Color(0xFF101216)),
         state = listState,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 20.dp),
+        contentPadding = displayConfig.contentPadding,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         // 1. Header
@@ -299,22 +301,25 @@ fun DigiWatchFaceEditorScreen(
 
         // 3. Section: LCD Backlight Theme
         item {
-            Spacer(modifier = Modifier.height(6.dp))
-            Text(
-                text = "LCD BACKLIGHT THEME",
-                fontSize = 9.sp,
-                color = Color(0xFF80CBC4),
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Text(
+                    text = "LCD BACKLIGHT THEME",
+                    fontSize = 9.sp,
+                    color = Color(0xFF80CBC4),
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
         }
 
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 PRESET_THEMES.forEach { preset ->
@@ -373,22 +378,25 @@ fun DigiWatchFaceEditorScreen(
 
         // 4. Section: LCD Matrix Pattern
         item {
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "LCD MATRIX PATTERN",
-                fontSize = 9.sp,
-                color = Color(0xFF80CBC4),
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "LCD MATRIX PATTERN",
+                    fontSize = 9.sp,
+                    color = Color(0xFF80CBC4),
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
         }
 
         item {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState()),
+                    .horizontalScroll(rememberScrollState())
+                    .padding(horizontal = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 LcdPattern.entries.forEach { pattern ->
@@ -467,21 +475,23 @@ fun DigiWatchFaceEditorScreen(
 
         // 6. Section: Complication Slots Configuration
         item {
-            Spacer(modifier = Modifier.height(10.dp))
-            Text(
-                text = "COMPLICATION SLOTS",
-                fontSize = 9.sp,
-                color = Color(0xFFFFB74D),
-                fontWeight = FontWeight.Bold,
-                fontFamily = FontFamily.Monospace
-            )
-            Text(
-                text = "TAP SLOT TO CONFIGURE PROVIDER",
-                fontSize = 7.5.sp,
-                color = Color.Gray,
-                fontFamily = FontFamily.Monospace
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Text(
+                    text = "COMPLICATION SLOTS",
+                    fontSize = 9.sp,
+                    color = Color(0xFFFFB74D),
+                    fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Monospace
+                )
+                Text(
+                    text = "TAP SLOT TO CONFIGURE PROVIDER",
+                    fontSize = 7.5.sp,
+                    color = Color.Gray,
+                    fontFamily = FontFamily.Monospace
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+            }
         }
 
         val complicationSlots = listOf(
@@ -530,28 +540,30 @@ fun DigiWatchFaceEditorScreen(
 
         // 7. Done / Confirmation Button
         item {
-            Spacer(modifier = Modifier.height(10.dp))
-            Chip(
-                onClick = onClose,
-                colors = ChipDefaults.chipColors(
-                    backgroundColor = Color(0xFF2E7D32),
-                    contentColor = Color.White
-                ),
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .padding(vertical = 4.dp),
-                label = {
-                    Text(
-                        text = "APPLY & EXIT",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        fontFamily = FontFamily.Monospace,
-                        textAlign = TextAlign.Center,
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Spacer(modifier = Modifier.height(10.dp))
+                Chip(
+                    onClick = onClose,
+                    colors = ChipDefaults.chipColors(
+                        backgroundColor = Color(0xFF2E7D32),
+                        contentColor = Color.White
+                    ),
+                    modifier = Modifier
+                        .fillMaxWidth(0.78f)
+                        .padding(vertical = 4.dp),
+                    label = {
+                        Text(
+                            text = "APPLY & EXIT",
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+            }
         }
     }
 }

@@ -4327,6 +4327,10 @@ object SpriteMatrixRegistry {
                             for (k in c..end) chars[k] = eyelidChar
                         }
                         c = end + 1
+                    } else if (row[c] == 'T' && r > topRow && base[r - 1][c] == 'W') {
+                        // Close lower iris pixel ('T') directly below a 1-2px 'W' eye glint (e.g. Botamon)
+                        chars[c] = eyelidChar
+                        c++
                     } else {
                         c++
                     }
@@ -4455,8 +4459,26 @@ object SpriteMatrixRegistry {
                 }
             }
             SpriteFrame.REFUSAL -> {
-                // Classic refusal head-turn: horizontally mirror sprite
-                Array(16) { r -> base[r].reversed() }
+                // Classic refusal head-turn: horizontally mirror sprite; if symmetric (or mirror matches charge shift),
+                // twist head 1px right & lower body 1px left with squinted eyes
+                val mirrored = Array(16) { r -> base[r].reversed() }
+                val matchesBase = mirrored.indices.all { r -> mirrored[r] == base[r] }
+                val matchesCharge = mirrored.indices.all { r ->
+                    val charged = if (r in topRow..waistRow) shiftRowRight(base[r], 1) else base[r]
+                    mirrored[r] == charged
+                }
+                if (matchesBase || matchesCharge) {
+                    val squinted = closeEyePixels(mirrored, topRow, eyeLimitRow, 'S')
+                    Array(16) { r ->
+                        when {
+                            r in topRow..eyeLimitRow -> shiftRowRight(squinted[r], 1)
+                            r in (eyeLimitRow + 1)..bottomRow -> shiftRowLeft(squinted[r], 1)
+                            else -> squinted[r]
+                        }
+                    }
+                } else {
+                    mirrored
+                }
             }
             SpriteFrame.ATTACK_CHARGE -> {
                 // Draw back 1px right to wind up attack
@@ -4465,9 +4487,13 @@ object SpriteMatrixRegistry {
                 }
             }
             SpriteFrame.ATTACK_RELEASE -> {
-                // Lunge forward 1px left to fire projectile
+                // Full-body forward lunge 1px left (with 2px head thrust when margin permits) to fire projectile
                 Array(16) { r ->
-                    if (r in topRow..waistRow) shiftRowLeft(base[r], 1) else base[r]
+                    when {
+                        r in topRow..eyeLimitRow && base[r].startsWith("..") -> shiftRowLeft(base[r], 2)
+                        r in topRow..bottomRow -> shiftRowLeft(base[r], 1)
+                        else -> base[r]
+                    }
                 }
             }
             SpriteFrame.INJURED -> {

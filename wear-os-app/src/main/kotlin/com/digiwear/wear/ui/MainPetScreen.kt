@@ -20,6 +20,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -112,7 +114,6 @@ fun MainPetScreen(
     val currentTheme by repository.themeFlow.collectAsState(initial = BackgroundTheme.CLASSIC_VPET_LCD)
     val customThemeConfig by repository.customThemeConfigFlow.collectAsState(initial = null)
     val wallpaperVersion by repository.wallpaperVersionFlow.collectAsState(initial = 0L)
-    val isThreeButtonMode by repository.threeButtonModeFlow.collectAsState(initial = true)
     val buttonPlacement by repository.buttonPlacementFlow.collectAsState(initial = "RIGHT")
     val isPendulumShakeMode by repository.pendulumShakeModeFlow.collectAsState(initial = false)
     val isSoundEnabled by repository.soundEnabledFlow.collectAsState(initial = false)
@@ -591,13 +592,13 @@ fun MainPetScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xDD070B0E))
+                    .background(Color(0xF5050810))
                     .clickable { showTrainingPicker = false },
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth(0.78f)
                         .background(Color(0xFF111822), RoundedCornerShape(12.dp))
                         .border(1.dp, Color(0xFF00E5FF), RoundedCornerShape(12.dp))
                         .padding(10.dp),
@@ -666,13 +667,13 @@ fun MainPetScreen(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color(0xDD070B0E))
+                    .background(Color(0xF5050810))
                     .clickable { showLightPicker = false },
                 contentAlignment = Alignment.Center
             ) {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth(0.9f)
+                        .fillMaxWidth(0.78f)
                         .background(Color(0xFF111822), RoundedCornerShape(12.dp))
                         .border(1.dp, Color(0xFFFFD54F), RoundedCornerShape(12.dp))
                         .padding(10.dp),
@@ -798,7 +799,8 @@ private fun MoldedCircularButton(
     textColor: Color,
     onClick: () -> Unit
 ) {
-    var isPressed by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
     val animatedScale by animateFloatAsState(
         targetValue = if (isPressed) 0.88f else 1.0f,
         animationSpec = androidx.compose.animation.core.spring(
@@ -829,7 +831,10 @@ private fun MoldedCircularButton(
                 ),
                 shape = CircleShape
             )
-            .clickable {
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null
+            ) {
                 onClick()
             },
         contentAlignment = Alignment.Center
@@ -1012,11 +1017,13 @@ private fun RoundDialPetView(
     val fontBase = (diameter * 0.036f).coerceAtLeast(7f)
 
     // Live clock
+    val clockFormatter = remember(is24h) {
+        SimpleDateFormat(if (is24h) "HH:mm" else "h:mm", Locale.getDefault())
+    }
     var clockText by remember { mutableStateOf("") }
-    LaunchedEffect(is24h) {
+    LaunchedEffect(clockFormatter) {
         while (true) {
-            val pattern = if (is24h) "HH:mm" else "h:mm"
-            clockText = SimpleDateFormat(pattern, Locale.getDefault()).format(Date())
+            clockText = clockFormatter.format(Date())
             delay(15_000L)
         }
     }
@@ -1268,7 +1275,11 @@ private fun RoundDialPetView(
             } else {
                 val promptText = if (selectedMenuIndex != null) {
                     "[ ${VPetMenu.entries[selectedMenuIndex].label} ]"
-                } else actionFeedback ?: if (petState.isSleeping) "ZZZ... SLEEPING" else null
+                } else actionFeedback ?: when {
+                    petState.attentionCallActive -> "! CALL SIGNAL !"
+                    petState.isSleeping -> "ZZZ... SLEEPING"
+                    else -> null
+                }
 
                 if (promptText != null) {
                     Box(
@@ -1448,8 +1459,8 @@ private fun ThreeButtonPetView(
             modifier = Modifier
                 .background(Color(0x77091016), RoundedCornerShape(6.dp))
                 .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
-                .padding(horizontal = if (displayConfig.isRound) 4.dp else 2.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 3.dp else 4.dp),
+                .padding(horizontal = 2.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             for (i in 0..3) {
@@ -1473,8 +1484,8 @@ private fun ThreeButtonPetView(
             modifier = Modifier
                 .background(Color(0x77091016), RoundedCornerShape(6.dp))
                 .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(6.dp))
-                .padding(horizontal = if (displayConfig.isRound) 4.dp else 2.dp, vertical = 2.dp),
-            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 3.dp else 4.dp),
+                .padding(horizontal = 2.dp, vertical = 2.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             for (i in 4..7) {
@@ -1501,7 +1512,7 @@ private fun ThreeButtonPetView(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.SpaceBetween
     ) {
-        // Top Recessed V-Pet LCD Rail (Centered on top circle chord)
+        // Top Recessed V-Pet LCD Rail
         topRail()
 
         // Middle Content Row with Center Viewport and Side Button Rail
@@ -1509,7 +1520,7 @@ private fun ThreeButtonPetView(
             modifier = Modifier
                 .weight(1f)
                 .fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(if (displayConfig.isRound) 2.dp else 4.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             // Optional Left Button Rail (Southpaw mode)
@@ -1530,10 +1541,7 @@ private fun ThreeButtonPetView(
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(
-                            start = if (displayConfig.isRound) (if (buttonPlacement == "RIGHT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp,
-                            end = if (displayConfig.isRound) (if (buttonPlacement == "LEFT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp
-                        ),
+                        .padding(horizontal = 4.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -1604,10 +1612,7 @@ private fun ThreeButtonPetView(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(
-                                start = if (displayConfig.isRound) (if (buttonPlacement == "RIGHT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp,
-                                end = if (displayConfig.isRound) (if (buttonPlacement == "LEFT" || buttonPlacement == "OFF") 28.dp else 10.dp) else 4.dp
-                            ),
+                            .padding(horizontal = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -1760,500 +1765,6 @@ private fun ThreeButtonPetView(
             bottomRail()
         }
     }
-
-/**
- * Modern Digivice / Vital Bracelet Touch UI layout with scrollable ScalingLazyColumn,
- * recessed LCD partner stage, attribute badge, and tactile labeled care dock.
- */
-@Composable
-private fun ModernTouchPetView(
-    species: PetSpecies,
-    petState: PetState,
-    displayConfig: WatchDisplayConfig,
-    overrideSpriteFrame: SpriteFrame?,
-    actionFeedback: String?,
-    scope: kotlinx.coroutines.CoroutineScope,
-    repository: PetRepository,
-    hapticManager: HapticManager,
-    onNavigateBattle: () -> Unit,
-    onNavigateAdventure: () -> Unit,
-    onNavigateStatus: () -> Unit,
-    onNavigateSettings: () -> Unit,
-    onStartTraining: () -> Unit,
-    onSetOverrideFrame: (SpriteFrame?) -> Unit,
-    onSetFeedback: (String?) -> Unit
-) {
-    val listState = rememberScalingLazyListState()
-    val attrColor = when (species.attribute.displayName) {
-        "Vaccine" -> Color(0xFF00E5FF)
-        "Data" -> Color(0xFFFFCA28)
-        "Virus" -> Color(0xFFFF5252)
-        else -> Color(0xFF69F0AE)
-    }
-
-    Scaffold(
-        timeText = { TimeText() }
-    ) {
-        ScalingLazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            state = listState,
-            contentPadding = displayConfig.contentPadding,
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            // Header row: Monster name, Stage/Attribute badge, weight, and Settings button
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
-                        .background(Color(0x770B1219), RoundedCornerShape(8.dp))
-                        .border(0.75.dp, Color(0x4480CBC4), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 8.dp, vertical = 4.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = species.name,
-                            fontSize = displayConfig.headerFontSize,
-                            fontWeight = FontWeight.ExtraBold,
-                            color = Color(0xFFB9F6CA),
-                            fontFamily = FontFamily.Monospace
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = species.stage.displayName.uppercase(),
-                                fontSize = 7.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF80CBC4),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(" • ", fontSize = 7.sp, color = Color.Gray)
-                            Text(
-                                text = species.attribute.displayName.uppercase(),
-                                fontSize = 7.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = attrColor,
-                                fontFamily = FontFamily.Monospace
-                            )
-                            Text(" • ${petState.weight}g", fontSize = 7.sp, color = Color.LightGray, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-                    Button(
-                        onClick = onNavigateSettings,
-                        modifier = Modifier.size(24.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF263238))
-                    ) {
-                        DigiVectorIcon(type = DigiIconType.SETTINGS, size = 12.dp)
-                    }
-                }
-            }
-
-            if (petState.isDeceased) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
-                            .background(Color(0xD9381216), RoundedCornerShape(8.dp))
-                            .border(1.dp, Color(0xFFFF5252), RoundedCornerShape(8.dp))
-                            .clickable {
-                                scope.launch {
-                                    repository.hatchTraitedEgg()
-                                }
-                            }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            DigiVectorIcon(type = DigiIconType.TOMBSTONE, size = 11.dp)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "REST IN PEACE • TAP TO HATCH EGG (GEN ${petState.generation + 1})",
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color(0xFFFF8A80),
-                                fontFamily = FontFamily.Monospace,
-                                textAlign = TextAlign.Center
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Segmented Vector Hearts & Stars Bar (Hunger & Strength)
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0x660B1219), RoundedCornerShape(6.dp))
-                            .border(0.5.dp, Color(0x66FF5252), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "H ",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (petState.hunger == 0) Color.Red else Color(0xFFFF5252),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            VPetMeterBar(count = petState.hunger, isHeart = true, iconSize = 9.dp)
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0x660B1219), RoundedCornerShape(6.dp))
-                            .border(0.5.dp, Color(0x66FFD700), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 6.dp, vertical = 3.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(
-                                text = "S ",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = if (petState.strength == 0) Color.Red else Color(0xFFFFD700),
-                                fontFamily = FontFamily.Monospace
-                            )
-                            VPetMeterBar(count = petState.strength, isHeart = false, iconSize = 9.dp)
-                        }
-                    }
-                }
-            }
-
-            // Attention Call Banner
-            if (petState.attentionCallActive) {
-                item {
-                    Box(
-                        modifier = Modifier
-                            .padding(vertical = 2.dp)
-                            .background(Color(0xFFD50000), RoundedCornerShape(6.dp))
-                            .border(1.dp, Color(0xFFFFD54F), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            DigiVectorIcon(type = DigiIconType.ATTENTION, size = 10.dp, tint = Color.White)
-                            Spacer(modifier = Modifier.width(4.dp))
-                            Text(
-                                text = "CALL SIGNAL ACTIVE",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White,
-                                fontFamily = FontFamily.Monospace
-                            )
-                        }
-                    }
-                }
-            }
-
-            // Waste indicator
-            if (petState.wasteCount > 0) {
-                item {
-                    VPetWasteRow(
-                        wasteCount = petState.wasteCount,
-                        iconSize = 13.dp,
-                        modifier = Modifier.padding(2.dp)
-                    )
-                }
-            }
-
-            // Center Recessed LCD Pet Stage (Interactive, click to inspect status) - NO BORDER OUTLINE
-            item {
-                Column(
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier
-                        .padding(vertical = 2.dp)
-                        .clickable { onNavigateStatus() }
-                        .padding(horizontal = 10.dp, vertical = 4.dp)
-                ) {
-                    SpriteCanvasRenderer(
-                        speciesId = petState.speciesId,
-                        isAmbient = false,
-                        overrideFrame = overrideSpriteFrame,
-                        isSleeping = petState.isSleeping,
-                        isInjured = petState.isInjured,
-                        enableIdleRoaming = true,
-                        size = displayConfig.mainSpriteSize
-                    )
-                    Text(
-                        text = "${species.stage.displayName.uppercase()} • ${petState.weight}g • ${petState.victories}W/${petState.totalBattles}B",
-                        fontSize = 7.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFFB0BEC5),
-                        fontFamily = FontFamily.Monospace
-                    )
-                }
-            }
-
-            // Action Feedback message
-            actionFeedback?.let { msg ->
-                item {
-                    Box(
-                        modifier = Modifier
-                            .background(Color(0xCC0D1B2A), RoundedCornerShape(6.dp))
-                            .border(0.75.dp, Color(0xFF69F0AE), RoundedCornerShape(6.dp))
-                            .padding(horizontal = 8.dp, vertical = 2.dp)
-                    ) {
-                        Text(
-                            text = msg,
-                            fontSize = 9.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF69F0AE),
-                            fontFamily = FontFamily.Monospace,
-                            textAlign = TextAlign.Center
-                        )
-                    }
-                }
-            }
-
-            // Primary Pet Care Controls (Meat, Vitamin, Clean, Light)
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Feed Meat
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                if (petState.isSleeping) {
-                                    onSetOverrideFrame(SpriteFrame.REFUSAL)
-                                    onSetFeedback("Sleeping!")
-                                    delay(800L)
-                                    onSetOverrideFrame(null)
-                                    onSetFeedback(null)
-                                } else {
-                                    repository.feedMeal()
-                                    hapticManager.playStepMilestone()
-                                    onSetFeedback("Fed Meat (+1g)")
-                                    onSetOverrideFrame(SpriteFrame.FEED_START)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.JOY_EAT)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.FEED_START)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.JOY_EAT)
-                                    delay(550L)
-                                    onSetOverrideFrame(null)
-                                    onSetFeedback(null)
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFC62828))
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(type = DigiIconType.FEED, size = 12.dp)
-                            Text("MEAT", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-
-                    // Feed Vitamin / Protein
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                if (petState.isSleeping) {
-                                    onSetOverrideFrame(SpriteFrame.REFUSAL)
-                                    onSetFeedback("Sleeping!")
-                                    delay(800L)
-                                    onSetOverrideFrame(null)
-                                    onSetFeedback(null)
-                                } else {
-                                    repository.feedProtein()
-                                    hapticManager.playStepMilestone()
-                                    onSetFeedback("Fed Vitamin (+2g)")
-                                    onSetOverrideFrame(SpriteFrame.FEED_START)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.JOY_EAT)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.FEED_START)
-                                    delay(320L)
-                                    onSetOverrideFrame(SpriteFrame.JOY_EAT)
-                                    delay(550L)
-                                    onSetOverrideFrame(null)
-                                    onSetFeedback(null)
-                                }
-                            }
-                        },
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFEF6C00))
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(type = DigiIconType.VITAMIN, size = 12.dp)
-                            Text("VIT", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-
-                    // Clean Waste
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                repository.cleanWaste()
-                                hapticManager.playStepMilestone()
-                                onSetFeedback("Cleaned!")
-                                delay(1000L)
-                                onSetFeedback(null)
-                            }
-                        },
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0277BD))
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(type = DigiIconType.FLUSH, size = 12.dp)
-                            Text("FLUSH", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-
-                    // Toggle Lights
-                    Button(
-                        onClick = {
-                            scope.launch {
-                                repository.toggleLights()
-                                hapticManager.playStepMilestone()
-                                onSetFeedback(if (petState.lightsOff) "Lights ON" else "Lights OFF")
-                                delay(1000L)
-                                onSetFeedback(null)
-                            }
-                        },
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(
-                            backgroundColor = if (petState.lightsOff) Color(0xFF37474F) else Color(0xFFF9A825)
-                        )
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(
-                                type = if (petState.lightsOff) DigiIconType.LIGHT_OFF else DigiIconType.LIGHT_ON,
-                                size = 12.dp
-                            )
-                            Text("LIGHT", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-                }
-            }
-
-            // Training, Status & Health Controls
-            item {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding),
-                    horizontalArrangement = Arrangement.Center
-                ) {
-                    // Train Minigame
-                    Button(
-                        onClick = onStartTraining,
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF6A1B9A))
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(type = DigiIconType.TRAIN, size = 12.dp)
-                            Text("TRAIN", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-
-                    // Status Inspector
-                    Button(
-                        onClick = onNavigateStatus,
-                        modifier = Modifier
-                            .size(displayConfig.buttonSize)
-                            .padding(displayConfig.actionRowSpacing),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00695C))
-                    ) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            DigiVectorIcon(type = DigiIconType.STATUS, size = 12.dp)
-                            Text("STATS", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-
-                    // Cure Injury / Sickness (Medical Pill Capsule)
-                    if (petState.isInjured) {
-                        Button(
-                            onClick = {
-                                scope.launch {
-                                    repository.cureInjury()
-                                    hapticManager.playStepMilestone()
-                                    onSetFeedback("Cured with Med-Pill!")
-                                    delay(1000L)
-                                    onSetFeedback(null)
-                                }
-                            },
-                            modifier = Modifier
-                                .size(displayConfig.buttonSize)
-                                .padding(displayConfig.actionRowSpacing),
-                            colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF2E7D32))
-                        ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                DigiVectorIcon(type = DigiIconType.BANDAGE_CROSS, size = 12.dp)
-                                Text("MEDS", fontSize = 6.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Navigation Buttons (Battle & Adventure Map)
-            item {
-                Spacer(modifier = Modifier.height(4.dp))
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = displayConfig.horizontalPadding),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    Button(
-                        onClick = onNavigateBattle,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(30.dp)
-                            .padding(horizontal = 2.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFFD84315))
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            DigiVectorIcon(type = DigiIconType.BATTLE, size = 10.dp)
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text("BATTLE", fontSize = 8.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-                    Button(
-                        onClick = onNavigateAdventure,
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(30.dp)
-                            .padding(horizontal = 2.dp),
-                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF00796B))
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            DigiVectorIcon(type = DigiIconType.QUEST, size = 10.dp)
-                            Spacer(modifier = Modifier.width(3.dp))
-                            Text("QUEST", fontSize = 8.sp, fontWeight = FontWeight.Black, fontFamily = FontFamily.Monospace)
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-
-
-
 
 @Composable
 fun AmbientPetScreen(

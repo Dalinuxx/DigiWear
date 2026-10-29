@@ -73,6 +73,10 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).isAppearanceLightStatusBars = false
+        @Suppress("DEPRECATION")
+        window.statusBarColor = 0xFF0A0E14.toInt()
+
         db = PhoneDatabase.getInstance(this)
         wearableManager = PhoneWearableManager(this)
         // Load user-edited custom sprites at startup (off the main thread) so every screen and the

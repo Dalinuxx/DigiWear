@@ -124,7 +124,7 @@ fun SpriteStudioScreen(
     val isCurrentRevealed = !maskSpoilers || isCurrentDiscovered
 
     val filteredRoster = remember(searchQuery, selectedStageFilter, discoveryFilterMode, discoveredMap, maskSpoilers) {
-        PetSpecies.SPECIES_REGISTRY.values.filter { sp ->
+        PetSpecies.SORTED_SPECIES.filter { sp ->
             val isDiscovered = discoveredMap.containsKey(sp.id)
             val matchesDiscovery = when (discoveryFilterMode) {
                 "DISCOVERED" -> isDiscovered
@@ -141,17 +141,11 @@ fun SpriteStudioScreen(
     }
 
     val preEvolutions = remember(selectedSpeciesId) {
-        PetSpecies.SPECIES_REGISTRY.values.filter { sp ->
-            sp.evolutionRules.any { it.targetSpeciesId == selectedSpeciesId }
-        }
+        com.digiwear.core.engine.EvolutionEngine.getPreEvolutions(selectedSpeciesId)
     }
 
     val relatedFusions = remember(selectedSpeciesId) {
-        JogressEngine.RECIPES.filter {
-            it.primarySpeciesId == selectedSpeciesId ||
-                    it.secondarySpeciesId == selectedSpeciesId ||
-                    it.targetSpeciesId == selectedSpeciesId
-        }
+        JogressEngine.getRecipesForSpecies(selectedSpeciesId)
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -292,9 +286,9 @@ fun SpriteStudioScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                StageFilterChip("All (${PetSpecies.SPECIES_REGISTRY.size})", selectedStageFilter == null) {
+                StageFilterChip("All", selectedStageFilter == null) {
                     selectedStageFilter = null
                 }
                 PetStage.entries.forEach { stage ->
@@ -627,10 +621,9 @@ fun SpriteStudioScreen(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        preEvolutions.forEach { pre ->
+                        preEvolutions.forEach { (pre, rule) ->
                             val preDiscovered = discoveredMap.containsKey(pre.id)
                             val preRevealed = !maskSpoilers || preDiscovered
-                            val rule = pre.evolutionRules.firstOrNull { it.targetSpeciesId == selectedSpeciesId }
                             Row(
                                 modifier = Modifier
                                     .background(DigiWearPalette.CardInner, RoundedCornerShape(8.dp))
@@ -651,14 +644,12 @@ fun SpriteStudioScreen(
                                         DigiVectorIcon(type = DigiIconType.ARROW_LEFT, size = 10.dp, tint = Color.White)
                                         Text("${if (preRevealed) pre.name else "???"} (${pre.stage.displayName})", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color.White)
                                     }
-                                    rule?.let {
-                                        Text(
-                                            text = com.digiwear.core.engine.EvolutionEngine.describeRule(it),
-                                            fontSize = 8.5.sp,
-                                            color = Color(0xFFB0BEC5),
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
+                                    Text(
+                                        text = com.digiwear.core.engine.EvolutionEngine.describeRule(rule),
+                                        fontSize = 8.5.sp,
+                                        color = Color(0xFFB0BEC5),
+                                        fontFamily = FontFamily.Monospace
+                                    )
                                 }
                             }
                         }
@@ -998,11 +989,11 @@ private fun StageFilterChip(text: String, isSelected: Boolean, onClick: () -> Un
                 RoundedCornerShape(8.dp)
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 10.dp, vertical = 5.dp)
+            .padding(horizontal = 7.dp, vertical = 4.dp)
     ) {
         Text(
             text = text,
-            fontSize = 10.sp,
+            fontSize = 8.5.sp,
             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
             color = if (isSelected) Color.White else Color.LightGray,
             fontFamily = FontFamily.Monospace

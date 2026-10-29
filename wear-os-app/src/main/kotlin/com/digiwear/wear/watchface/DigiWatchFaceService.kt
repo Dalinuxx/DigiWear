@@ -512,10 +512,21 @@ class DigiCanvasRenderer(
     }
     private val reusableDstRect = Rect()
     private val reusableBezelRect = RectF()
+    private val reusableScratchRectF = RectF()
     private val reusableHeartPath = Path()
 
     private var cachedBgBitmap: android.graphics.Bitmap? = null
     private var cachedBgKey: String = ""
+    private var cachedBatteryPct: Int = -1
+    private var lastBatteryCheckMs: Long = 0L
+
+    private fun getCachedBatteryPercentage(nowMs: Long): Int {
+        if (cachedBatteryPct < 0 || nowMs - lastBatteryCheckMs >= 30_000L) {
+            cachedBatteryPct = getBatteryPercentage(context)
+            lastBatteryCheckMs = nowMs
+        }
+        return cachedBatteryPct
+    }
 
     fun updatePetState(state: PetState) {
         petState = state
@@ -708,7 +719,7 @@ class DigiCanvasRenderer(
             complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
         )
         if (!hasBottomSlotData) {
-            val batteryPct = getBatteryPercentage(context)
+            val batteryPct = getCachedBatteryPercentage(zonedDateTime.toInstant().toEpochMilli())
             textPaint.color = Color.DKGRAY
             textPaint.textSize = w * 0.045f
             canvas.drawText("${currentSteps}st • ${batteryPct}%", centerX, centerY + h * 0.38f, textPaint)
@@ -870,40 +881,45 @@ class DigiCanvasRenderer(
             canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
         }
 
-        // 4. Top Header: Retro Battery indicator & percentage centered at top
-        val batteryPct = getBatteryPercentage(context)
-        val topHeaderY = if (isRound) centerY - (h * 0.415f) else (w * 0.06f) + 12f
-        textPaint.color = darkPixelColor
-        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+        // 4. Top Header: Retro Battery indicator & percentage centered at top (omitted if Top Complication Slot is populated)
+        val hasTopSlotData = DigiWatchFaceService.hasDisplayableData(
+            complicationSlotsManager[DigiWatchFaceService.SLOT_TOP_ID]?.complicationData?.value
+        )
+        if (!hasTopSlotData) {
+            val batteryPct = getCachedBatteryPercentage(now)
+            val topHeaderY = if (isRound) centerY - (h * 0.415f) else (w * 0.06f) + 12f
+            textPaint.color = darkPixelColor
+            textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
 
-        val battText = "${batteryPct}%"
-        val battTextWidth = textPaint.measureText(battText)
-        val battIconW = (w * 0.045f).coerceIn(13f, 18f)
-        val battIconH = battIconW * 0.55f
-        val battTotalW = battIconW + 5f + battTextWidth
-        val battStartX = centerX - (battTotalW / 2f)
+            val battText = "${batteryPct}%"
+            val battTextWidth = textPaint.measureText(battText)
+            val battIconW = (w * 0.045f).coerceIn(13f, 18f)
+            val battIconH = battIconW * 0.55f
+            val battTotalW = battIconW + 5f + battTextWidth
+            val battStartX = centerX - (battTotalW / 2f)
 
-        // Battery outer shell
-        reusableBezelRect.set(battStartX, topHeaderY - battIconH + 1f, battStartX + battIconW - 2f, topHeaderY + 1f)
-        framePaint.color = darkPixelColor
-        framePaint.alpha = 255
-        framePaint.strokeWidth = 1.2f
-        framePaint.style = Paint.Style.STROKE
-        canvas.drawRoundRect(reusableBezelRect, 2f, 2f, framePaint)
-        // Battery positive nib
-        val nibRect = RectF(battStartX + battIconW - 2f, topHeaderY - (battIconH * 0.70f), battStartX + battIconW, topHeaderY - (battIconH * 0.30f))
-        framePaint.style = Paint.Style.FILL
-        canvas.drawRoundRect(nibRect, 1f, 1f, framePaint)
-        // Battery charge fill
-        val fillW = (reusableBezelRect.width() - 3f) * (batteryPct / 100f)
-        if (fillW > 0f) {
-            val fillRect = RectF(reusableBezelRect.left + 1.5f, reusableBezelRect.top + 1.5f, reusableBezelRect.left + 1.5f + fillW, reusableBezelRect.bottom - 1.5f)
-            canvas.drawRect(fillRect, framePaint)
+            // Battery outer shell
+            reusableBezelRect.set(battStartX, topHeaderY - battIconH + 1f, battStartX + battIconW - 2f, topHeaderY + 1f)
+            framePaint.color = darkPixelColor
+            framePaint.alpha = 255
+            framePaint.strokeWidth = 1.2f
+            framePaint.style = Paint.Style.STROKE
+            canvas.drawRoundRect(reusableBezelRect, 2f, 2f, framePaint)
+            // Battery positive nib
+            reusableScratchRectF.set(battStartX + battIconW - 2f, topHeaderY - (battIconH * 0.70f), battStartX + battIconW, topHeaderY - (battIconH * 0.30f))
+            framePaint.style = Paint.Style.FILL
+            canvas.drawRoundRect(reusableScratchRectF, 1f, 1f, framePaint)
+            // Battery charge fill
+            val fillW = (reusableBezelRect.width() - 3f) * (batteryPct / 100f)
+            if (fillW > 0f) {
+                reusableScratchRectF.set(reusableBezelRect.left + 1.5f, reusableBezelRect.top + 1.5f, reusableBezelRect.left + 1.5f + fillW, reusableBezelRect.bottom - 1.5f)
+                canvas.drawRect(reusableScratchRectF, framePaint)
+            }
+            // Battery text
+            textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText(battText, battStartX + battIconW + 5f, topHeaderY, textPaint)
+            textPaint.textAlign = Paint.Align.CENTER
         }
-        // Battery text
-        textPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText(battText, battStartX + battIconW + 5f, topHeaderY, textPaint)
-        textPaint.textAlign = Paint.Align.CENTER
 
         // Calendar Date centered directly above 7-segment digital time
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()

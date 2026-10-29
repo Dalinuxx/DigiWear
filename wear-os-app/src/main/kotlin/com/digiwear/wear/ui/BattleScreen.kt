@@ -669,7 +669,7 @@ fun BattleScreen(
                 Spacer(modifier = Modifier.height(2.dp))
                 Text(
                     text = battleResult!!.formulaSummary,
-                    fontSize = 7.sp,
+                    fontSize = 6.5.sp,
                     fontFamily = FontFamily.Monospace,
                     color = Color(0xFFB0BEC5),
                     textAlign = TextAlign.Center,
@@ -677,16 +677,15 @@ fun BattleScreen(
                 )
             }
             item {
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(6.dp))
                 Button(
                     onClick = { battleResult = null },
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(30.dp)
-                        .padding(horizontal = displayConfig.horizontalPadding),
+                        .fillMaxWidth(0.78f)
+                        .height(28.dp),
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF0288D1))
                 ) {
-                    Text("CONTINUE [B / C]", fontSize = 9.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
+                    Text("CONTINUE [B / C]", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)
                 }
             }
         }
@@ -736,7 +735,8 @@ fun BattleScreen(
                     fontSize = displayConfig.headerFontSize,
                     fontWeight = FontWeight.Black,
                     color = Color(0xFFFF9800),
-                    fontFamily = FontFamily.Monospace
+                    fontFamily = FontFamily.Monospace,
+                    modifier = Modifier.padding(horizontal = 8.dp)
                 )
                 Spacer(modifier = Modifier.height(2.dp))
                 // 4-Mode Selector Pills (2x2 compact grid for Round/Rect watch)
@@ -945,12 +945,13 @@ fun BattleScreen(
         item {
             Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                    .fillMaxWidth(if (showQrMatrix) 0.84f else 1f)
+                    .padding(horizontal = if (showQrMatrix) 0.dp else displayConfig.horizontalPadding, vertical = 2.dp)
                     .background(Color(0xFF18202C), RoundedCornerShape(8.dp))
                     .border(0.75.dp, Color(0x5580D8FF), RoundedCornerShape(8.dp))
                     .padding(6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
                 if (showQrMatrix) {
                     Text(
@@ -960,10 +961,9 @@ fun BattleScreen(
                         color = Color(0xFF80D8FF),
                         fontFamily = FontFamily.Monospace
                     )
-                    Spacer(modifier = Modifier.height(4.dp))
                     Box(
                         modifier = Modifier
-                            .size(if (displayConfig.screenWidthDp >= 300) 150.dp else 140.dp)
+                            .size(96.dp)
                             .background(Color.White, RoundedCornerShape(6.dp))
                             .padding(4.dp),
                         contentAlignment = Alignment.Center
@@ -973,14 +973,12 @@ fun BattleScreen(
                             modifier = Modifier.fillMaxSize()
                         )
                     }
-                    Spacer(modifier = Modifier.height(3.dp))
                     Text(
                         text = "Scan with Companion Phone",
                         fontSize = 6.5.sp,
                         color = Color(0xFF90A4AE),
                         fontFamily = FontFamily.Monospace
                     )
-                    Spacer(modifier = Modifier.height(3.dp))
                     Button(
                         onClick = {
                             showQrMatrix = false
@@ -988,7 +986,7 @@ fun BattleScreen(
                         },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(24.dp),
+                            .height(22.dp),
                         colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF37474F))
                     ) {
                         Text("SHOW TEXT CODE", fontSize = 7.sp, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace)

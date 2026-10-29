@@ -81,14 +81,14 @@ fun EggSelectionOverlay(
     val listState = rememberScalingLazyListState()
     val displayConfig = WatchDisplayConfig.current()
     val horizPadding = if (displayConfig.isRound) 16.dp else 8.dp
-    val topPadding = if (displayConfig.isRound) 32.dp else 12.dp
-    val bottomPadding = if (displayConfig.isRound) 36.dp else 12.dp
+    val topPadding = if (displayConfig.isRound) 28.dp else 12.dp
+    val bottomPadding = if (displayConfig.isRound) 28.dp else 12.dp
     val cardWidthFraction = if (displayConfig.isRound) 0.86f else 0.94f
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color(0xF00A0E14)),
+            .background(Color(0xFF080D14)),
         contentAlignment = Alignment.Center
     ) {
         ScalingLazyColumn(
@@ -96,8 +96,8 @@ fun EggSelectionOverlay(
             modifier = Modifier.fillMaxSize(),
             autoCentering = AutoCenteringParams(itemIndex = 1),
             scalingParams = ScalingLazyColumnDefaults.scalingParams(
-                edgeScale = 1.0f,
-                edgeAlpha = 1.0f
+                edgeScale = 0.78f,
+                edgeAlpha = 0.6f
             ),
             contentPadding = PaddingValues(
                 top = topPadding,
