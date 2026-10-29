@@ -257,12 +257,33 @@ class PetDecayWorker(
             cleanPendingIntent
         ).build()
 
-        // 4. WearableExtender with Quick Actions
-        val wearableExtender = NotificationCompat.WearableExtender()
-            .addAction(feedAction)
-            .addAction(cleanAction)
+        // 4. Action: [ GIVE MEDS ]
+        val medsIntent = Intent(context, NotificationQuickCareReceiver::class.java).apply {
+            action = ACTION_QUICK_MEDS
+        }
+        val medsPendingIntent = PendingIntent.getBroadcast(
+            context,
+            REQUEST_CODE_MEDS,
+            medsIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+        val medsAction = NotificationCompat.Action.Builder(
+            com.digiwear.wear.R.drawable.ic_vector_pill,
+            "[ GIVE MEDS ]",
+            medsPendingIntent
+        ).build()
 
-        // 5. Pixel Sprite Large Icon
+        val quickActions = if (finalState.isInjured) {
+            listOf(medsAction, feedAction, cleanAction)
+        } else {
+            listOf(feedAction, cleanAction, medsAction)
+        }
+
+        // 5. WearableExtender with Quick Actions
+        val wearableExtender = NotificationCompat.WearableExtender()
+        quickActions.forEach { wearableExtender.addAction(it) }
+
+        // 6. Pixel Sprite Large Icon
         val largeIcon = try {
             val frame = if (finalState.isInjured) SpriteFrame.INJURED else SpriteFrame.IDLE_A
             val rawBitmap = PixelArtMatrices.getAndroidBitmap(finalState.speciesId, frame)
@@ -271,7 +292,7 @@ class PetDecayWorker(
             null
         }
 
-        // 6. Build Notification
+        // 7. Build Notification
         val notificationBuilder = NotificationCompat.Builder(context, channelId)
             .setSmallIcon(android.R.drawable.ic_dialog_alert)
             .setContentTitle("${species.name} Call Signal!")
@@ -285,9 +306,9 @@ class PetDecayWorker(
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setContentIntent(mainPendingIntent)
             .setAutoCancel(true)
-            .addAction(feedAction)
-            .addAction(cleanAction)
-            .extend(wearableExtender)
+
+        quickActions.forEach { notificationBuilder.addAction(it) }
+        notificationBuilder.extend(wearableExtender)
 
         if (largeIcon != null) {
             notificationBuilder.setLargeIcon(largeIcon)
@@ -317,10 +338,13 @@ class PetDecayWorker(
 
         const val ACTION_QUICK_FEED = "com.digiwear.wear.action.QUICK_FEED"
         const val ACTION_QUICK_CLEAN = "com.digiwear.wear.action.QUICK_CLEAN"
+        const val ACTION_QUICK_MEDS = "com.digiwear.wear.action.QUICK_MEDS"
         const val REQUEST_CODE_FEED = 101
         const val REQUEST_CODE_CLEAN = 102
+        const val REQUEST_CODE_MEDS = 103
         const val REQUEST_CODE_QUICK_FEED = 101
         const val REQUEST_CODE_QUICK_CLEAN = 102
+        const val REQUEST_CODE_QUICK_MEDS = 103
 
         /**
          * Evaluates whether the pet state requires an attention call distress signal.

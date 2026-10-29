@@ -1207,8 +1207,18 @@ private fun RoundDialPetView(
             }
         }
 
+        // ---- Authentic V-Pet Waste on the floor beside the pet ----
+        if (petState.wasteCount > 0) {
+            DialSlot(r * 0.38f, r * 0.15f) {
+                VPetWasteRow(
+                    wasteCount = petState.wasteCount,
+                    iconSize = (fontBase + 1.5f).dp
+                )
+            }
+        }
+
         // ---- Prompt / feedback / RIP (just below pet) ----
-        DialSlot(0.dp, r * 0.36f) {
+        DialSlot(0.dp, r * 0.32f) {
             if (petState.isDeceased) {
                 Box(
                     modifier = Modifier
@@ -1259,8 +1269,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Hunger / Waste / Strength (lower chord, comfortably above care rail) ----
-        DialSlot(0.dp, r * 0.48f) {
+        // ---- Hunger & Strength (lower chord, perfectly centered with ample bezel margin) ----
+        DialSlot(0.dp, r * 0.46f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)
@@ -1284,12 +1294,6 @@ private fun RoundDialPetView(
                             iconSize = fontBase.coerceAtLeast(7f).dp
                         )
                     }
-                }
-                if (petState.wasteCount > 0) {
-                    VPetWasteRow(
-                        wasteCount = petState.wasteCount,
-                        iconSize = (fontBase + 2f).dp
-                    )
                 }
                 Box(
                     modifier = Modifier

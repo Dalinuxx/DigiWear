@@ -18,6 +18,7 @@ enum class QuickCareAction {
     FEED,
     CLEAN,
     LIGHTS,
+    MEDS,
     UNKNOWN;
 
     companion object {
@@ -25,6 +26,7 @@ enum class QuickCareAction {
             NotificationQuickCareReceiver.ACTION_QUICK_FEED -> FEED
             NotificationQuickCareReceiver.ACTION_QUICK_CLEAN -> CLEAN
             NotificationQuickCareReceiver.ACTION_QUICK_LIGHTS -> LIGHTS
+            NotificationQuickCareReceiver.ACTION_QUICK_MEDS -> MEDS
             else -> UNKNOWN
         }
     }
@@ -57,6 +59,7 @@ class NotificationQuickCareReceiver : BroadcastReceiver() {
                     QuickCareAction.FEED -> repo.feedMeal()
                     QuickCareAction.CLEAN -> repo.cleanWaste()
                     QuickCareAction.LIGHTS -> repo.toggleLights()
+                    QuickCareAction.MEDS -> repo.cureInjury()
                     QuickCareAction.UNKNOWN -> return@launch
                 }
 
@@ -89,6 +92,7 @@ class NotificationQuickCareReceiver : BroadcastReceiver() {
         const val ACTION_QUICK_FEED = "com.digiwear.wear.action.QUICK_FEED"
         const val ACTION_QUICK_CLEAN = "com.digiwear.wear.action.QUICK_CLEAN"
         const val ACTION_QUICK_LIGHTS = "com.digiwear.wear.action.QUICK_LIGHTS"
+        const val ACTION_QUICK_MEDS = "com.digiwear.wear.action.QUICK_MEDS"
         const val NOTIFICATION_ID_ATTENTION = 1001
 
         /**

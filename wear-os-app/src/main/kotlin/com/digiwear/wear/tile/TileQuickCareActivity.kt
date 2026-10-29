@@ -78,6 +78,11 @@ class TileQuickCareActivity : Activity() {
                         buzzer.playButtonBeepSuspend()
                         state
                     }
+                    ACTION_MEDS, NotificationQuickCareReceiver.ACTION_QUICK_MEDS -> {
+                        val state = repo.cureInjury()
+                        buzzer.playButtonBeepSuspend()
+                        state
+                    }
                     else -> return@launch
                 }
 
@@ -127,5 +132,6 @@ class TileQuickCareActivity : Activity() {
         const val ACTION_FEED = "com.digiwear.wear.action.TILE_FEED"
         const val ACTION_CLEAN = "com.digiwear.wear.action.TILE_CLEAN"
         const val ACTION_LIGHTS = "com.digiwear.wear.action.TILE_LIGHTS"
+        const val ACTION_MEDS = "com.digiwear.wear.action.TILE_MEDS"
     }
 }

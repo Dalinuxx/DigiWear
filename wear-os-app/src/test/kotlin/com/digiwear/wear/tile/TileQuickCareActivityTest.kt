@@ -32,6 +32,10 @@ class TileQuickCareActivityTest {
             "com.digiwear.wear.action.TILE_LIGHTS",
             TileQuickCareActivity.ACTION_LIGHTS
         )
+        assertEquals(
+            "com.digiwear.wear.action.TILE_MEDS",
+            TileQuickCareActivity.ACTION_MEDS
+        )
     }
 
     @Test
@@ -39,9 +43,10 @@ class TileQuickCareActivityTest {
         val actions = setOf(
             TileQuickCareActivity.ACTION_FEED,
             TileQuickCareActivity.ACTION_CLEAN,
-            TileQuickCareActivity.ACTION_LIGHTS
+            TileQuickCareActivity.ACTION_LIGHTS,
+            TileQuickCareActivity.ACTION_MEDS
         )
-        assertEquals("Each Tile quick care action must have a unique intent action string", 3, actions.size)
+        assertEquals("Each Tile quick care action must have a unique intent action string", 4, actions.size)
 
         for (action in actions) {
             assertTrue("Action must start with package prefix", action.startsWith("com.digiwear.wear.action."))
@@ -61,6 +66,10 @@ class TileQuickCareActivityTest {
         assertNotEquals(
             TileQuickCareActivity.ACTION_LIGHTS,
             NotificationQuickCareReceiver.ACTION_QUICK_LIGHTS
+        )
+        assertNotEquals(
+            TileQuickCareActivity.ACTION_MEDS,
+            NotificationQuickCareReceiver.ACTION_QUICK_MEDS
         )
     }
 

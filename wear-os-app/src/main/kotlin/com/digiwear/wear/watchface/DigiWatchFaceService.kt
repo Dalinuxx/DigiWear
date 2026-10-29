@@ -126,15 +126,12 @@ class DigiWatchFaceService : WatchFaceService() {
             ComplicationType.SMALL_IMAGE
         )
 
-        // Slot Top (100): Battery percentage in top center
+        // Slot Top (100): Reserved for native battery percentage in top center
         val topSlot = ComplicationSlot.createRoundRectComplicationSlotBuilder(
             id = SLOT_TOP_ID,
             canvasComplicationFactory = defaultCanvasComplicationFactory,
             supportedTypes = supportedTypes,
-            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(
-                SystemDataSources.DATA_SOURCE_WATCH_BATTERY,
-                ComplicationType.SHORT_TEXT
-            ),
+            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(),
             bounds = ComplicationSlotBounds(RectF(0.24f, 0.05f, 0.76f, 0.17f))
         ).build()
 
@@ -818,17 +815,12 @@ class DigiCanvasRenderer(
         }
 
         // 4. Top Header: Battery percentage centered at top
-        val hasTopSlotData = DigiWatchFaceService.hasDisplayableData(
-            complicationSlotsManager[DigiWatchFaceService.SLOT_TOP_ID]?.complicationData?.value
-        )
-        if (!hasTopSlotData) {
-            val batteryPct = getBatteryPercentage(context)
-            textPaint.color = darkPixelColor
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
-            val topHeaderY = if (isRound) centerY - (h * 0.36f) else (w * 0.06f) + 16f
-            canvas.drawText("⚡${batteryPct}%", centerX, topHeaderY, textPaint)
-        }
+        val batteryPct = getBatteryPercentage(context)
+        textPaint.color = darkPixelColor
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+        val topHeaderY = if (isRound) centerY - (h * 0.36f) else (w * 0.06f) + 16f
+        canvas.drawText("⚡${batteryPct}%", centerX, topHeaderY, textPaint)
 
         // Calendar Date centered directly above 7-segment digital time
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()
@@ -1220,6 +1212,8 @@ class RetroLcdCanvasComplication(
     ) {
         val data = complicationData
         if (!DigiWatchFaceService.hasDisplayableData(data)) return
+        // Top slot is natively reserved for top-center battery percent
+        if (slotId == DigiWatchFaceService.SLOT_TOP_ID) return
 
         val isAmbient = renderParameters.drawMode == DrawMode.AMBIENT
         val (darkColor, gridColor) = colorProvider()
@@ -1232,6 +1226,12 @@ class RetroLcdCanvasComplication(
         when (data) {
             is ShortTextComplicationData -> {
                 val text = data.text.getTextAt(context.resources, instant)?.toString() ?: ""
+                // Suppress duplicate battery on side slots
+                if ((slotId == DigiWatchFaceService.SLOT_RIGHT_ID || slotId == DigiWatchFaceService.SLOT_LEFT_ID) &&
+                    (text == "100" || text.endsWith("%") || text.endsWith("100"))
+                ) {
+                    return
+                }
                 val title = data.title?.getTextAt(context.resources, instant)?.toString()
                 val iconDrawable = cachedIconDrawable
 

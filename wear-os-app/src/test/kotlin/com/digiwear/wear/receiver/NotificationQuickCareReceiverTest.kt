@@ -33,6 +33,11 @@ class NotificationQuickCareReceiverTest {
             QuickCareAction.LIGHTS,
             QuickCareAction.fromAction(NotificationQuickCareReceiver.ACTION_QUICK_LIGHTS)
         )
+        assertEquals(
+            "ACTION_QUICK_MEDS must map to QuickCareAction.MEDS",
+            QuickCareAction.MEDS,
+            QuickCareAction.fromAction(NotificationQuickCareReceiver.ACTION_QUICK_MEDS)
+        )
     }
 
     @Test
@@ -147,6 +152,7 @@ class NotificationQuickCareReceiverTest {
         assertEquals("com.digiwear.wear.action.QUICK_FEED", NotificationQuickCareReceiver.ACTION_QUICK_FEED)
         assertEquals("com.digiwear.wear.action.QUICK_CLEAN", NotificationQuickCareReceiver.ACTION_QUICK_CLEAN)
         assertEquals("com.digiwear.wear.action.QUICK_LIGHTS", NotificationQuickCareReceiver.ACTION_QUICK_LIGHTS)
+        assertEquals("com.digiwear.wear.action.QUICK_MEDS", NotificationQuickCareReceiver.ACTION_QUICK_MEDS)
         assertEquals(1001, NotificationQuickCareReceiver.NOTIFICATION_ID_ATTENTION)
         assertEquals(PetDecayWorker.NOTIFICATION_ID_ATTENTION, NotificationQuickCareReceiver.NOTIFICATION_ID_ATTENTION)
     }

@@ -155,6 +155,7 @@
                 <action android:name="com.digiwear.wear.action.QUICK_FEED" />
                 <action android:name="com.digiwear.wear.action.QUICK_CLEAN" />
                 <action android:name="com.digiwear.wear.action.QUICK_LIGHTS" />
+                <action android:name="com.digiwear.wear.action.QUICK_MEDS" />
             </intent-filter>
         </receiver>
 
