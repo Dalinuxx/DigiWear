@@ -176,51 +176,70 @@ class MainActivity : ComponentActivity() {
         activityScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-        val button = when (keyCode) {
-            KeyEvent.KEYCODE_STEM_1,
-            KeyEvent.KEYCODE_STEM_PRIMARY,
-            KeyEvent.KEYCODE_DPAD_UP,
-            KeyEvent.KEYCODE_VOLUME_UP,
-            KeyEvent.KEYCODE_PAGE_UP,
-            KeyEvent.KEYCODE_F1 -> VPetButton.A
+    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        if (event.action == KeyEvent.ACTION_DOWN) {
+            val button = when (event.keyCode) {
+                KeyEvent.KEYCODE_STEM_1,
+                KeyEvent.KEYCODE_STEM_PRIMARY,
+                KeyEvent.KEYCODE_DPAD_UP,
+                KeyEvent.KEYCODE_VOLUME_UP,
+                KeyEvent.KEYCODE_PAGE_UP,
+                KeyEvent.KEYCODE_NAVIGATE_NEXT,
+                KeyEvent.KEYCODE_BUTTON_A,
+                KeyEvent.KEYCODE_F1 -> VPetButton.A
 
-            KeyEvent.KEYCODE_STEM_2,
-            KeyEvent.KEYCODE_ENTER,
-            KeyEvent.KEYCODE_DPAD_CENTER,
-            KeyEvent.KEYCODE_SPACE,
-            KeyEvent.KEYCODE_CAMERA,
-            KeyEvent.KEYCODE_MENU,
-            KeyEvent.KEYCODE_F2 -> VPetButton.B
+                KeyEvent.KEYCODE_STEM_2,
+                KeyEvent.KEYCODE_ENTER,
+                KeyEvent.KEYCODE_NUMPAD_ENTER,
+                KeyEvent.KEYCODE_DPAD_CENTER,
+                KeyEvent.KEYCODE_SPACE,
+                KeyEvent.KEYCODE_CAMERA,
+                KeyEvent.KEYCODE_MENU,
+                KeyEvent.KEYCODE_HEADSETHOOK,
+                KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE,
+                KeyEvent.KEYCODE_BUTTON_B,
+                KeyEvent.KEYCODE_BUTTON_SELECT,
+                KeyEvent.KEYCODE_F2 -> VPetButton.B
 
-            KeyEvent.KEYCODE_STEM_3,
-            KeyEvent.KEYCODE_ESCAPE,
-            KeyEvent.KEYCODE_SYSRQ -> VPetButton.C
+                KeyEvent.KEYCODE_STEM_3,
+                KeyEvent.KEYCODE_ESCAPE,
+                KeyEvent.KEYCODE_SYSRQ,
+                KeyEvent.KEYCODE_BUTTON_C,
+                KeyEvent.KEYCODE_BUTTON_START,
+                KeyEvent.KEYCODE_F3 -> VPetButton.C
 
-            KeyEvent.KEYCODE_BACK -> {
-                // If consumed by active QTE or menu cancel, intercept back
-                if (HardwareInputManager.onButtonDown(VPetButton.C)) {
+                KeyEvent.KEYCODE_DPAD_DOWN,
+                KeyEvent.KEYCODE_VOLUME_DOWN,
+                KeyEvent.KEYCODE_PAGE_DOWN,
+                KeyEvent.KEYCODE_NAVIGATE_PREVIOUS,
+                KeyEvent.KEYCODE_BUTTON_X,
+                KeyEvent.KEYCODE_BUTTON_Y -> VPetButton.PREV
+
+                KeyEvent.KEYCODE_BACK -> {
+                    // Check if active QTE is listening before intercepting back
+                    val qte = HardwareInputManager.activeQteListener
+                    if (qte != null && qte.invoke(VPetButton.C)) {
+                        buzzerManager.playButtonBeep()
+                        return true
+                    }
+                    null
+                }
+
+                else -> null
+            }
+
+            if (button != null) {
+                val consumed = HardwareInputManager.onButtonDown(button)
+                if (consumed) {
                     buzzerManager.playButtonBeep()
                     return true
                 }
-                return super.onKeyDown(keyCode, event)
-            }
-
-            KeyEvent.KEYCODE_DPAD_DOWN,
-            KeyEvent.KEYCODE_VOLUME_DOWN,
-            KeyEvent.KEYCODE_PAGE_DOWN -> VPetButton.PREV
-
-            else -> null
-        }
-
-        if (button != null) {
-            val consumed = HardwareInputManager.onButtonDown(button)
-            if (consumed) {
-                buzzerManager.playButtonBeep()
-                return true
             }
         }
+        return super.dispatchKeyEvent(event)
+    }
 
+    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         return super.onKeyDown(keyCode, event)
     }
 

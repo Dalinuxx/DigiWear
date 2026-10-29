@@ -437,14 +437,14 @@ fun MainPetScreen(
             // Authentic Bandai 5-Round Sparring Drill Training Minigame
             // (Supports both Bandai Ver. 2/20th QTE & Pendulum Accelerometer Shake)
             // ========================================================
-            val isLcdTheme = currentTheme == BackgroundTheme.CLASSIC_VPET_LCD
             TrainingMinigameView(
                 petState = petState,
                 isPendulumShakeMode = isPendulumShakeMode,
                 displayConfig = displayConfig,
                 hapticManager = hapticManager,
                 buzzerManager = buzzerManager,
-                isLcdTheme = isLcdTheme,
+                theme = currentTheme,
+                customConfig = customThemeConfig,
                 onFinished = { won, message ->
                     scope.launch {
                         repository.train(won = won)
@@ -896,6 +896,7 @@ private fun LcdIconCell(
     width: Dp,
     height: Dp,
     fontSize: androidx.compose.ui.unit.TextUnit,
+    isCircular: Boolean = false,
     onClick: () -> Unit
 ) {
     val bgColor = when {
@@ -909,7 +910,7 @@ private fun LcdIconCell(
         else -> Color(0x4480CBC4)
     }
     val borderWidth = if (isSelected || isCallActive) 1.5.dp else 0.75.dp
-    val cellShape = RoundedCornerShape(9.dp)
+    val cellShape = if (isCircular) CircleShape else RoundedCornerShape(8.dp)
 
     Box(
         modifier = Modifier
@@ -919,7 +920,7 @@ private fun LcdIconCell(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        val iconSize = (height * 0.65f).coerceAtLeast(14.dp)
+        val iconSize = (minOf(width, height) * 0.62f).coerceAtLeast(13.dp)
         DigiVectorIcon(
             type = item.iconType,
             size = iconSize
@@ -1014,12 +1015,11 @@ private fun RoundDialPetView(
     val isRailEnabled = buttonPlacement == "RIGHT" || buttonPlacement == "LEFT"
     val railOnRight = buttonPlacement == "RIGHT"
 
-    // Significantly larger, touch-friendly menu buttons and utility chips
-    val iconW = (diameter * 0.130f).dp.coerceIn(26.dp, 34.dp)
-    val iconH = (diameter * 0.110f).dp.coerceIn(22.dp, 29.dp)
-    val chipSize = (diameter * 0.125f).dp.coerceIn(25.dp, 32.dp)
+    // Touch-friendly circular menu buttons and utility chips hugging bezel with zero clipping
+    val iconDiameter = (diameter * 0.125f).dp.coerceIn(24.dp, 29.dp)
+    val chipSize = (diameter * 0.120f).dp.coerceIn(24.dp, 29.dp)
     val chipHalf = chipSize * 0.5f
-    val chipR = r * 0.84f
+    val chipR = r * 0.80f
     val chipOffsetY = r * 0.18f
     val chipX = chipR * (if (railOnRight) -1f else 1f) * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat()
     val chipInnerEdge = (kotlin.math.abs(chipX.value) - chipHalf.value).dp
@@ -1105,10 +1105,10 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Menu care icons on the outside circle (0.88f * r) hugging face edge ----
-        val ringRadius = 0.88f
-        val topAngles = floatArrayOf(-50f, -17f, 17f, 50f)
-        val bottomAngles = floatArrayOf(-50f, -17f, 17f, 50f)
+        // ---- Menu care icons on the outside circle (0.80f * r) hugging face edge with zero bezel clipping ----
+        val ringRadius = 0.80f
+        val topAngles = floatArrayOf(-48f, -16f, 16f, 48f)
+        val bottomAngles = floatArrayOf(-48f, -16f, 16f, 48f)
         for (k in 0..3) {
             val radTop = Math.toRadians(topAngles[k].toDouble())
             val xt = r * (ringRadius * kotlin.math.sin(radTop).toFloat())
@@ -1119,9 +1119,10 @@ private fun RoundDialPetView(
                     item = VPetMenu.entries[k],
                     isSelected = selectedMenuIndex == k,
                     isCallActive = false,
-                    width = iconW,
-                    height = iconH,
+                    width = iconDiameter,
+                    height = iconDiameter,
                     fontSize = displayConfig.lcdIconFontSize,
+                    isCircular = true,
                     onClick = { onSelectIcon(k) }
                 )
             }
@@ -1136,9 +1137,10 @@ private fun RoundDialPetView(
                     item = VPetMenu.entries[idx],
                     isSelected = selectedMenuIndex == idx,
                     isCallActive = (idx == 7 && petState.attentionCallActive),
-                    width = iconW,
-                    height = iconH,
+                    width = iconDiameter,
+                    height = iconDiameter,
                     fontSize = displayConfig.lcdIconFontSize,
+                    isCircular = true,
                     onClick = { onSelectIcon(idx) }
                 )
             }
@@ -1257,8 +1259,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Hunger / Waste / Strength (lower chord, condensed toward care rail) ----
-        DialSlot(0.dp, r * 0.54f) {
+        // ---- Hunger / Waste / Strength (lower chord, comfortably above care rail) ----
+        DialSlot(0.dp, r * 0.48f) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(4.dp)

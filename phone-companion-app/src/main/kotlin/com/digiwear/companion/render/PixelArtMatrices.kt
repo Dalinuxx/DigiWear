@@ -227,21 +227,19 @@ object PixelArtMatrices {
         // Universal Authentic V-Pet Action & Status Overlays
         // ==========================================
         when (frame) {
-            SpriteFrame.FEED_START, SpriteFrame.JOY_EAT -> {
+            SpriteFrame.FEED_START -> {
                 // Classic V-Pet Meat-on-Bone pixel sprite in front (left side) of partner
                 paint.color = Color.rgb(245, 240, 230)
                 canvas.drawRect(2f, 26f + yBob, 12f, 29f + yBob, paint)
                 paint.color = Color.rgb(205, 55, 45)
-                if (frame == SpriteFrame.FEED_START) {
-                    canvas.drawRect(4f, 23f + yBob, 10f, 32f + yBob, paint)
-                } else {
-                    // Half-eaten meat + Pixel Heart above head
-                    canvas.drawRect(5f, 25f + yBob, 9f, 30f + yBob, paint)
-                    paint.color = Color.rgb(255, 65, 110)
-                    canvas.drawRect(29f + xOffset, 5f + yBob, 32f + xOffset, 8f + yBob, paint)
-                    canvas.drawRect(33f + xOffset, 5f + yBob, 36f + xOffset, 8f + yBob, paint)
-                    canvas.drawRect(30f + xOffset, 8f + yBob, 35f + xOffset, 11f + yBob, paint)
-                }
+                canvas.drawRect(4f, 23f + yBob, 10f, 32f + yBob, paint)
+            }
+            SpriteFrame.JOY_EAT -> {
+                // Pixel Heart celebration emote above head
+                paint.color = Color.rgb(255, 65, 110)
+                canvas.drawRect(29f + xOffset, 5f + yBob, 32f + xOffset, 8f + yBob, paint)
+                canvas.drawRect(33f + xOffset, 5f + yBob, 36f + xOffset, 8f + yBob, paint)
+                canvas.drawRect(30f + xOffset, 8f + yBob, 35f + xOffset, 11f + yBob, paint)
             }
             SpriteFrame.SLEEP_A, SpriteFrame.SLEEP_B -> {
                 // Classic V-Pet floating "Zzz" sleep glyph in top-right
@@ -279,15 +277,7 @@ object PixelArtMatrices {
                 canvas.drawRect(47f, 14f, 57f, 16f, paint)
             }
             SpriteFrame.INJURED -> {
-                // Classic V-Pet Two-Tone Medical Pill Capsule alert in top-right
-                paint.color = Color.rgb(26, 28, 36)
-                canvas.drawRect(46f, 7f, 60f, 15f, paint)
-                paint.color = Color.rgb(239, 68, 68)
-                canvas.drawRect(47f, 8f, 53f, 14f, paint)
-                paint.color = Color.rgb(245, 247, 250)
-                canvas.drawRect(53f, 8f, 59f, 14f, paint)
-                paint.color = Color.rgb(255, 255, 255)
-                canvas.drawRect(48f, 9f, 58f, 10f, paint)
+                // Injured partner expression - clean sprite frame without artificial floating pill capsule bar
             }
             else -> Unit
         }

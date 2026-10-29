@@ -56,6 +56,8 @@ import androidx.compose.ui.unit.sp
 import androidx.wear.compose.material.Text
 import com.digiwear.core.engine.TrainingEngine
 import com.digiwear.core.engine.TrainingResult
+import com.digiwear.core.model.BackgroundTheme
+import com.digiwear.core.model.CustomThemeConfig
 import com.digiwear.core.model.ElementalAttribute
 import com.digiwear.core.model.PetSpecies
 import com.digiwear.core.model.PetState
@@ -83,6 +85,7 @@ private enum class TrainingPhase {
  * Faithfully recreates the iconic 5-round battle sparring drill with animated energy projectiles,
  * projectile trails, impact shockwaves, flying debris, and dynamically crumbling brick wall.
  * Supports both Bandai Ver. 2/20th Timing QTE and Digimon Pendulum Accelerometer Shake.
+ * Seamlessly adapts theme aesthetics to match any background selected by the user.
  */
 @Composable
 fun TrainingMinigameView(
@@ -91,10 +94,23 @@ fun TrainingMinigameView(
     displayConfig: WatchDisplayConfig,
     hapticManager: HapticManager,
     buzzerManager: BuzzerManager,
-    isLcdTheme: Boolean = false,
+    theme: BackgroundTheme = BackgroundTheme.CLASSIC_VPET_LCD,
+    customConfig: CustomThemeConfig? = null,
     onFinished: (won: Boolean, message: String) -> Unit,
     onCancel: () -> Unit
 ) {
+    val isLcdTheme = theme == BackgroundTheme.CLASSIC_VPET_LCD
+    val overlayColor = when (theme) {
+        BackgroundTheme.CLASSIC_VPET_LCD -> Color(0xAA6E7A52)
+        BackgroundTheme.OLED_MINIMAL -> Color(0xEE000000)
+        BackgroundTheme.CUSTOM_MATRIX -> Color(customConfig?.secondaryColorHex ?: 0xFF14241BL).copy(alpha = 0.85f)
+        else -> Color(theme.secondaryColorHex).copy(alpha = 0.85f)
+    }
+    val dialTrackColor = when (theme) {
+        BackgroundTheme.CLASSIC_VPET_LCD -> Color(0x441B2C1A)
+        BackgroundTheme.OLED_MINIMAL -> Color(0x44FFFFFF)
+        else -> Color(0x3300E5FF)
+    }
     val context = LocalContext.current
     val species = remember(petState.speciesId) { PetSpecies.getById(petState.speciesId) }
     val optimalShakeRange = remember(species.attribute) { TrainingEngine.getOptimalShakeRange(species.attribute) }
@@ -339,7 +355,7 @@ fun TrainingMinigameView(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(if (isLcdTheme) Color(0xAA6E7A52) else Color(0xDD070E17))
+            .background(overlayColor)
             .clickable {
                 when (phase) {
                     TrainingPhase.INPUT -> {
@@ -372,7 +388,7 @@ fun TrainingMinigameView(
             val center = Offset(size.width / 2f, size.height / 2f)
             val radius = (size.width / 2f) * 0.96f
             drawCircle(
-                color = if (isLcdTheme) Color(0x441B2C1A) else Color(0x3300E5FF),
+                color = dialTrackColor,
                 radius = radius,
                 center = center,
                 style = Stroke(width = 1.5f)
@@ -382,7 +398,7 @@ fun TrainingMinigameView(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = displayConfig.horizontalPadding),
+                .padding(horizontal = displayConfig.horizontalPadding, vertical = 5.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
         ) {
@@ -392,7 +408,7 @@ fun TrainingMinigameView(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 10.dp),
+                    .padding(top = 12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Row(
@@ -401,14 +417,14 @@ fun TrainingMinigameView(
                 ) {
                     Text(
                         text = if (isPendulumShakeMode) "PENDULUM SHAKE" else "TRAINING • SMASH 5",
-                        fontSize = 8.5.sp,
+                        fontSize = 8.sp,
                         fontWeight = FontWeight.Black,
                         fontFamily = FontFamily.Monospace,
                         color = if (isLcdTheme) Color(0xFF142012) else Color(0xFFFFD54F)
                     )
                 }
 
-                Spacer(modifier = Modifier.height(3.dp))
+                Spacer(modifier = Modifier.height(2.dp))
 
                 // 5-Attempt Hit Tally Badges (● = Hit, ✕ = Miss, ○ = Upcoming)
                 Row(
@@ -426,7 +442,7 @@ fun TrainingMinigameView(
 
                         Box(
                             modifier = Modifier
-                                .size(13.dp)
+                                .size(11.dp)
                                 .background(
                                     when {
                                         isPast && isHit -> if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676)
@@ -450,7 +466,7 @@ fun TrainingMinigameView(
                                     isCurrent -> "▶"
                                     else -> "${i + 1}"
                                 },
-                                fontSize = 6.5.sp,
+                                fontSize = 6.sp,
                                 fontWeight = FontWeight.Black,
                                 color = when {
                                     isPast && isHit -> Color.Black
@@ -471,7 +487,7 @@ fun TrainingMinigameView(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(98.dp),
+                    .height(74.dp),
                 contentAlignment = Alignment.Center
             ) {
                 // Determine active animation frame for Digimon
@@ -496,7 +512,7 @@ fun TrainingMinigameView(
 
                 Row(
                     modifier = Modifier
-                        .fillMaxWidth(0.92f)
+                        .fillMaxWidth(0.90f)
                         .fillMaxHeight(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
@@ -504,7 +520,7 @@ fun TrainingMinigameView(
                     // LEFT: Partner Digimon (flipped horizontally to face right towards wall)
                     Box(
                         modifier = Modifier
-                            .size(54.dp)
+                            .size(44.dp)
                             .offset(
                                 y = if (phase == TrainingPhase.RESOLVED && trainingResult?.won == true) {
                                     // Bouncing victory celebration hop
@@ -517,7 +533,7 @@ fun TrainingMinigameView(
                             speciesId = petState.speciesId,
                             isAmbient = false,
                             overrideFrame = activeSpriteFrame,
-                            size = 54.dp,
+                            size = 44.dp,
                             flipHorizontal = true
                         )
                     }
@@ -527,10 +543,11 @@ fun TrainingMinigameView(
                         hitsLanded = hitsLandedSoFar,
                         shakeOffset = impactShakeOffset,
                         isMegaHit = trainingResult?.isMegaHit == true && phase == TrainingPhase.RESOLVED,
-                        isLcdTheme = isLcdTheme,
+                        theme = theme,
+                        customConfig = customConfig,
                         modifier = Modifier
-                            .width(36.dp)
-                            .height(76.dp)
+                            .width(30.dp)
+                            .height(64.dp)
                     )
                 }
 
@@ -612,26 +629,26 @@ fun TrainingMinigameView(
             }
 
             // ========================================================
-            // 3. BOTTOM CONTROL / PROMPT DECK (Safe Arc)
+            // 3. BOTTOM CONTROL / PROMPT DECK (Safe Arc - fitted for round watch displays)
             // ========================================================
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(bottom = 12.dp),
+                    .padding(bottom = 22.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 when (phase) {
                     TrainingPhase.COUNTDOWN -> {
                         Text(
                             text = "GET READY... $countdownValue",
-                            fontSize = 12.sp,
+                            fontSize = 11.sp,
                             fontWeight = FontWeight.Black,
                             color = if (isLcdTheme) Color(0xFF142012) else Color(0xFFFFD54F),
                             fontFamily = FontFamily.Monospace
                         )
                         Text(
                             text = if (isPendulumShakeMode) "Prepare to shake wrist!" else "Time your power punch!",
-                            fontSize = 7.5.sp,
+                            fontSize = 7.sp,
                             color = if (isLcdTheme) Color(0xFF283620) else Color.LightGray,
                             fontFamily = FontFamily.Monospace
                         )
@@ -641,35 +658,35 @@ fun TrainingMinigameView(
                         if (!isPendulumShakeMode) {
                             // --- RETRO OSCILLATING POWER GAUGE (Bandai Ver. 2/20th) ---
                             Row(
-                                modifier = Modifier.fillMaxWidth(0.86f),
+                                modifier = Modifier.fillMaxWidth(0.72f),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = "PUNCH POWER",
-                                    fontSize = 7.5.sp,
+                                    fontSize = 7.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF80D8FF),
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
                                     text = "SWEET SPOT 75-100%",
-                                    fontSize = 7.sp,
+                                    fontSize = 6.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676),
                                     fontFamily = FontFamily.Monospace
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             // Dynamic Oscillating Meter Bar (0 layout passes)
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.86f)
-                                    .height(14.dp)
-                                    .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(7.dp))
-                                    .border(1.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(7.dp))
+                                    .fillMaxWidth(0.72f)
+                                    .height(11.dp)
+                                    .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(5.dp))
+                                    .border(1.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(5.dp))
                             ) {
                                 // Sweet spot highlight marker (75% to 100%)
                                 Box(
@@ -679,7 +696,7 @@ fun TrainingMinigameView(
                                         .align(Alignment.CenterEnd)
                                         .background(
                                             if (isLcdTheme) Color(0x66142012) else Color(0x6600E676),
-                                            RoundedCornerShape(topEnd = 7.dp, bottomEnd = 7.dp)
+                                            RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)
                                         )
                                 )
 
@@ -694,7 +711,7 @@ fun TrainingMinigameView(
                                                 gauge >= 0.40f -> if (isLcdTheme) Color(0xFF2E462C) else Color(0xFFFFD54F)
                                                 else -> if (isLcdTheme) Color(0xFF556644) else Color(0xFFFF5252)
                                             }
-                                            val r = 7.dp.toPx()
+                                            val r = 5.dp.toPx()
                                             drawRoundRect(
                                                 color = barColor,
                                                 size = Size(size.width * gauge.coerceIn(0f, 1f), size.height),
@@ -704,10 +721,10 @@ fun TrainingMinigameView(
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "PRESS [B] / STEM OR TAP",
-                                fontSize = 8.sp,
+                                fontSize = 7.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isLcdTheme) Color(0xFF142012) else Color(0xFFFFD54F),
                                 fontFamily = FontFamily.Monospace
@@ -715,35 +732,35 @@ fun TrainingMinigameView(
                         } else {
                             // --- PENDULUM ACCELEROMETER SHAKE METER ---
                             Row(
-                                modifier = Modifier.fillMaxWidth(0.86f),
+                                modifier = Modifier.fillMaxWidth(0.72f),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
                                     text = "SHAKES: [ $shakeCount ]",
-                                    fontSize = 11.sp,
+                                    fontSize = 9.5.sp,
                                     fontWeight = FontWeight.Black,
                                     color = if (shakeCount in optimalShakeRange) (if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676)) else (if (isLcdTheme) Color(0xFF283620) else Color(0xFFFFD54F)),
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
                                     text = "TARGET: ${optimalShakeRange.first}-${optimalShakeRange.last}",
-                                    fontSize = 7.5.sp,
+                                    fontSize = 7.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF80D8FF),
                                     fontFamily = FontFamily.Monospace
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
 
                             // Shake Countdown Timer Bar (3500ms)
                             Box(
                                 modifier = Modifier
-                                    .fillMaxWidth(0.86f)
-                                    .height(8.dp)
-                                    .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(4.dp))
-                                    .border(0.5.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(4.dp))
+                                    .fillMaxWidth(0.72f)
+                                    .height(7.dp)
+                                    .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(3.5.dp))
+                                    .border(0.5.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(3.5.dp))
                             ) {
                                 val progress = (shakeTimeRemainingMs / 3500f).coerceIn(0f, 1f)
                                 Box(
@@ -752,15 +769,15 @@ fun TrainingMinigameView(
                                         .fillMaxHeight()
                                         .background(
                                             if (shakeCount in optimalShakeRange) (if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676)) else (if (isLcdTheme) Color(0xFF2E462C) else Color(0xFFFFD54F)),
-                                            RoundedCornerShape(4.dp)
+                                            RoundedCornerShape(3.5.dp)
                                         )
                                 )
                             }
 
-                            Spacer(modifier = Modifier.height(3.dp))
+                            Spacer(modifier = Modifier.height(2.dp))
                             Text(
                                 text = "SHAKE WATCH OR TAP [B]",
-                                fontSize = 8.sp,
+                                fontSize = 7.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (isLcdTheme) Color(0xFF142012) else Color(0xFFFFD54F),
                                 fontFamily = FontFamily.Monospace

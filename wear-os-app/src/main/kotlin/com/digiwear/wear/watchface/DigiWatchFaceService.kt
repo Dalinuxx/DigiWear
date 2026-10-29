@@ -126,13 +126,13 @@ class DigiWatchFaceService : WatchFaceService() {
             ComplicationType.SMALL_IMAGE
         )
 
-        // Slot Top (100): Date / Day of Week or Empty
+        // Slot Top (100): Battery percentage in top center
         val topSlot = ComplicationSlot.createRoundRectComplicationSlotBuilder(
             id = SLOT_TOP_ID,
             canvasComplicationFactory = defaultCanvasComplicationFactory,
             supportedTypes = supportedTypes,
             defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(
-                SystemDataSources.DATA_SOURCE_DAY_AND_DATE,
+                SystemDataSources.DATA_SOURCE_WATCH_BATTERY,
                 ComplicationType.SHORT_TEXT
             ),
             bounds = ComplicationSlotBounds(RectF(0.24f, 0.05f, 0.76f, 0.17f))
@@ -147,10 +147,10 @@ class DigiWatchFaceService : WatchFaceService() {
                 SystemDataSources.DATA_SOURCE_STEP_COUNT,
                 ComplicationType.SHORT_TEXT
             ),
-            bounds = ComplicationSlotBounds(RectF(0.22f, 0.83f, 0.78f, 0.95f))
+            bounds = ComplicationSlotBounds(RectF(0.24f, 0.80f, 0.76f, 0.94f))
         ).build()
 
-        // Slot Left (102): Heart rate / Steps
+        // Slot Left (102): Heart rate / Steps (optional)
         val leftSlot = ComplicationSlot.createRoundRectComplicationSlotBuilder(
             id = SLOT_LEFT_ID,
             canvasComplicationFactory = defaultCanvasComplicationFactory,
@@ -159,15 +159,12 @@ class DigiWatchFaceService : WatchFaceService() {
             bounds = ComplicationSlotBounds(RectF(0.04f, 0.40f, 0.28f, 0.62f))
         ).build()
 
-        // Slot Right (103): Battery percentage or user choice
+        // Slot Right (103): Optional utility slot (unpopulated by default for clean dial)
         val rightSlot = ComplicationSlot.createRoundRectComplicationSlotBuilder(
             id = SLOT_RIGHT_ID,
             canvasComplicationFactory = defaultCanvasComplicationFactory,
             supportedTypes = supportedTypes,
-            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(
-                SystemDataSources.DATA_SOURCE_WATCH_BATTERY,
-                ComplicationType.SHORT_TEXT
-            ),
+            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(),
             bounds = ComplicationSlotBounds(RectF(0.72f, 0.40f, 0.96f, 0.62f))
         ).build()
 
@@ -457,6 +454,7 @@ class DigiCanvasRenderer(
     private val timeFormatter24 = DateTimeFormatter.ofPattern("HH:mm", Locale.getDefault())
     private val timeFormatter12 = DateTimeFormatter.ofPattern("hh:mm", Locale.getDefault())
     private val amPmFormatter = DateTimeFormatter.ofPattern("a", Locale.getDefault())
+    private val dateFormatter = DateTimeFormatter.ofPattern("EEE, MMM d", Locale.getDefault())
 
     private val bgPaint = Paint()
     private val dotPaint = Paint().apply {
@@ -615,6 +613,13 @@ class DigiCanvasRenderer(
             "OUTLINE" -> Color.parseColor("#E0E0E0")
             else -> Color.WHITE
         }
+
+        // 0. Calendar Date (Monochrome, above 7-segment digital time)
+        val dateStr = dateFormatter.format(zonedDateTime).uppercase()
+        textPaint.color = tintColor
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = (w * 0.040f).coerceIn(11f, 15f)
+        canvas.drawText(dateStr, centerX, centerY - h * 0.33f, textPaint)
 
         // 1. Digital Clock (Authentic 7-Segment Retro Digits in Monochrome)
         val timeStr = if (is24hFormat) timeFormatter24.format(zonedDateTime) else timeFormatter12.format(zonedDateTime)
@@ -812,47 +817,33 @@ class DigiCanvasRenderer(
             canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
         }
 
-        // 4. Top Header Status Bar: Drawn when top complication slot is empty
+        // 4. Top Header: Battery percentage centered at top
         val hasTopSlotData = DigiWatchFaceService.hasDisplayableData(
             complicationSlotsManager[DigiWatchFaceService.SLOT_TOP_ID]?.complicationData?.value
         )
         if (!hasTopSlotData) {
             val batteryPct = getBatteryPercentage(context)
             textPaint.color = darkPixelColor
-            textPaint.textSize = (w * 0.040f).coerceIn(11f, 16f)
-            val topHeaderY = if (isRound) centerY - (h * 0.33f) else (w * 0.06f) + 18f
-
-            if (isRound) {
-                // Safe chord placement avoiding circular bezel clipping
-                textPaint.textAlign = Paint.Align.LEFT
-                canvas.drawText("⚡${batteryPct}%", centerX - w * 0.30f, topHeaderY, textPaint)
-
-                textPaint.textAlign = Paint.Align.RIGHT
-                canvas.drawText("${currentSteps}st", centerX + w * 0.30f, topHeaderY, textPaint)
-
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = (w * 0.044f).coerceIn(12f, 18f)
-                canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
-            } else {
-                val bezelMargin = w * 0.06f
-                textPaint.textAlign = Paint.Align.LEFT
-                canvas.drawText("⚡${batteryPct}%", bezelMargin + 8f, topHeaderY, textPaint)
-
-                textPaint.textAlign = Paint.Align.RIGHT
-                canvas.drawText("${currentSteps}/${dailyStepGoal}st", w - bezelMargin - 8f, topHeaderY, textPaint)
-
-                textPaint.textAlign = Paint.Align.CENTER
-                textPaint.textSize = w * 0.046f
-                canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
-            }
+            textPaint.textAlign = Paint.Align.CENTER
+            textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+            val topHeaderY = if (isRound) centerY - (h * 0.36f) else (w * 0.06f) + 16f
+            canvas.drawText("⚡${batteryPct}%", centerX, topHeaderY, textPaint)
         }
+
+        // Calendar Date centered directly above 7-segment digital time
+        val dateStr = dateFormatter.format(zonedDateTime).uppercase()
+        textPaint.color = darkPixelColor
+        textPaint.textAlign = Paint.Align.CENTER
+        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+        val dateY = if (isRound) centerY - (h * 0.25f) else (w * 0.06f) + 38f
+        canvas.drawText(dateStr, centerX, dateY, textPaint)
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
         val timeStr = if (is24hFormat) timeFormatter24.format(zonedDateTime) else timeFormatter12.format(zonedDateTime)
         val amPmStr = if (!is24hFormat) amPmFormatter.format(zonedDateTime) else ""
         val clockWidth = w * 0.54f
-        val clockHeight = h * 0.17f
-        val clockY = centerY - h * 0.15f
+        val clockHeight = h * 0.16f
+        val clockY = centerY - h * 0.11f
 
         draw7SegmentTime(
             canvas = canvas,
@@ -868,7 +859,7 @@ class DigiCanvasRenderer(
 
         if (amPmStr.isNotEmpty()) {
             textPaint.textAlign = Paint.Align.LEFT
-            textPaint.textSize = (w * 0.038f).coerceIn(10f, 15f)
+            textPaint.textSize = (w * 0.036f).coerceIn(10f, 14f)
             canvas.drawText(amPmStr, centerX + (clockWidth * 0.53f), clockY - (clockHeight * 0.1f), textPaint)
             textPaint.textAlign = Paint.Align.CENTER
         }
@@ -895,33 +886,40 @@ class DigiCanvasRenderer(
         val spriteBitmap = PixelArtMatrices.getAndroidBitmap(petState.speciesId, activeFrame, isAmbient = false)
         val spriteSize = (w * 0.35f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
-        val spriteTop = (centerY - spriteSize / 2f + h * 0.05f + bounceOffset).toInt()
+        val spriteTop = (centerY - spriteSize / 2f + h * 0.08f + bounceOffset).toInt()
         reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
         canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
             val heartOffset = bounceOffset - 12f - (bounceProgress * 8f)
-            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.05f) + heartOffset, darkPixelColor, w)
+            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.08f) + heartOffset, darkPixelColor, w)
         }
 
-        // 7. Physiological Hearts (Hunger & Strength)
-        val metersY = centerY + h * 0.26f
-        drawHeartRow(canvas, centerX - w * 0.23f, metersY, "HGR", petState.hunger.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
-        drawHeartRow(canvas, centerX + w * 0.03f, metersY, "STR", petState.strength.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
+        // 7. Physiological Hearts (Hunger & Strength) - Mathematically centered
+        val metersY = centerY + h * 0.28f
+        val hgrWidth = measureHeartRowWidth("HGR", w)
+        val strWidth = measureHeartRowWidth("STR", w)
+        val midGap = w * 0.045f
+        val totalMetersWidth = hgrWidth + midGap + strWidth
+        val metersStartX = centerX - (totalMetersWidth / 2f)
 
-        // 8. Bottom Information Line (drawn when bottom complication slot is empty)
+        drawHeartRow(canvas, metersStartX, metersY, "HGR", petState.hunger.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
+        drawHeartRow(canvas, metersStartX + hgrWidth + midGap, metersY, "STR", petState.strength.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
+
+        // 8. Centered Steps Telemetry (drawn when bottom complication slot is empty)
         val hasBottomSlotData = DigiWatchFaceService.hasDisplayableData(
             complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
         )
         if (!hasBottomSlotData) {
-            val bottomY = if (isRound) centerY + h * 0.36f else h - (w * 0.06f) - 10f
-            textPaint.textSize = (w * 0.038f).coerceIn(10f, 15f)
+            val bottomY = if (isRound) centerY + h * 0.38f else h - (w * 0.06f) - 10f
+            textPaint.textSize = (w * 0.038f).coerceIn(11f, 16f)
             textPaint.color = darkPixelColor
+            textPaint.textAlign = Paint.Align.CENTER
             val bottomText = if (petState.isSleeping) {
-                "ZZZ • LIGHTS ${if (petState.lightsOff) "OFF" else "ON"}"
+                "ZZZ • 👟 ${currentSteps} STEPS"
             } else {
-                "${species.stage.displayName} • ${petState.weight}g"
+                "👟 ${currentSteps} / ${dailyStepGoal} STEPS"
             }
             canvas.drawText(bottomText, centerX, bottomY, textPaint)
         }
@@ -1053,6 +1051,15 @@ class DigiCanvasRenderer(
         val bottomY = y + h * 0.68f - dotSize / 2f
         canvas.drawRect(dotX, topY, dotX + dotSize, topY + dotSize, paint)
         canvas.drawRect(dotX, bottomY, dotX + dotSize, bottomY + dotSize, paint)
+    }
+
+    private fun measureHeartRowWidth(label: String, screenW: Float): Float {
+        val textSize = (screenW * 0.034f).coerceIn(10f, 15f)
+        val heartRadius = (screenW * 0.014f).coerceIn(4.5f, 7f)
+        val heartSpacing = heartRadius * 2.5f
+        textPaint.textSize = textSize
+        val labelWidth = textPaint.measureText(label)
+        return labelWidth + (screenW * 0.018f) + (3 * heartSpacing) + heartRadius
     }
 
     private fun drawHeartRow(
@@ -1233,7 +1240,13 @@ class RetroLcdCanvasComplication(
 
                 if (hasIcon) {
                     val iconSize = (bounds.height() * 0.48f).toInt().coerceAtLeast(8)
-                    val iconLeft = bounds.left + 4
+                    val textStr = text.uppercase()
+                    textPaint.textSize = (bounds.height() * 0.40f).coerceIn(8f, 13f)
+                    val textW = textPaint.measureText(textStr)
+                    val totalW = iconSize + 4f + textW
+                    val startX = bounds.exactCenterX() - (totalW / 2f)
+
+                    val iconLeft = startX.toInt()
                     val iconTop = bounds.centerY() - (iconSize / 2)
                     iconDrawable!!.setBounds(iconLeft, iconTop, iconLeft + iconSize, iconTop + iconSize)
                     if (isAmbient || data.monochromaticImage != null) {
@@ -1246,10 +1259,9 @@ class RetroLcdCanvasComplication(
 
                     textPaint.color = primaryColor
                     textPaint.textAlign = Paint.Align.LEFT
-                    textPaint.textSize = (bounds.height() * 0.40f).coerceIn(8f, 13f)
-                    val textX = (iconLeft + iconSize + 4).toFloat()
+                    val textX = startX + iconSize + 4f
                     val textY = bounds.centerY() + (textPaint.textSize * 0.35f)
-                    canvas.drawText(text.uppercase(), textX, textY, textPaint)
+                    canvas.drawText(textStr, textX, textY, textPaint)
                     textPaint.textAlign = Paint.Align.CENTER
                 } else if (hasTitle) {
                     textPaint.color = primaryColor
