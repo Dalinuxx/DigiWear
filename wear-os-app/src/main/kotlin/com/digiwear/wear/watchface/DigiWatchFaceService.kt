@@ -872,7 +872,7 @@ class DigiCanvasRenderer(
 
         // 4. Top Header: Retro Battery indicator & percentage centered at top
         val batteryPct = getBatteryPercentage(context)
-        val topHeaderY = if (isRound) centerY - (h * 0.36f) else (w * 0.06f) + 16f
+        val topHeaderY = if (isRound) centerY - (h * 0.37f) else (w * 0.06f) + 14f
         textPaint.color = darkPixelColor
         textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
 
@@ -909,16 +909,16 @@ class DigiCanvasRenderer(
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()
         textPaint.color = darkPixelColor
         textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = (w * 0.042f).coerceIn(13f, 17f)
-        val dateY = if (isRound) centerY - (h * 0.21f) else (w * 0.06f) + 38f
+        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+        val dateY = if (isRound) centerY - (h * 0.27f) else (w * 0.06f) + 36f
         canvas.drawText(dateStr, centerX, dateY, textPaint)
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
         val timeStr = if (is24hFormat) timeFormatter24.format(zonedDateTime) else timeFormatter12.format(zonedDateTime)
         val amPmStr = if (!is24hFormat) amPmFormatter.format(zonedDateTime) else ""
         val clockWidth = w * 0.54f
-        val clockHeight = h * 0.16f
-        val clockY = centerY - h * 0.10f
+        val clockHeight = h * 0.15f
+        val clockY = centerY - h * 0.16f
 
         draw7SegmentTime(
             canvas = canvas,
@@ -934,7 +934,7 @@ class DigiCanvasRenderer(
 
         if (amPmStr.isNotEmpty()) {
             textPaint.textAlign = Paint.Align.LEFT
-            textPaint.textSize = (w * 0.036f).coerceIn(10f, 14f)
+            textPaint.textSize = (w * 0.034f).coerceIn(10f, 14f)
             canvas.drawText(amPmStr, centerX + (clockWidth * 0.53f), clockY - (clockHeight * 0.1f), textPaint)
             textPaint.textAlign = Paint.Align.CENTER
         }
@@ -959,16 +959,16 @@ class DigiCanvasRenderer(
         }
 
         val spriteBitmap = PixelArtMatrices.getAndroidBitmap(petState.speciesId, activeFrame, isAmbient = false)
-        val spriteSize = (w * 0.35f).toInt()
+        val spriteSize = (w * 0.34f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
-        val spriteTop = (centerY - spriteSize / 2f + h * 0.08f + bounceOffset).toInt()
+        val spriteTop = (centerY - spriteSize / 2f + h * 0.06f + bounceOffset).toInt()
         reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
         canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
             val heartOffset = bounceOffset - 12f - (bounceProgress * 8f)
-            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.08f) + heartOffset, darkPixelColor, w)
+            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.06f) + heartOffset, darkPixelColor, w)
         }
 
         // 7. Physiological Hearts (Hunger & Strength) - Mathematically centered

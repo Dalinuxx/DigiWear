@@ -278,11 +278,30 @@ fun MainPetScreen(
             VPetMenu.ATTENTION -> {
                 if (petState.attentionCallActive) {
                     val needReason = when {
-                        petState.hunger == 0 -> "Needs Food!"
-                        petState.strength == 0 -> "Needs Training!"
-                        petState.isSleeping && !petState.lightsOff -> "Lights Needed!"
-                        petState.isInjured -> "Needs Medicine!"
-                        else -> "Attending Pet!"
+                        petState.hunger == 0 -> {
+                            selectedMenuIndex = 1 // Auto-select FEED
+                            "Hungry! • Feed Partner"
+                        }
+                        petState.isInjured -> {
+                            selectedMenuIndex = 6 // Auto-select MEDS
+                            "Injured! • Give Meds"
+                        }
+                        petState.wasteCount >= 4 -> {
+                            selectedMenuIndex = 4 // Auto-select FLUSH
+                            "Dirty! • Flush Waste"
+                        }
+                        petState.isSleeping && !petState.lightsOff -> {
+                            scope.launch {
+                                repository.toggleLights()
+                                hapticManager.playStepMilestone()
+                            }
+                            "Toggled Lights OFF"
+                        }
+                        petState.strength == 0 -> {
+                            selectedMenuIndex = 2 // Auto-select TRAIN
+                            "Needs Training!"
+                        }
+                        else -> "Attending Call!"
                     }
                     actionFeedback = needReason
                     hapticManager.playStepMilestone()
@@ -291,7 +310,12 @@ fun MainPetScreen(
                         actionFeedback = null
                     }
                 } else {
-                    onNavigateAdventure()
+                    actionFeedback = "Partner Satisfied • No Call"
+                    hapticManager.playStepMilestone()
+                    scope.launch {
+                        delay(1000L)
+                        actionFeedback = null
+                    }
                 }
             }
         }
@@ -1243,8 +1267,6 @@ private fun RoundDialPetView(
             } else {
                 val promptText = if (selectedMenuIndex != null) {
                     "[ ${VPetMenu.entries[selectedMenuIndex].label} ]"
-                } else if (petState.attentionCallActive) {
-                    "CALL SIGNAL"
                 } else actionFeedback ?: if (petState.isSleeping) "ZZZ... SLEEPING" else null
 
                 if (promptText != null) {
