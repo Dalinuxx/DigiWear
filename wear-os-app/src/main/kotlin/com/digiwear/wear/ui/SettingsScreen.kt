@@ -1127,12 +1127,12 @@ fun SettingsScreen(
                     Triple(130, "WND•NYOK", Color(0xFFAD1457)),
                     Triple(131, "DEP•PICH", Color(0xFF0097A7)),
                     Triple(132, "MTL•PUKA", Color(0xFF1565C0)),
-                    Triple(135, "Z•COTSU", Color(0xFF4E342E)),
-                    Triple(136, "D3•FUFU", Color(0xFF00838F)),
-                    Triple(137, "DRK•ALGO", Color(0xFF311B92)),
-                    Triple(138, "VTL•DOKI", Color(0xFFC2185B)),
-                    Triple(139, "CYB•CHOR", Color(0xFF2E7D32)),
-                    Triple(140, "COL•BUBB", Color(0xFFE91E63))
+                    Triple(1101, "Z•COTSU", Color(0xFF4E342E)),
+                    Triple(1104, "D3•FUFU", Color(0xFF00838F)),
+                    Triple(1106, "DRK•ALGO", Color(0xFF311B92)),
+                    Triple(1108, "VTL•DOKI", Color(0xFFC2185B)),
+                    Triple(1111, "CYB•CHOR", Color(0xFF2E7D32)),
+                    Triple(1113, "COL•BUBB", Color(0xFFE91E63))
                 )
                 Column(
                     modifier = Modifier

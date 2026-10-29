@@ -89,7 +89,7 @@ Elapsed Time = Current UTC Time - Last Saved Time
 - **Sleep Preservation**: Tuck your partner in and turn off the lights during their sleep window to freeze hunger and strength decay until morning.
 - **Care Mistakes**: Counted only if you ignore a hunger/strength call or forget to turn off sleep lights past the grace window.
 - **Overfeeding**: Feed up to 5 extra meat past full satiety to build weight and meet specific evolution branch criteria without making your partner sick.
-- **16 Starter Digi-Eggs**: Choose your starting egg freely upon fresh start or rebirth: Botamon, Punimon, Poyomon, Yuramon, Zurumon, Mokumon, Kuramon, Nyokimon, Pichimon, Pukamon, Cotsucomon, Fufumon, Algomon Baby I, Dokimon, Choromon, or Bubbmon Color.
+- **16 Starter Digi-Eggs**: Choose your starting egg freely upon fresh start or rebirth: Botamon, Punimon, Poyomon, Yuramon, Zurumon, Mokumon, Kuramon, Nyokimon, Pichimon, Pukamon, Cotsucomon, Fufumon, Algomon Baby I, Dokimon, Choromon, or Bubbmon.
 
 ---
 

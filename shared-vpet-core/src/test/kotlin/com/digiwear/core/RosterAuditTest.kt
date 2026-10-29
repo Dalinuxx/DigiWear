@@ -315,7 +315,7 @@ class RosterAuditTest {
                 PetStage.ULTIMATE -> "Apex / Mode Change / Jogress"
             }
             val factors = when (stage) {
-                PetStage.BABY_I -> "Starter Digi-Egg Selection (10 Lineages)"
+                PetStage.BABY_I -> "Starter Digi-Egg Selection (16 Lineages)"
                 PetStage.BABY_II -> "Care Mistakes (`CM`), Training Effort (`EFF`), Weight (`G`)"
                 PetStage.CHILD -> "Care Mistakes (`CM`), Training Effort (`EFF`), Overfeed Count, Weight (`G`)"
                 PetStage.ADULT -> "Battles (`≥ 10–15`), Win Ratio (`≥ 60%–80%`), Care Mistakes (`CM`), Effort (`EFF`)"
@@ -327,9 +327,9 @@ class RosterAuditTest {
         sb.appendLine()
         sb.appendLine("---")
         sb.appendLine()
-        sb.appendLine("## 1. The 10 Starter Digi-Eggs (Baby I → Baby II)")
+        sb.appendLine("## 1. The 16 Starter Digi-Eggs (Baby I → Baby II)")
         sb.appendLine()
-        sb.appendLine("You can hatch any of these **10 Starter Digi-Eggs** at any time from **Watch Settings → Hatch New Digi-Egg** or **Phone Companion → Remote Care Deck**:")
+        sb.appendLine("You can hatch any of these **16 Starter Digi-Eggs** at any time from **Watch Settings → Hatch New Digi-Egg** or **Phone Companion → Remote Care Deck**:")
         sb.appendLine()
         sb.appendLine("| Egg ID | Baby I (Fresh) | Evolves Into (Baby II Targets & Conditions) | Version / Family Origin |")
         sb.appendLine("| :---: | :--- | :--- | :--- |")
@@ -343,7 +343,13 @@ class RosterAuditTest {
             113 to "Armageddon Army / Virus Busters",
             130 to "Wind Guardians / Floramon Line",
             131 to "Deep Savers / Marine Line",
-            132 to "Deep Savers II / Gomamon Line"
+            132 to "Deep Savers II / Gomamon Line",
+            1101 to "Pendulum Z / Deep Savers",
+            1104 to "Pendulum Z / Nature Spirits",
+            1106 to "Digimon Adventure: / Algomon Line",
+            1108 to "Vital Bracelet / Pulsemon Line",
+            1111 to "Digital Monster X / Metal Empire",
+            1113 to "Digital Monster Color / Nature Spirits"
         )
         for (eggId in com.digiwear.core.engine.EvolutionEngine.STARTER_EGG_IDS) {
             val eggSp = PetSpecies.getById(eggId)

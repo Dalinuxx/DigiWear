@@ -69,12 +69,12 @@ fun EggSelectionOverlay(
             StarterEggUiModel(130, "WND • WIND GUARDIANS", Color(0xFFF48FB1), Color(0xFF331825)),
             StarterEggUiModel(131, "DEP • DEEP SAVERS", Color(0xFF80CBC4), Color(0xFF122C28)),
             StarterEggUiModel(132, "MTL • METAL EMPIRE", Color(0xFF90CAF9), Color(0xFF142436)),
-            StarterEggUiModel(135, "Z • NIGHTMARE ROSTER", Color(0xFFBCAAA4), Color(0xFF2E221E)),
-            StarterEggUiModel(136, "D3 • DRAGON ROSTER", Color(0xFF80DEEA), Color(0xFF102D30)),
-            StarterEggUiModel(137, "DRK • ALGOR ROSTER", Color(0xFFB39DDB), Color(0xFF201736)),
-            StarterEggUiModel(138, "VTL • VITAL BRACELET", Color(0xFFFFAB91), Color(0xFF381C15)),
-            StarterEggUiModel(139, "CYB • CYBER SYSTEM", Color(0xFFA5D6A7), Color(0xFF182E1A)),
-            StarterEggUiModel(140, "COL • COLOR V-PET", Color(0xFFF06292), Color(0xFF351220))
+            StarterEggUiModel(1101, "Z • NIGHTMARE ROSTER", Color(0xFFBCAAA4), Color(0xFF2E221E)),
+            StarterEggUiModel(1104, "D3 • DRAGON ROSTER", Color(0xFF80DEEA), Color(0xFF102D30)),
+            StarterEggUiModel(1106, "DRK • ALGOR ROSTER", Color(0xFFB39DDB), Color(0xFF201736)),
+            StarterEggUiModel(1108, "VTL • VITAL BRACELET", Color(0xFFFFAB91), Color(0xFF381C15)),
+            StarterEggUiModel(1111, "CYB • CYBER SYSTEM", Color(0xFFA5D6A7), Color(0xFF182E1A)),
+            StarterEggUiModel(1113, "COL • COLOR V-PET", Color(0xFFF06292), Color(0xFF351220))
         )
     }
 
