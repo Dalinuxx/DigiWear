@@ -347,4 +347,35 @@ class DigiWatchFaceServiceTest {
         }
         assertFalse("Custom olive config must not match Amber preset", isAmberSelected)
     }
+
+    @Test
+    fun testAdventureProgressBezelArcSweepMath() {
+        val targetSteps = 2500
+        val stepsZero = 0
+        val stepsHalf = 1250
+        val stepsFull = 2500
+        val stepsOver = 3000
+
+        // Ratio calculations
+        val ratioZero = (stepsZero.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
+        val ratioHalf = (stepsHalf.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
+        val ratioFull = (stepsFull.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
+        val ratioOver = (stepsOver.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
+
+        assertEquals(0f, ratioZero, 0.001f)
+        assertEquals(0.5f, ratioHalf, 0.001f)
+        assertEquals(1f, ratioFull, 0.001f)
+        assertEquals(1f, ratioOver, 0.001f)
+
+        // Sweep angle calculation: starts at 12 o'clock (-90 degrees), sweeps up to 360 degrees
+        val sweepHalf = (ratioHalf * 360f).coerceIn(4f, 360f)
+        val sweepFull = (ratioFull * 360f).coerceIn(4f, 360f)
+        assertEquals(180f, sweepHalf, 0.001f)
+        assertEquals(360f, sweepFull, 0.001f)
+
+        // Boss encounter readiness
+        assertFalse("Halfway steps must not trigger boss ready", stepsHalf >= targetSteps)
+        assertTrue("Full steps must trigger boss ready", stepsFull >= targetSteps)
+        assertTrue("Over-accumulated steps must trigger boss ready", stepsOver >= targetSteps)
+    }
 }

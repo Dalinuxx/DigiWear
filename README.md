@@ -147,6 +147,12 @@ Turn your daily steps into adventure progression across 5 authentic sagas:
 - **Switch Sagas Anytime**: Swap between sagas right on your wrist without losing your progress.
 - **Hardware Step Accuracy**: Preserves your step baseline across app restarts and device reboots so every step counts.
 - **Boss Rewards & Egg Unlocks**: Defeating apex bosses awards exclusive relics and permanently unlocks rare Starter Eggs like Mokumon, Pukamon, Cotsucomon, and Algomon Baby I.
+- **Wear OS Adventure & Radar Tile**: Glanceable wrist tile showcasing current saga node, active environmental hazard radar alerts, remaining step telemetry, and 1-tap direct launch into boss combat.
+- **Adaptive Adventure Mode UI**:
+  - **Radial Bezel Progress Arc**: Round watch dials dynamically draw a 360° quest progress arc along the bezel, pulsing in golden-amber with an active `⚡ BOSS READY ⚡` beacon upon threshold completion.
+  - **Atmospheric Biome Hazards**: Real-time atmospheric particle layers (`GLITCH_FOG`, `FROST_BLIZZARD`, `INFERNO_EMBERS`, `COSMIC_VOID`, `HOLY_BLESSING`) drift across the main V-Pet screen during hazardous sector treks.
+  - **Contextual Expedition Prompt Pill**: Quick 1-tap shortcut pill at the bottom of the main pet screen (`🗺️ S12: 1,420 / 2,500` or `⚔️ S12 BOSS READY • FIGHT`) provides instant boss engagement without opening menus.
+  - **100% Optional & Battery-Friendly**: Configurable via `ADVENTURE OVERLAY: [ON / OFF]` in Settings, with strict zero-draw ambient mode suppression (pure black OLED <= 15% OPR).
 
 ---
 

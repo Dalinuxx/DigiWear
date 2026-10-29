@@ -279,6 +279,28 @@ class DigiWatchFaceService : WatchFaceService() {
             }
         }
 
+        // Observe adventure progression & adaptive overlay setting
+        serviceScope.launch {
+            kotlinx.coroutines.flow.combine(
+                repository.adventureStateFlow,
+                repository.adventureOverlayFlow
+            ) { progress, overlayEnabled ->
+                Pair(progress, overlayEnabled)
+            }.collect { (progress, overlayEnabled) ->
+                val story = repository.getActiveCampaign()
+                val totalNodes = story.nodes.size.coerceAtLeast(1)
+                val nodeIdx = progress.currentNodeIndex.coerceIn(0, totalNodes - 1)
+                val activeNode = story.nodes.getOrNull(nodeIdx)
+                val targetSteps = (activeNode?.requiredSteps ?: 1000).coerceAtLeast(1)
+                val current = progress.accumulatedStepsCurrentNode
+                val ratio = (current.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
+                val isReady = current >= targetSteps
+                val hazard = activeNode?.environmentEffect?.takeIf { !it.equals("clear", ignoreCase = true) }
+                renderer.updateAdventureOverlay(overlayEnabled, ratio, isReady, hazard)
+                renderer.invalidate()
+            }
+        }
+
         // Observe complication updates to trigger redraws
         for (slot in complicationSlotsManager.complicationSlots.values) {
             serviceScope.launch {
@@ -469,6 +491,18 @@ class DigiCanvasRenderer(
     @Volatile
     private var elementContrast: String = "AUTO"
 
+    @Volatile
+    private var adventureOverlayEnabled: Boolean = true
+
+    @Volatile
+    private var adventureNodeProgress: Float = 0f
+
+    @Volatile
+    private var isBossReady: Boolean = false
+
+    @Volatile
+    private var activeHazardName: String? = null
+
     private var cachedWallpaperBmp: android.graphics.Bitmap? = null
     private var wallpaperNeedsReload: Boolean = true
 
@@ -558,6 +592,13 @@ class DigiCanvasRenderer(
 
     fun updateElementContrast(contrast: String) {
         elementContrast = contrast
+    }
+
+    fun updateAdventureOverlay(enabled: Boolean, progress: Float, bossReady: Boolean, hazard: String?) {
+        adventureOverlayEnabled = enabled
+        adventureNodeProgress = progress
+        isBossReady = bossReady
+        activeHazardName = hazard
     }
 
     fun invalidateWallpaper() {
@@ -866,19 +907,63 @@ class DigiCanvasRenderer(
 
         // 3. LCD Screen Bezel Frame (Circular accent ring on round dials, rounded rect on square displays)
         if (isRound) {
-            framePaint.color = darkPixelColor
-            framePaint.alpha = if (isOled) 45 else 65
-            framePaint.style = Paint.Style.STROKE
-            framePaint.strokeWidth = 2f
-            canvas.drawCircle(centerX, centerY, w * 0.465f, framePaint)
+            val radius = w * 0.465f
+            if (adventureOverlayEnabled) {
+                // Background circular bezel track
+                framePaint.color = darkPixelColor
+                framePaint.alpha = if (isOled) 35 else 50
+                framePaint.style = Paint.Style.STROKE
+                framePaint.strokeWidth = 2.5f
+                canvas.drawCircle(centerX, centerY, radius, framePaint)
+
+                // Active Adventure Radial Progress Arc (Option 2)
+                reusableScratchRectF.set(centerX - radius, centerY - radius, centerX + radius, centerY + radius)
+                if (isBossReady) {
+                    // Pulsing golden boss encounter ring
+                    val pulse = ((now / 450L) % 2L == 0L)
+                    framePaint.color = if (pulse) Color.parseColor("#FFD600") else Color.parseColor("#FF9100")
+                    framePaint.alpha = 255
+                    framePaint.strokeWidth = 5.5f
+                    canvas.drawArc(reusableScratchRectF, -90f, 360f, false, framePaint)
+                } else if (adventureNodeProgress > 0f) {
+                    // Sweep arc from 12 o'clock (-90 degrees)
+                    framePaint.color = darkPixelColor
+                    framePaint.alpha = if (isOled) 220 else 255
+                    framePaint.strokeWidth = 4.5f
+                    val sweepAngle = (adventureNodeProgress * 360f).coerceIn(4f, 360f)
+                    canvas.drawArc(reusableScratchRectF, -90f, sweepAngle, false, framePaint)
+                }
+            } else {
+                framePaint.color = darkPixelColor
+                framePaint.alpha = if (isOled) 45 else 65
+                framePaint.style = Paint.Style.STROKE
+                framePaint.strokeWidth = 2f
+                canvas.drawCircle(centerX, centerY, radius, framePaint)
+            }
         } else {
-            framePaint.color = darkPixelColor
-            framePaint.alpha = 110
-            framePaint.style = Paint.Style.STROKE
-            framePaint.strokeWidth = 3f
             val bezelMargin = w * 0.06f
             reusableBezelRect.set(bezelMargin, bezelMargin, w - bezelMargin, h - bezelMargin)
+            framePaint.color = darkPixelColor
+            framePaint.alpha = if (isOled) 55 else 90
+            framePaint.style = Paint.Style.STROKE
+            framePaint.strokeWidth = 3f
             canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
+
+            if (adventureOverlayEnabled) {
+                val usableW = w - 2 * bezelMargin - 36f
+                if (isBossReady) {
+                    val pulse = ((now / 450L) % 2L == 0L)
+                    framePaint.color = if (pulse) Color.parseColor("#FFD600") else Color.parseColor("#FF9100")
+                    framePaint.alpha = 255
+                    framePaint.strokeWidth = 4.5f
+                    canvas.drawLine(bezelMargin + 18f, bezelMargin, w - bezelMargin - 18f, bezelMargin, framePaint)
+                } else if (adventureNodeProgress > 0f) {
+                    framePaint.color = darkPixelColor
+                    framePaint.alpha = 255
+                    framePaint.strokeWidth = 3.5f
+                    canvas.drawLine(bezelMargin + 18f, bezelMargin, bezelMargin + 18f + (usableW * adventureNodeProgress), bezelMargin, framePaint)
+                }
+            }
         }
 
         // 4. Top Header: Retro Battery indicator & percentage centered at top (omitted if Top Complication Slot is populated)
@@ -921,13 +1006,19 @@ class DigiCanvasRenderer(
             textPaint.textAlign = Paint.Align.CENTER
         }
 
-        // Calendar Date centered directly above 7-segment digital time
+        // Calendar Date (or Boss Alert Beacon if boss ready) centered directly above 7-segment digital time
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()
-        textPaint.color = darkPixelColor
+        val showBossBeacon = isBossReady && adventureOverlayEnabled
+        val displayText = if (showBossBeacon && ((now / 600L) % 2L == 0L)) {
+            "⚡ BOSS READY ⚡"
+        } else {
+            dateStr
+        }
+        textPaint.color = if (showBossBeacon && ((now / 600L) % 2L == 0L)) Color.parseColor("#FFD600") else darkPixelColor
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
         val dateY = if (isRound) centerY - (h * 0.335f) else (w * 0.06f) + 32f
-        canvas.drawText(dateStr, centerX, dateY, textPaint)
+        canvas.drawText(displayText, centerX, dateY, textPaint)
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
         val timeStr = if (is24hFormat) timeFormatter24.format(zonedDateTime) else timeFormatter12.format(zonedDateTime)

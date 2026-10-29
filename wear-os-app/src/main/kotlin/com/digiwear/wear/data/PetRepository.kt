@@ -276,6 +276,11 @@ class PetRepository private constructor(context: Context) {
     )
     val hazardAlertsFlow: StateFlow<Boolean> = _hazardAlertsFlow.asStateFlow()
 
+    private val _adventureOverlayFlow = MutableStateFlow(
+        prefs.getBoolean("adventure_overlay_enabled", true)
+    )
+    val adventureOverlayFlow: StateFlow<Boolean> = _adventureOverlayFlow.asStateFlow()
+
     private val _clockFormatFlow = MutableStateFlow(
         prefs.getBoolean("clock_format_24h", false)
     )
@@ -417,6 +422,12 @@ class PetRepository private constructor(context: Context) {
         _hazardAlertsFlow.value = enabled
     }
 
+    fun setAdventureOverlay(enabled: Boolean) {
+        prefs.edit().putBoolean("adventure_overlay_enabled", enabled).apply()
+        _adventureOverlayFlow.value = enabled
+        notifySurfaceUpdates()
+    }
+
     fun setClockFormat24h(is24h: Boolean) {
         prefs.edit().putBoolean("clock_format_24h", is24h).apply()
         _clockFormatFlow.value = is24h
@@ -461,6 +472,7 @@ class PetRepository private constructor(context: Context) {
         "sleep_schedule" to _sleepScheduleFlow.value,
         "ambient_display_style" to _ambientStyleFlow.value,
         "hazard_alerts_enabled" to _hazardAlertsFlow.value.toString(),
+        "adventure_overlay_enabled" to _adventureOverlayFlow.value.toString(),
         "clock_format_24h" to _clockFormatFlow.value.toString(),
         "lifespan_canonical_enabled" to _lifespanCanonicalEnabledFlow.value.toString(),
         "combat_injuries_enabled" to _combatInjuriesEnabledFlow.value.toString(),

@@ -69,7 +69,9 @@ import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Scaffold
 import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
+import com.digiwear.core.model.AdventureProgress
 import com.digiwear.core.model.BackgroundTheme
+import com.digiwear.core.model.CampaignNode
 import com.digiwear.core.model.PetSpecies
 import com.digiwear.core.model.PetStage
 import com.digiwear.core.model.PetState
@@ -120,6 +122,15 @@ fun MainPetScreen(
     val contrastLevel by repository.contrastLevelFlow.collectAsState(initial = "MEDIUM")
     val ambientStyle by repository.ambientStyleFlow.collectAsState(initial = "MINIMAL_DOT")
     val is24hFormat by repository.clockFormatFlow.collectAsState(initial = false)
+    val adventureOverlayEnabled by repository.adventureOverlayFlow.collectAsState(initial = true)
+    val adventureProgress by repository.adventureStateFlow.collectAsState(initial = AdventureProgress())
+    val campaignJson by repository.campaignJsonFlow.collectAsState()
+    val activeCampaign = remember(campaignJson) { repository.getActiveCampaign() }
+    val totalNodes = activeCampaign.nodes.size.coerceAtLeast(1)
+    val activeNodeIndex = adventureProgress.currentNodeIndex.coerceIn(0, totalNodes - 1)
+    val activeNode = activeCampaign.nodes.getOrNull(activeNodeIndex)
+    val hazardEffect = activeNode?.environmentEffect?.takeIf { !it.equals("clear", ignoreCase = true) }
+    val isBossReady = (adventureProgress.accumulatedStepsCurrentNode >= (activeNode?.requiredSteps ?: 1000)) && !petState.isFrozen
     val displayConfig = WatchDisplayConfig.current()
     val scope = rememberCoroutineScope()
 
@@ -457,6 +468,14 @@ fun MainPetScreen(
             wallpaperVersion = wallpaperVersion
         )
 
+        // Atmospheric Hazardous Biome Particles (Glitch Fog, Blizzard, Inferno Embers, Cosmic Void)
+        if (adventureOverlayEnabled && hazardEffect != null) {
+            EnvironmentParticleCanvas(
+                environmentEffect = hazardEffect,
+                modifier = Modifier.fillMaxSize()
+            )
+        }
+
         if (isTrainingActive) {
             // ========================================================
             // Authentic Bandai 5-Round Sparring Drill Training Minigame
@@ -543,7 +562,11 @@ fun MainPetScreen(
                 onNavigateAdventure = onNavigateAdventure,
                 onHatchTraitedEgg = {
                     showEggPicker = true
-                }
+                },
+                adventureOverlayEnabled = adventureOverlayEnabled,
+                adventureProgress = adventureProgress,
+                activeNode = activeNode,
+                isBossReady = isBossReady
             )
         }
 
@@ -1002,7 +1025,11 @@ private fun RoundDialPetView(
     onNavigateSettings: () -> Unit,
     onNavigateStatus: () -> Unit,
     onNavigateAdventure: () -> Unit,
-    onHatchTraitedEgg: () -> Unit
+    onHatchTraitedEgg: () -> Unit,
+    adventureOverlayEnabled: Boolean = true,
+    adventureProgress: AdventureProgress = AdventureProgress(),
+    activeNode: CampaignNode? = null,
+    isBossReady: Boolean = false
 ) {
     val attrColor = when (species.attribute.displayName) {
         "Vaccine" -> Color(0xFF00E5FF)
@@ -1299,6 +1326,43 @@ private fun RoundDialPetView(
                             textAlign = TextAlign.Center
                         )
                     }
+                } else if (adventureOverlayEnabled && activeNode != null && !petState.isFrozen) {
+                    // Adventure Quest Status / Boss Encounter Pill (1-tap to engage)
+                    if (isBossReady) {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0xD9B71C1C), RoundedCornerShape(4.dp))
+                                .border(1.dp, Color(0xFFFFD600), RoundedCornerShape(4.dp))
+                                .clickable { onNavigateAdventure() }
+                                .padding(horizontal = 5.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "⚔️ S${adventureProgress.currentNodeIndex + 1} BOSS READY",
+                                fontSize = (fontBase - 0.5f).coerceAtLeast(6.5f).sp,
+                                color = Color(0xFFFFD600),
+                                fontWeight = FontWeight.Black,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .background(Color(0x66004D40), RoundedCornerShape(4.dp))
+                                .border(0.75.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                .clickable { onNavigateAdventure() }
+                                .padding(horizontal = 5.dp, vertical = 0.5.dp)
+                        ) {
+                            Text(
+                                text = "🗺️ S${adventureProgress.currentNodeIndex + 1}: ${adventureProgress.accumulatedStepsCurrentNode}/${activeNode.requiredSteps}",
+                                fontSize = (fontBase - 0.5f).coerceAtLeast(6.5f).sp,
+                                color = Color(0xFFE0F2F1),
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace,
+                                textAlign = TextAlign.Center
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -1404,7 +1468,11 @@ private fun ThreeButtonPetView(
     onNavigateStatus: () -> Unit,
     onNavigateAdventure: () -> Unit,
     onHatchTraitedEgg: () -> Unit = {},
-    is24h: Boolean = false
+    is24h: Boolean = false,
+    adventureOverlayEnabled: Boolean = true,
+    adventureProgress: AdventureProgress = AdventureProgress(),
+    activeNode: CampaignNode? = null,
+    isBossReady: Boolean = false
 ) {
     if (displayConfig.isRound) {
         RoundDialPetView(
@@ -1424,7 +1492,11 @@ private fun ThreeButtonPetView(
             onNavigateSettings = onNavigateSettings,
             onNavigateStatus = onNavigateStatus,
             onNavigateAdventure = onNavigateAdventure,
-            onHatchTraitedEgg = onHatchTraitedEgg
+            onHatchTraitedEgg = onHatchTraitedEgg,
+            adventureOverlayEnabled = adventureOverlayEnabled,
+            adventureProgress = adventureProgress,
+            activeNode = activeNode,
+            isBossReady = isBossReady
         )
         return
     }
@@ -1750,6 +1822,42 @@ private fun ThreeButtonPetView(
                                     fontFamily = FontFamily.Monospace,
                                     textAlign = TextAlign.Center
                                 )
+                            }
+                        } else if (adventureOverlayEnabled && activeNode != null && !petState.isFrozen) {
+                            if (isBossReady) {
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0xD9B71C1C), RoundedCornerShape(4.dp))
+                                        .border(1.dp, Color(0xFFFFD600), RoundedCornerShape(4.dp))
+                                        .clickable { onNavigateAdventure() }
+                                        .padding(horizontal = 5.dp, vertical = 1.dp)
+                                ) {
+                                    Text(
+                                        text = "⚔️ S${adventureProgress.currentNodeIndex + 1} BOSS READY",
+                                        fontSize = (displayConfig.telemetryFontSize.value - 0.5f).coerceAtLeast(6.5f).sp,
+                                        color = Color(0xFFFFD600),
+                                        fontWeight = FontWeight.Black,
+                                        fontFamily = FontFamily.Monospace,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .background(Color(0x66004D40), RoundedCornerShape(4.dp))
+                                        .border(0.75.dp, Color(0xFF00E5FF).copy(alpha = 0.5f), RoundedCornerShape(4.dp))
+                                        .clickable { onNavigateAdventure() }
+                                        .padding(horizontal = 4.dp, vertical = 0.5.dp)
+                                ) {
+                                    Text(
+                                        text = "🗺️ S${adventureProgress.currentNodeIndex + 1}: ${adventureProgress.accumulatedStepsCurrentNode}/${activeNode.requiredSteps}",
+                                        fontSize = (displayConfig.telemetryFontSize.value - 0.5f).coerceAtLeast(6.5f).sp,
+                                        color = Color(0xFFE0F2F1),
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace,
+                                        textAlign = TextAlign.Center
+                                    )
+                                }
                             }
                         }
                     }
