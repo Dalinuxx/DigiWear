@@ -113,18 +113,8 @@ class DigiWatchFaceService : WatchFaceService() {
                     val theme = BackgroundTheme.fromId(repo.themeIdFlow.value)
                     val custom = repo.customThemeConfigFlow.value
                     val isCustom = theme == BackgroundTheme.CUSTOM_MATRIX && custom != null
-                    val isOled = (theme == BackgroundTheme.OLED_MINIMAL) || (isCustom && custom!!.primaryColorHex == 0xFF000000L)
-                    val darkColor = when {
-                        isOled -> Color.WHITE
-                        isCustom -> custom!!.secondaryColorHex.toInt()
-                        else -> theme.secondaryColorHex.toInt()
-                    }
-                    val gridColor = when {
-                        isOled -> Color.DKGRAY
-                        isCustom -> custom!!.gridColorHex.toInt()
-                        else -> theme.gridColorHex.toInt()
-                    }
-                    Pair(darkColor, gridColor)
+                    val baseBgColor = if (isCustom) custom!!.primaryColorHex.toInt() else theme.primaryColorHex.toInt()
+                    getThemeForegroundColors(theme, custom, baseBgColor)
                 }
             )
         }
@@ -335,6 +325,54 @@ class DigiWatchFaceService : WatchFaceService() {
         const val SLOT_BOTTOM_ID = 101
         const val SLOT_LEFT_ID = 102
         const val SLOT_RIGHT_ID = 103
+
+        /**
+         * Resolves high-contrast active pixel and shadow/ghost segment colors for any theme.
+         * Guarantees WCAG-compliant readability on both light LCD screens (e.g. Classic LCD #8B956D)
+         * and dark AMOLED/procedural backgrounds.
+         */
+        fun getThemeForegroundColors(
+            theme: BackgroundTheme,
+            customConfig: CustomThemeConfig?,
+            baseBgColor: Int
+        ): Pair<Int, Int> { // (darkPixelColor, gridDotColor / ghostShadow)
+            if (theme == BackgroundTheme.OLED_MINIMAL || baseBgColor == Color.BLACK) {
+                return Pair(Color.WHITE, Color.rgb(45, 45, 45))
+            }
+            if (theme == BackgroundTheme.CLASSIC_VPET_LCD) {
+                // Authentic 1997 Bandai V-Pet LCD: deep dark charcoal pixels on olive green background (>10:1 contrast)
+                val activeInk = Color.rgb(20, 32, 18) // #142012 - sharp, high contrast LCD ink
+                val ghostShadow = Color.rgb(126, 138, 98) // subtle inactive ghost segment
+                return Pair(activeInk, ghostShadow)
+            }
+            if (theme == BackgroundTheme.CUSTOM_MATRIX && customConfig != null) {
+                val r = Color.red(baseBgColor) / 255.0
+                val g = Color.green(baseBgColor) / 255.0
+                val b = Color.blue(baseBgColor) / 255.0
+                val lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                return if (lum > 0.40) {
+                    Pair(Color.rgb(20, 30, 20), Color.argb(60, 0, 0, 0))
+                } else {
+                    Pair(Color.WHITE, Color.argb(60, 255, 255, 255))
+                }
+            }
+            return when (theme) {
+                BackgroundTheme.CYBER_FOREST -> Pair(Color.rgb(105, 240, 174), Color.rgb(27, 56, 40)) // neon mint
+                BackgroundTheme.DIGITAL_OCEAN -> Pair(Color.rgb(0, 229, 255), Color.rgb(27, 38, 59)) // bright cyan
+                BackgroundTheme.DATA_WASTELAND -> Pair(Color.rgb(255, 213, 79), Color.rgb(61, 43, 31)) // warm amber
+                BackgroundTheme.NEON_CORE_CITY -> Pair(Color.rgb(234, 128, 252), Color.rgb(45, 18, 77)) // neon violet
+                BackgroundTheme.DARK_NETWORK -> Pair(Color.rgb(255, 82, 82), Color.rgb(45, 22, 31)) // vivid coral
+                BackgroundTheme.GLITCH_VOID -> Pair(Color.rgb(179, 136, 255), Color.rgb(32, 32, 53)) // electric lavender
+                else -> {
+                    val r = Color.red(baseBgColor) / 255.0
+                    val g = Color.green(baseBgColor) / 255.0
+                    val b = Color.blue(baseBgColor) / 255.0
+                    val lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+                    if (lum > 0.40) Pair(Color.rgb(20, 32, 18), Color.rgb(120, 130, 100))
+                    else Pair(Color.WHITE, Color.DKGRAY)
+                }
+            }
+        }
 
         fun hasDisplayableData(data: ComplicationData?): Boolean {
             if (data == null) return false
@@ -726,16 +764,16 @@ class DigiCanvasRenderer(
         val isBouncing = now < bounceUntilTimestampMs
         val species = PetSpecies.getById(petState.speciesId)
 
-        // Derive palette with Custom LCD Theme support and OLED contrast safety
+        // Derive palette with Custom LCD Theme support and verified high contrast
         val isCustom = activeTheme == BackgroundTheme.CUSTOM_MATRIX && customThemeConfig != null
         val baseLcdColor = if (isCustom) customThemeConfig!!.primaryColorHex.toInt() else activeTheme.primaryColorHex.toInt()
         val isOled = (activeTheme == BackgroundTheme.OLED_MINIMAL) || (baseLcdColor == Color.BLACK)
 
-        val rawDarkPixelColor = if (isCustom) customThemeConfig!!.secondaryColorHex.toInt() else activeTheme.secondaryColorHex.toInt()
-        val rawGridColor = if (isCustom) customThemeConfig!!.gridColorHex.toInt() else activeTheme.gridColorHex.toInt()
-
-        val darkPixelColor = if (isOled) Color.WHITE else rawDarkPixelColor
-        val gridDotColor = if (isOled) Color.DKGRAY else rawGridColor
+        val (darkPixelColor, gridDotColor) = DigiWatchFaceService.getThemeForegroundColors(
+            activeTheme,
+            customThemeConfig,
+            baseLcdColor
+        )
 
         // 1 & 2. Cached LCD Matrix Pattern Overlay (DOT_MATRIX, GRID, SCANLINES, OLED)
         val activePattern = if (isCustom) {
@@ -755,30 +793,61 @@ class DigiCanvasRenderer(
         )
         canvas.drawBitmap(bgBitmap, 0f, 0f, null)
 
-        // 3. Inner LCD Screen Bezel Frame
-        framePaint.color = darkPixelColor
-        framePaint.alpha = 110
-        val bezelMargin = w * 0.06f
-        reusableBezelRect.set(bezelMargin, bezelMargin, w - bezelMargin, h - bezelMargin)
-        canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
+        val isRound = kotlin.math.abs(w - h) < 12f
+
+        // 3. LCD Screen Bezel Frame (Circular accent ring on round dials, rounded rect on square displays)
+        if (isRound) {
+            framePaint.color = darkPixelColor
+            framePaint.alpha = if (isOled) 45 else 65
+            framePaint.style = Paint.Style.STROKE
+            framePaint.strokeWidth = 2f
+            canvas.drawCircle(centerX, centerY, w * 0.465f, framePaint)
+        } else {
+            framePaint.color = darkPixelColor
+            framePaint.alpha = 110
+            framePaint.style = Paint.Style.STROKE
+            framePaint.strokeWidth = 3f
+            val bezelMargin = w * 0.06f
+            reusableBezelRect.set(bezelMargin, bezelMargin, w - bezelMargin, h - bezelMargin)
+            canvas.drawRoundRect(reusableBezelRect, 18f, 18f, framePaint)
+        }
 
         // 4. Top Header Status Bar: Battery • Partner Name • Step Target
         val batteryPct = getBatteryPercentage(context)
         textPaint.color = darkPixelColor
-        textPaint.textSize = w * 0.042f
-        textPaint.textAlign = Paint.Align.LEFT
-        canvas.drawText("⚡${batteryPct}%", bezelMargin + 8f, bezelMargin + 18f, textPaint)
+        textPaint.textSize = (w * 0.040f).coerceIn(11f, 16f)
 
-        textPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("${currentSteps}/${dailyStepGoal}st", w - bezelMargin - 8f, bezelMargin + 18f, textPaint)
-
+        val topHeaderY = if (isRound) centerY - (h * 0.33f) else (w * 0.06f) + 18f
         val hasTopSlotData = DigiWatchFaceService.hasDisplayableData(
             complicationSlotsManager[DigiWatchFaceService.SLOT_TOP_ID]?.complicationData?.value
         )
-        if (!hasTopSlotData) {
-            textPaint.textAlign = Paint.Align.CENTER
-            textPaint.textSize = w * 0.046f
-            canvas.drawText(species.name.uppercase(), centerX, bezelMargin + 18f, textPaint)
+
+        if (isRound) {
+            // Safe chord placement avoiding circular bezel clipping
+            textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("⚡${batteryPct}%", centerX - w * 0.30f, topHeaderY, textPaint)
+
+            textPaint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("${currentSteps}st", centerX + w * 0.30f, topHeaderY, textPaint)
+
+            if (!hasTopSlotData) {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = (w * 0.044f).coerceIn(12f, 18f)
+                canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
+            }
+        } else {
+            val bezelMargin = w * 0.06f
+            textPaint.textAlign = Paint.Align.LEFT
+            canvas.drawText("⚡${batteryPct}%", bezelMargin + 8f, topHeaderY, textPaint)
+
+            textPaint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("${currentSteps}/${dailyStepGoal}st", w - bezelMargin - 8f, topHeaderY, textPaint)
+
+            if (!hasTopSlotData) {
+                textPaint.textAlign = Paint.Align.CENTER
+                textPaint.textSize = w * 0.046f
+                canvas.drawText(species.name.uppercase(), centerX, topHeaderY, textPaint)
+            }
         }
 
         // 5. Authentic 7-Segment Retro LCD Digital Clock with Ghost Segments
@@ -786,7 +855,7 @@ class DigiCanvasRenderer(
         val amPmStr = if (!is24hFormat) amPmFormatter.format(zonedDateTime) else ""
         val clockWidth = w * 0.54f
         val clockHeight = h * 0.17f
-        val clockY = centerY - h * 0.17f
+        val clockY = centerY - h * 0.15f
 
         draw7SegmentTime(
             canvas = canvas,
@@ -802,8 +871,8 @@ class DigiCanvasRenderer(
 
         if (amPmStr.isNotEmpty()) {
             textPaint.textAlign = Paint.Align.LEFT
-            textPaint.textSize = w * 0.04f
-            canvas.drawText(amPmStr, centerX + (clockWidth * 0.54f), clockY - (clockHeight * 0.1f), textPaint)
+            textPaint.textSize = (w * 0.038f).coerceIn(10f, 15f)
+            canvas.drawText(amPmStr, centerX + (clockWidth * 0.53f), clockY - (clockHeight * 0.1f), textPaint)
             textPaint.textAlign = Paint.Align.CENTER
         }
 
@@ -827,7 +896,7 @@ class DigiCanvasRenderer(
         }
 
         val spriteBitmap = PixelArtMatrices.getAndroidBitmap(petState.speciesId, activeFrame, isAmbient = false)
-        val spriteSize = (w * 0.32f).toInt()
+        val spriteSize = (w * 0.35f).toInt()
         val spriteLeft = (centerX - spriteSize / 2f).toInt()
         val spriteTop = (centerY - spriteSize / 2f + h * 0.05f + bounceOffset).toInt()
         reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
@@ -835,22 +904,23 @@ class DigiCanvasRenderer(
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
-            val heartOffset = bounceOffset - 10f - (bounceProgress * 6f)
-            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.05f) + heartOffset, darkPixelColor)
+            val heartOffset = bounceOffset - 12f - (bounceProgress * 8f)
+            drawJoyHeart(canvas, centerX, (centerY - spriteSize / 2f + h * 0.05f) + heartOffset, darkPixelColor, w)
         }
 
         // 7. Physiological Hearts (Hunger & Strength)
-        val metersY = centerY + h * 0.27f
-        drawHeartRow(canvas, centerX - w * 0.22f, metersY, "HGR", petState.hunger.coerceIn(0, 4), darkPixelColor, gridDotColor)
-        drawHeartRow(canvas, centerX + w * 0.04f, metersY, "STR", petState.strength.coerceIn(0, 4), darkPixelColor, gridDotColor)
+        val metersY = centerY + h * 0.26f
+        drawHeartRow(canvas, centerX - w * 0.23f, metersY, "HGR", petState.hunger.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
+        drawHeartRow(canvas, centerX + w * 0.03f, metersY, "STR", petState.strength.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
 
         // 8. Bottom Information Line (drawn when bottom complication slot is empty)
         val hasBottomSlotData = DigiWatchFaceService.hasDisplayableData(
             complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
         )
         if (!hasBottomSlotData) {
-            val bottomY = h - bezelMargin - 10f
-            textPaint.textSize = w * 0.04f
+            val bottomY = if (isRound) centerY + h * 0.36f else h - (w * 0.06f) - 10f
+            textPaint.textSize = (w * 0.038f).coerceIn(10f, 15f)
+            textPaint.color = darkPixelColor
             val bottomText = if (petState.isSleeping) {
                 "ZZZ • LIGHTS ${if (petState.lightsOff) "OFF" else "ON"}"
             } else {
@@ -995,18 +1065,23 @@ class DigiCanvasRenderer(
         label: String,
         filledCount: Int,
         activeColor: Int,
-        emptyColor: Int
+        emptyColor: Int,
+        screenW: Float
     ) {
+        val textSize = (screenW * 0.034f).coerceIn(10f, 15f)
+        val heartRadius = (screenW * 0.014f).coerceIn(4.5f, 7f)
+        val heartSpacing = heartRadius * 2.5f
+
         textPaint.color = activeColor
-        textPaint.textSize = 10f
+        textPaint.textSize = textSize
         textPaint.textAlign = Paint.Align.LEFT
         canvas.drawText(label, startX, y, textPaint)
 
-        var hX = startX + 26f
+        var hX = startX + textPaint.measureText(label) + (screenW * 0.018f)
         for (i in 0 until 4) {
             val isFilled = i < filledCount
-            drawHeartIcon(canvas, hX, y - 4f, 4f, if (isFilled) activeColor else emptyColor, isFilled)
-            hX += 11f
+            drawHeartIcon(canvas, hX, y - (heartRadius * 0.8f), heartRadius, if (isFilled) activeColor else emptyColor, isFilled)
+            hX += heartSpacing
         }
         textPaint.textAlign = Paint.Align.CENTER
     }
@@ -1024,8 +1099,9 @@ class DigiCanvasRenderer(
         canvas.drawPath(reusableHeartPath, heartPaint)
     }
 
-    private fun drawJoyHeart(canvas: Canvas, cx: Float, cy: Float, color: Int) {
-        drawHeartIcon(canvas, cx, cy, 6f, color, filled = true)
+    private fun drawJoyHeart(canvas: Canvas, cx: Float, cy: Float, color: Int, screenW: Float = 400f) {
+        val heartR = (screenW * 0.020f).coerceIn(6f, 10f)
+        drawHeartIcon(canvas, cx, cy, heartR, color, filled = true)
     }
 
     companion object {

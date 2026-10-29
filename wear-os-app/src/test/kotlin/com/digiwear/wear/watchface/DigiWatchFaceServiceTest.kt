@@ -225,14 +225,32 @@ class DigiWatchFaceServiceTest {
         val oledTheme = BackgroundTheme.OLED_MINIMAL
         assertEquals("OLED primary must be black", 0xFF000000L.toInt(), oledTheme.primaryColorHex.toInt())
 
-        // Under OLED black background, active pixel color must resolve to White (-1) for contrast, not 0x0A0A0A
-        val baseLcdColor = oledTheme.primaryColorHex.toInt()
-        val isOled = (oledTheme == BackgroundTheme.OLED_MINIMAL) || (baseLcdColor == 0xFF000000L.toInt())
-        assertTrue("OLED minimal must be detected as OLED", isOled)
+        val (pixelColor, _) = DigiWatchFaceService.getThemeForegroundColors(oledTheme, null, oledTheme.primaryColorHex.toInt())
+        assertEquals("OLED active pixels must be WHITE for readable contrast", -1 /* Color.WHITE */, pixelColor)
+    }
 
-        val rawDarkPixelColor = oledTheme.secondaryColorHex.toInt()
-        val darkPixelColor = if (isOled) -1 /* Color.WHITE */ else rawDarkPixelColor
-        assertEquals("OLED active pixels must be WHITE for readable contrast", -1, darkPixelColor)
+    @Test
+    fun testClassicLcdHighContrastForeground() {
+        val classicTheme = BackgroundTheme.CLASSIC_VPET_LCD
+        val (activeInk, ghostShadow) = DigiWatchFaceService.getThemeForegroundColors(
+            classicTheme,
+            null,
+            classicTheme.primaryColorHex.toInt()
+        )
+
+        // Active ink must NOT be the subtle muddy background secondaryColorHex (0xFF7A845C)
+        org.junit.Assert.assertNotEquals(
+            "Classic LCD active ink must not be muddy secondaryColorHex",
+            classicTheme.secondaryColorHex.toInt(),
+            activeInk
+        )
+        // Must be dark charcoal ink
+        val red = android.graphics.Color.red(activeInk)
+        val green = android.graphics.Color.green(activeInk)
+        val blue = android.graphics.Color.blue(activeInk)
+        assertTrue("Active ink must be deep dark pixels (R < 50)", red < 50)
+        assertTrue("Active ink must be deep dark pixels (G < 50)", green < 50)
+        assertTrue("Active ink must be deep dark pixels (B < 50)", blue < 50)
     }
 
     @Test

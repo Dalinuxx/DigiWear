@@ -8,7 +8,8 @@ import com.digiwear.core.model.ElementalAttribute
 data class TrainingResult(
     val won: Boolean,
     val isMegaHit: Boolean,
-    val feedbackMessage: String
+    val feedbackMessage: String,
+    val hits: Int = if (isMegaHit) 5 else if (won) 3 else 1
 )
 
 /**
@@ -42,17 +43,26 @@ object TrainingEngine {
             shakeCount in range -> TrainingResult(
                 won = true,
                 isMegaHit = true,
-                feedbackMessage = "MEGA HIT! $shakeCount SHAKES! (+1 Effort)"
+                feedbackMessage = "MEGA HIT! $shakeCount SHAKES! (+1 Effort)",
+                hits = 5
             )
             shakeCount == range.first - 1 || shakeCount == range.last + 1 -> TrainingResult(
                 won = true,
                 isMegaHit = false,
-                feedbackMessage = "GOOD HIT! $shakeCount SHAKES! (+1 Effort)"
+                feedbackMessage = "GOOD HIT! $shakeCount SHAKES! (+1 Effort)",
+                hits = 3
+            )
+            shakeCount > 0 -> TrainingResult(
+                won = false,
+                isMegaHit = false,
+                feedbackMessage = "MISS! $shakeCount Shakes (Target: ${range.first}-${range.last})",
+                hits = 1
             )
             else -> TrainingResult(
                 won = false,
                 isMegaHit = false,
-                feedbackMessage = "MISS! $shakeCount Shakes (Target: ${range.first}-${range.last})"
+                feedbackMessage = "MISS! 0 Shakes (Target: ${range.first}-${range.last})",
+                hits = 0
             )
         }
     }
@@ -65,17 +75,26 @@ object TrainingEngine {
             gauge >= 0.75f -> TrainingResult(
                 won = true,
                 isMegaHit = true,
-                feedbackMessage = "MEGA HIT! 5/5 SMASHED! (+1 Effort)"
+                feedbackMessage = "MEGA HIT! 5/5 SMASHED! (+1 Effort)",
+                hits = 5
             )
             gauge >= 0.40f -> TrainingResult(
                 won = true,
                 isMegaHit = false,
-                feedbackMessage = "GOOD HIT! 3/5 SMASHED! (+1 Effort)"
+                feedbackMessage = "GOOD HIT! 3/5 SMASHED! (+1 Effort)",
+                hits = 3
+            )
+            gauge >= 0.15f -> TrainingResult(
+                won = false,
+                isMegaHit = false,
+                feedbackMessage = "MISS! 1/5 Hit (Try Again)",
+                hits = 1
             )
             else -> TrainingResult(
                 won = false,
                 isMegaHit = false,
-                feedbackMessage = "MISS! 1/5 Hit (Try Again)"
+                feedbackMessage = "MISS! 0/5 Hit (Try Again)",
+                hits = 0
             )
         }
     }

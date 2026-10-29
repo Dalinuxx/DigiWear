@@ -434,57 +434,35 @@ fun MainPetScreen(
 
         if (isTrainingActive) {
             // ========================================================
-            // Training Minigame (OG Timing QTE or Authentic Pendulum Shake)
+            // Authentic Bandai 5-Round Sparring Drill Training Minigame
+            // (Supports both Bandai Ver. 2/20th QTE & Pendulum Accelerometer Shake)
             // ========================================================
-            if (isPendulumShakeMode) {
-                TrainingShakeView(
-                    petState = petState,
-                    displayConfig = displayConfig,
-                    hapticManager = hapticManager,
-                    buzzerManager = buzzerManager,
-                    onFinished = { won, message ->
-                        scope.launch {
-                            repository.train(won = won)
-                            if (won) {
-                                overrideSpriteFrame = SpriteFrame.JOY_EAT
-                                actionFeedback = message
-                            } else {
-                                overrideSpriteFrame = SpriteFrame.REFUSAL
-                                actionFeedback = message
-                            }
-                            isTrainingActive = false
-                            delay(1200L)
-                            overrideSpriteFrame = null
-                            actionFeedback = null
+            val isLcdTheme = currentTheme == BackgroundTheme.CLASSIC_VPET_LCD
+            TrainingMinigameView(
+                petState = petState,
+                isPendulumShakeMode = isPendulumShakeMode,
+                displayConfig = displayConfig,
+                hapticManager = hapticManager,
+                buzzerManager = buzzerManager,
+                isLcdTheme = isLcdTheme,
+                onFinished = { won, message ->
+                    scope.launch {
+                        repository.train(won = won)
+                        if (won) {
+                            overrideSpriteFrame = SpriteFrame.JOY_EAT
+                            actionFeedback = message
+                        } else {
+                            overrideSpriteFrame = SpriteFrame.REFUSAL
+                            actionFeedback = message
                         }
-                    },
-                    onCancel = { isTrainingActive = false }
-                )
-            } else {
-                TrainingQteView(
-                    petState = petState,
-                    displayConfig = displayConfig,
-                    hapticManager = hapticManager,
-                    buzzerManager = buzzerManager,
-                    onFinished = { won, message ->
-                        scope.launch {
-                            repository.train(won = won)
-                            if (won) {
-                                overrideSpriteFrame = SpriteFrame.JOY_EAT
-                                actionFeedback = message
-                            } else {
-                                overrideSpriteFrame = SpriteFrame.REFUSAL
-                                actionFeedback = message
-                            }
-                            isTrainingActive = false
-                            delay(1200L)
-                            overrideSpriteFrame = null
-                            actionFeedback = null
-                        }
-                    },
-                    onCancel = { isTrainingActive = false }
-                )
-            }
+                        isTrainingActive = false
+                        delay(1200L)
+                        overrideSpriteFrame = null
+                        actionFeedback = null
+                    }
+                },
+                onCancel = { isTrainingActive = false }
+            )
         } else {
             // ========================================================
             // Authentic V-Pet Display Frame (Always active; supports RIGHT, LEFT, and OFF/Touch modes)
@@ -923,15 +901,15 @@ private fun LcdIconCell(
     val bgColor = when {
         isSelected -> Color(0xFF00B0FF)
         isCallActive -> Color(0xFFD50000)
-        else -> Color(0x22000000)
+        else -> Color(0x33091016)
     }
     val borderColor = when {
         isSelected -> Color(0xFFFFD54F)
         isCallActive -> Color(0xFFFFD54F)
-        else -> Color(0x3380CBC4)
+        else -> Color(0x4480CBC4)
     }
-    val borderWidth = if (isSelected || isCallActive) 1.25.dp else 0.5.dp
-    val cellShape = RoundedCornerShape(8.dp)
+    val borderWidth = if (isSelected || isCallActive) 1.5.dp else 0.75.dp
+    val cellShape = RoundedCornerShape(9.dp)
 
     Box(
         modifier = Modifier
@@ -941,7 +919,7 @@ private fun LcdIconCell(
             .clickable { onClick() },
         contentAlignment = Alignment.Center
     ) {
-        val iconSize = (height - 4.dp).coerceAtLeast(9.dp)
+        val iconSize = (height * 0.65f).coerceAtLeast(14.dp)
         DigiVectorIcon(
             type = item.iconType,
             size = iconSize
@@ -1033,18 +1011,17 @@ private fun RoundDialPetView(
     val gap = (diameter * 0.02f).dp
     val fullSide = r * 0.95f - spriteHalf
 
-    // Quest & Settings side: LEFT when buttons are on RIGHT; moves to RIGHT when buttons disabled ("OFF") or on LEFT
-    val questAndSettingsSide = when (buttonPlacement) {
-        "LEFT" -> 1f
-        "OFF" -> 1f
-        else -> -1f // "RIGHT"
-    }
+    val isRailEnabled = buttonPlacement == "RIGHT" || buttonPlacement == "LEFT"
+    val railOnRight = buttonPlacement == "RIGHT"
 
-    val chipSize = (diameter * 0.082f).dp
+    // Significantly larger, touch-friendly menu buttons and utility chips
+    val iconW = (diameter * 0.130f).dp.coerceIn(26.dp, 34.dp)
+    val iconH = (diameter * 0.110f).dp.coerceIn(22.dp, 29.dp)
+    val chipSize = (diameter * 0.125f).dp.coerceIn(25.dp, 32.dp)
     val chipHalf = chipSize * 0.5f
-    val chipR = r * 0.86f
+    val chipR = r * 0.84f
     val chipOffsetY = r * 0.18f
-    val chipX = chipR * (questAndSettingsSide * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat())
+    val chipX = chipR * (if (railOnRight) -1f else 1f) * kotlin.math.cos(kotlin.math.asin((chipOffsetY / chipR).toDouble())).toFloat()
     val chipInnerEdge = (kotlin.math.abs(chipX.value) - chipHalf.value).dp
     val roamLimitChips = (chipInnerEdge - spriteHalf - gap).coerceAtLeast(0.dp)
     val roamLimitRail = (railInnerEdge - spriteHalf - gap).coerceAtLeast(0.dp)
@@ -1054,58 +1031,89 @@ private fun RoundDialPetView(
     when (buttonPlacement) {
         "RIGHT" -> { roamLeft = roamLimitChips; roamRight = roamLimitRail }
         "LEFT" -> { roamLeft = roamLimitRail; roamRight = roamLimitChips }
-        else -> { roamLeft = fullSide; roamRight = roamLimitChips }
+        else -> {
+            val roamSide = (chipR.value - chipHalf.value - spriteHalf.value - gap.value).coerceAtLeast(0f).dp
+            roamLeft = roamSide
+            roamRight = roamSide
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        // ---- Live Clock (top centre, unobstructed) ----
-        DialSlot(0.dp, -(r * 0.70f)) {
+        // ---- Live Clock (top centre, comfortably under top menu icons) ----
+        DialSlot(0.dp, -(r * 0.58f)) {
             Text(
                 text = clockText,
-                fontSize = (diameter * 0.078f).sp,
+                fontSize = (diameter * 0.080f).sp,
                 fontWeight = FontWeight.Bold,
                 color = Color(0xFFE0F2F1),
                 fontFamily = FontFamily.Monospace
             )
         }
 
-        // ---- Quest & Settings utility chips along side boundary (LEFT when buttons RIGHT, moves RIGHT when OFF) ----
-        DialSlot(chipX, -chipOffsetY) {
-            Box(
-                modifier = Modifier
-                    .size(chipSize)
-                    .background(Color(0x66004D40), CircleShape)
-                    .border(0.5.dp, Color(0xFF4DB6AC), CircleShape)
-                    .clickable { onNavigateAdventure() },
-                contentAlignment = Alignment.Center
-            ) {
-                DigiVectorIcon(type = DigiIconType.QUEST, size = chipSize * 0.62f)
+        // ---- Quest & Settings utility chips along side boundary ----
+        if (isRailEnabled) {
+            DialSlot(chipX, -chipOffsetY) {
+                Box(
+                    modifier = Modifier
+                        .size(chipSize)
+                        .background(Color(0x66004D40), CircleShape)
+                        .border(0.75.dp, Color(0xFF4DB6AC), CircleShape)
+                        .clickable { onNavigateAdventure() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    DigiVectorIcon(type = DigiIconType.QUEST, size = chipSize * 0.60f)
+                }
             }
-        }
-        DialSlot(chipX, chipOffsetY) {
-            Box(
-                modifier = Modifier
-                    .size(chipSize)
-                    .background(Color(0x66263238), CircleShape)
-                    .border(0.5.dp, Color(0xFF90A4AE), CircleShape)
-                    .clickable { onNavigateSettings() },
-                contentAlignment = Alignment.Center
-            ) {
-                DigiVectorIcon(type = DigiIconType.SETTINGS, size = chipSize * 0.62f)
+            DialSlot(chipX, chipOffsetY) {
+                Box(
+                    modifier = Modifier
+                        .size(chipSize)
+                        .background(Color(0x66263238), CircleShape)
+                        .border(0.75.dp, Color(0xFF90A4AE), CircleShape)
+                        .clickable { onNavigateSettings() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    DigiVectorIcon(type = DigiIconType.SETTINGS, size = chipSize * 0.60f)
+                }
+            }
+        } else {
+            // Bilateral symmetry: Quest on Left (West), Settings on Right (East)
+            DialSlot(-chipR, 0.dp) {
+                Box(
+                    modifier = Modifier
+                        .size(chipSize)
+                        .background(Color(0x66004D40), CircleShape)
+                        .border(0.75.dp, Color(0xFF4DB6AC), CircleShape)
+                        .clickable { onNavigateAdventure() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    DigiVectorIcon(type = DigiIconType.QUEST, size = chipSize * 0.60f)
+                }
+            }
+            DialSlot(chipR, 0.dp) {
+                Box(
+                    modifier = Modifier
+                        .size(chipSize)
+                        .background(Color(0x66263238), CircleShape)
+                        .border(0.75.dp, Color(0xFF90A4AE), CircleShape)
+                        .clickable { onNavigateSettings() },
+                    contentAlignment = Alignment.Center
+                ) {
+                    DigiVectorIcon(type = DigiIconType.SETTINGS, size = chipSize * 0.60f)
+                }
             }
         }
 
-        // ---- Menu care icons on the SAME OUTSIDE CIRCLE (0.88f * r) hugging face edge ----
+        // ---- Menu care icons on the outside circle (0.88f * r) hugging face edge ----
         val ringRadius = 0.88f
-        val iconW = (diameter * 0.098f).dp
-        val iconH = (diameter * 0.078f).dp
-        val angles = floatArrayOf(-42f, -14f, 14f, 42f)
+        val topAngles = floatArrayOf(-50f, -17f, 17f, 50f)
+        val bottomAngles = floatArrayOf(-50f, -17f, 17f, 50f)
         for (k in 0..3) {
-            val rad = Math.toRadians(angles[k].toDouble())
-            val x = r * (ringRadius * kotlin.math.sin(rad).toFloat())
-            val y = r * (ringRadius * kotlin.math.cos(rad).toFloat())
-            DialSlot(x, -y) {
+            val radTop = Math.toRadians(topAngles[k].toDouble())
+            val xt = r * (ringRadius * kotlin.math.sin(radTop).toFloat())
+            val yt = r * (ringRadius * kotlin.math.cos(radTop).toFloat())
+            DialSlot(xt, -yt) {
                 LcdIconCell(
                     index = k,
                     item = VPetMenu.entries[k],
@@ -1117,8 +1125,12 @@ private fun RoundDialPetView(
                     onClick = { onSelectIcon(k) }
                 )
             }
-            DialSlot(x, y) {
-                val idx = 4 + k
+
+            val radBottom = Math.toRadians(bottomAngles[k].toDouble())
+            val xb = r * (ringRadius * kotlin.math.sin(radBottom).toFloat())
+            val yb = r * (ringRadius * kotlin.math.cos(radBottom).toFloat())
+            val idx = 4 + k
+            DialSlot(xb, yb) {
                 LcdIconCell(
                     index = idx,
                     item = VPetMenu.entries[idx],
@@ -1133,7 +1145,7 @@ private fun RoundDialPetView(
         }
 
         // ---- Name / attribute / weight (upper chord, condensed under clock) ----
-        DialSlot(0.dp, -(r * 0.53f)) {
+        DialSlot(0.dp, -(r * 0.42f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = species.name.take(if (diameter < 220f) 8 else 10),
@@ -2212,460 +2224,7 @@ private fun ModernTouchPetView(
 
 
 
-/**
- * Authentic Training Minigame featuring a dynamic power gauge Quick Time Event (QTE).
- * Supports both physical stem button presses (zero touch-latency) and on-screen tap.
- */
-@Composable
-private fun TrainingQteView(
-    petState: PetState,
-    displayConfig: WatchDisplayConfig,
-    hapticManager: HapticManager,
-    buzzerManager: BuzzerManager,
-    onFinished: (won: Boolean, message: String) -> Unit,
-    onCancel: () -> Unit
-) {
-    var phase by remember { mutableStateOf("COUNTDOWN") } // COUNTDOWN -> PUNCH -> RESOLVED
-    var countdownValue by remember { mutableIntStateOf(3) }
-    var punchGauge by remember { mutableFloatStateOf(0f) }
-    var punchRegistered by remember { mutableStateOf(false) }
 
-    // Oscillating gauge animation (only active during the PUNCH phase)
-    val animatedGaugeState = if (phase == "PUNCH") {
-        val infiniteTransition = rememberInfiniteTransition(label = "gauge")
-        infiniteTransition.animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(
-                animation = tween(durationMillis = 650, easing = LinearEasing),
-                repeatMode = RepeatMode.Reverse
-            ),
-            label = "gaugeValue"
-        )
-    } else {
-        null
-    }
-
-    // Countdown logic
-    LaunchedEffect(Unit) {
-        while (countdownValue > 1) {
-            buzzerManager.playButtonBeep()
-            hapticManager.playStepMilestone()
-            delay(500L)
-            countdownValue--
-        }
-        buzzerManager.playAttackImpactTone()
-        hapticManager.playAttackImpact()
-        delay(400L)
-        phase = "PUNCH"
-    }
-
-    val handlePunchHit: (Float) -> Unit = { gaugeVal ->
-        if (!punchRegistered) {
-            punchRegistered = true
-            punchGauge = gaugeVal
-            phase = "RESOLVED"
-            HardwareInputManager.activeQteListener = null
-
-            val res = TrainingEngine.evaluateQtePunch(gaugeVal)
-            if (res.isMegaHit) {
-                buzzerManager.playVictoryFanfare()
-                hapticManager.playVictoryFanfare()
-            } else if (res.won) {
-                buzzerManager.playAttackImpactTone()
-                hapticManager.playAttackImpact()
-            } else {
-                buzzerManager.playAttentionBeep()
-                hapticManager.playAttentionAlert()
-            }
-            onFinished(res.won, res.feedbackMessage)
-        }
-    }
-
-    // Register ultra-low latency hardware button listener
-    DisposableEffect(phase) {
-        if (phase == "PUNCH") {
-            HardwareInputManager.activeQteListener = { button ->
-                if (button == VPetButton.B || button == VPetButton.A) {
-                    handlePunchHit(animatedGaugeState?.value ?: 0f)
-                    true
-                } else false
-            }
-        }
-        onDispose {
-            HardwareInputManager.activeQteListener = null
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF140D26))
-            .padding(displayConfig.contentPadding)
-            .clickable {
-                if (phase == "PUNCH") {
-                    handlePunchHit(animatedGaugeState?.value ?: 0f)
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "TRAINING QTE",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFCE93D8),
-                fontFamily = FontFamily.Monospace
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            when (phase) {
-                "COUNTDOWN" -> {
-                    Text(
-                        text = "$countdownValue",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFFFFD54F)
-                    )
-                    Text("GET READY...", fontSize = 10.sp, color = Color.White)
-                }
-                "PUNCH" -> {
-                    Text(
-                        text = "PUNCH NOW!",
-                        fontSize = 14.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = Color(0xFFFF1744)
-                    )
-                    Text(
-                        text = "PRESS [B] / STEM OR TAP",
-                        fontSize = 9.sp,
-                        color = Color(0xFF80D8FF),
-                        fontFamily = FontFamily.Monospace
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Dynamic Power Meter Bar
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .height(18.dp)
-                            .background(Color(0xFF263238), RoundedCornerShape(9.dp))
-                            .border(1.dp, Color.White, RoundedCornerShape(9.dp))
-                    ) {
-                        // Sweet spot background (0.75 - 1.0)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.25f)
-                                .height(18.dp)
-                                .align(Alignment.CenterEnd)
-                                .background(Color(0x6600E676), RoundedCornerShape(topEnd = 9.dp, bottomEnd = 9.dp))
-                        )
-
-                        // Moving Indicator (Draw-phase invalidation only: 0 layout passes)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .drawWithContent {
-                                    val gauge = animatedGaugeState?.value ?: 0f
-                                    val barColor = if (gauge >= 0.75f) Color(0xFF00E676) else Color(0xFFFFD54F)
-                                    val radius = 9.dp.toPx()
-                                    drawRoundRect(
-                                        color = barColor,
-                                        size = Size(size.width * gauge.coerceIn(0f, 1f), size.height),
-                                        cornerRadius = CornerRadius(radius, radius)
-                                    )
-                                }
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "SWEET SPOT 80-100%",
-                        fontSize = 8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF00E676)
-                    )
-                }
-                "RESOLVED" -> {
-                    Text(
-                        text = if (punchGauge >= 0.75f) "[ SUPER PUNCH! ]" else "FINISHED",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF69F0AE)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            SpriteCanvasRenderer(
-                speciesId = petState.speciesId,
-                isAmbient = false,
-                overrideFrame = when (phase) {
-                    "PUNCH" -> SpriteFrame.ATTACK_CHARGE
-                    "RESOLVED" -> SpriteFrame.ATTACK_RELEASE
-                    else -> SpriteFrame.IDLE_A
-                },
-                size = 54.dp
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Box(
-                modifier = Modifier
-                    .background(Color(0x44000000), RoundedCornerShape(4.dp))
-                    .clickable { onCancel() }
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Text("Cancel [C]", fontSize = 8.sp, color = Color.Gray)
-            }
-        }
-    }
-}
-
-/**
- * Authentic Bandai Digimon Pendulum Shake Training Minigame.
- * Uses the hardware accelerometer to detect physical wrist shakes during a 3.5-second count window.
- * Bandai authentic sweet spot: 5 to 8 shakes produces a Super Hit / Mega Punch!
- * Zero battery impact: Accelerometer listener is registered ONLY while the SHAKE phase is active
- * and immediately unregistered upon completion or disposal.
- */
-@Composable
-private fun TrainingShakeView(
-    petState: PetState,
-    displayConfig: WatchDisplayConfig,
-    hapticManager: HapticManager,
-    buzzerManager: BuzzerManager,
-    onFinished: (won: Boolean, message: String) -> Unit,
-    onCancel: () -> Unit
-) {
-    val context = LocalContext.current
-    val species = remember(petState.speciesId) { PetSpecies.getById(petState.speciesId) }
-    val optimalRange = remember(species.attribute) { TrainingEngine.getOptimalShakeRange(species.attribute) }
-    var phase by remember { mutableStateOf("COUNTDOWN") } // COUNTDOWN -> SHAKE -> RESOLVED
-    var countdownValue by remember { mutableIntStateOf(3) }
-    var shakeCount by remember { mutableIntStateOf(0) }
-    var timeRemainingMs by remember { mutableIntStateOf(3500) }
-    var resolved by remember { mutableStateOf(false) }
-
-    // Countdown logic
-    LaunchedEffect(Unit) {
-        while (countdownValue > 1) {
-            buzzerManager.playButtonBeep()
-            hapticManager.playStepMilestone()
-            delay(500L)
-            countdownValue--
-        }
-        buzzerManager.playAttackImpactTone()
-        hapticManager.playAttackImpact()
-        delay(400L)
-        phase = "SHAKE"
-    }
-
-    // Shake timer countdown (3500ms)
-    LaunchedEffect(phase) {
-        if (phase == "SHAKE") {
-            val stepMs = 50L
-            while (timeRemainingMs > 0 && !resolved) {
-                delay(stepMs)
-                timeRemainingMs = (timeRemainingMs - stepMs.toInt()).coerceAtLeast(0)
-            }
-            if (!resolved) {
-                resolved = true
-                phase = "RESOLVED"
-                delay(500L)
-                val sp = PetSpecies.getById(petState.speciesId)
-                val res = TrainingEngine.evaluateShakeTraining(sp.attribute, shakeCount)
-                if (res.isMegaHit) {
-                    buzzerManager.playVictoryFanfare()
-                    hapticManager.playVictoryFanfare()
-                } else if (res.won) {
-                    buzzerManager.playAttackImpactTone()
-                    hapticManager.playAttackImpact()
-                } else {
-                    buzzerManager.playAttentionBeep()
-                    hapticManager.playAttentionAlert()
-                }
-                onFinished(res.won, res.feedbackMessage)
-            }
-        }
-    }
-
-    // Hardware Accelerometer Listener - strictly scoped to SHAKE phase
-    DisposableEffect(phase) {
-        if (phase == "SHAKE") {
-            val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
-            val accel = sensorManager?.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
-            var lastShakeTimestamp = 0L
-
-            val listener = object : SensorEventListener {
-                override fun onSensorChanged(event: SensorEvent?) {
-                    if (event == null || phase != "SHAKE" || resolved) return
-                    val x = event.values[0]
-                    val y = event.values[1]
-                    val z = event.values[2]
-                    val magnitude = sqrt(x * x + y * y + z * z)
-                    val gForce = magnitude / SensorManager.GRAVITY_EARTH
-
-                    val now = System.currentTimeMillis()
-                    // Detect distinct shake peak (gForce > 1.85g) with 200ms debounce
-                    if (gForce > 1.85f && (now - lastShakeTimestamp) > 200L) {
-                        lastShakeTimestamp = now
-                        shakeCount++
-                        buzzerManager.playQteClickTone()
-                        hapticManager.playStepMilestone()
-                    }
-                }
-
-                override fun onAccuracyChanged(sensor: Sensor?, accuracy: Int) {}
-            }
-
-            if (sensorManager != null && accel != null) {
-                sensorManager.registerListener(listener, accel, SensorManager.SENSOR_DELAY_GAME)
-            }
-
-            // Also allow physical button tap / screen tap as fallback
-            HardwareInputManager.activeQteListener = { button ->
-                if (button == VPetButton.B || button == VPetButton.A) {
-                    shakeCount++
-                    buzzerManager.playQteClickTone()
-                    hapticManager.playStepMilestone()
-                    true
-                } else false
-            }
-
-            onDispose {
-                sensorManager?.unregisterListener(listener)
-                HardwareInputManager.activeQteListener = null
-            }
-        } else {
-            onDispose {}
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color(0xFF140D26))
-            .padding(displayConfig.contentPadding)
-            .clickable {
-                if (phase == "SHAKE" && !resolved) {
-                    shakeCount++
-                    buzzerManager.playQteClickTone()
-                    hapticManager.playStepMilestone()
-                }
-            },
-        contentAlignment = Alignment.Center
-    ) {
-        Column(
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = "PENDULUM SHAKE",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFD54F),
-                fontFamily = FontFamily.Monospace
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            when (phase) {
-                "COUNTDOWN" -> {
-                    Text(
-                        text = "$countdownValue",
-                        fontSize = 32.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color(0xFFFFD54F)
-                    )
-                    Text("GET READY TO SHAKE...", fontSize = 9.sp, color = Color.White)
-                }
-                "SHAKE" -> {
-                    Text(
-                        text = "SHAKE! [ $shakeCount ]",
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Black,
-                        color = if (shakeCount in optimalRange) Color(0xFF00E676) else Color(0xFFFF1744)
-                    )
-                    Text(
-                        text = "SWEET SPOT: ${optimalRange.first}-${optimalRange.last} (${species.attribute.displayName.uppercase()})",
-                        fontSize = 8.sp,
-                        color = Color(0xFF80D8FF),
-                        fontFamily = FontFamily.Monospace
-                    )
-
-                    Spacer(modifier = Modifier.height(6.dp))
-
-                    // Time remaining bar
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .height(8.dp)
-                            .background(Color(0xFF263238), RoundedCornerShape(4.dp))
-                            .border(0.5.dp, Color.White, RoundedCornerShape(4.dp))
-                    ) {
-                        val progress = (timeRemainingMs / 3500f).coerceIn(0f, 1f)
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(progress)
-                                .fillMaxHeight()
-                                .background(
-                                    if (shakeCount in optimalRange) Color(0xFF00E676) else Color(0xFFFFD54F),
-                                    RoundedCornerShape(4.dp)
-                                )
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.height(3.dp))
-                    Text(
-                        text = "Shake watch or tap [B]",
-                        fontSize = 7.sp,
-                        color = Color.LightGray
-                    )
-                }
-                "RESOLVED" -> {
-                    val evalRes = remember(species.attribute, shakeCount) {
-                        TrainingEngine.evaluateShakeTraining(species.attribute, shakeCount)
-                    }
-                    Text(
-                        text = if (evalRes.isMegaHit) "[ SUPER HIT! ]" else if (evalRes.won) "GOOD HIT!" else "MISS!",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (evalRes.isMegaHit) Color(0xFF69F0AE) else if (evalRes.won) Color(0xFFFFD54F) else Color(0xFFFF5252)
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(6.dp))
-
-            SpriteCanvasRenderer(
-                speciesId = petState.speciesId,
-                isAmbient = false,
-                overrideFrame = if (phase == "SHAKE") {
-                    if (shakeCount % 2 == 0) SpriteFrame.ATTACK_CHARGE else SpriteFrame.ATTACK_RELEASE
-                } else SpriteFrame.IDLE_A,
-                size = 54.dp
-            )
-
-            Spacer(modifier = Modifier.height(4.dp))
-
-            Box(
-                modifier = Modifier
-                    .background(Color(0x44000000), RoundedCornerShape(4.dp))
-                    .clickable { onCancel() }
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
-            ) {
-                Text("Cancel [C]", fontSize = 8.sp, color = Color.Gray)
-            }
-        }
-    }
-}
 
 @Composable
 fun AmbientPetScreen(
