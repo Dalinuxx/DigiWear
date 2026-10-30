@@ -1,0 +1,22 @@
+{
+  "name": "digiwear-relay-server",
+  "version": "1.0.0",
+  "description": "Ultra-lightweight, zero-trust, authenticated WebSocket relay server for DigiWear Live Duels",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "keywords": [
+    "digiwear",
+    "vpet",
+    "multiplayer",
+    "relay",
+    "websocket"
+  ],
+  "author": "Dalinuxx",
+  "license": "Apache-2.0"
+}

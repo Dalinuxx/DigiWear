@@ -14,3 +14,7 @@ dependencies {
 
     testImplementation(libs.junit)
 }
+
+tasks.withType<Test> {
+    systemProperty("generateDocs", System.getProperty("generateDocs") ?: "false")
+}

@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  digiwear-relay:
+    build: .
+    container_name: digiwear-relay
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      - PORT=8080
+      - HOST=0.0.0.0
+      # Set your private pre-shared key here to protect against unauthorized users.
+      # If left empty, the relay operates in open mode.
+      - DIGIWEAR_SERVER_KEY=${DIGIWEAR_SERVER_KEY:-}
+      - MAX_CLIENTS_PER_IP=15
+    deploy:
+      resources:
+        limits:
+          memory: 32M
+          cpus: '0.25'

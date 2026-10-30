@@ -942,44 +942,44 @@ object SpriteMatrixRegistry {
         ".BBBBBB.BBBBBBB."
     )
 
-    // [ID 216] Terriermon
+    // [ID 216] Terriermon (Canonical Cream White Puppy + Emerald Green Ear Bands & Horn)
     val TERRIERMON_ROM = arrayOf(
-        ".....BB.........",
-        "....BTBBB.......",
-        "...BBTTBTBB.....",
-        "..BTTTTTTTTB....",
-        "..BTWTTTBTTB....",
-        ".B##BTS#B#T#B...",
-        ".B#STB###TS#B...",
-        ".B#TB#BBTB##B...",
-        "..B#S##T#BBSB...",
-        "..BBB#T#S#BSSB..",
-        "..B##T####TBSB..",
-        ".BSBT####B#BSB..",
-        ".BBBSSSSSSBBSSB.",
-        "BSSBSSBBSSBSSSSB",
-        "BSSSBSB.BSBBSSSB",
-        ".BBBBBB.BBBBBBB."
+        ".......B........",
+        "......BSB.......",
+        "...BBBBSBBBB....",
+        "..BSSB#####BSSB.",
+        ".BSSSSB###BSSSSB",
+        ".BSSSSB###BSSSSB",
+        "..B##BE###EB##B.",
+        "..B##B#####B##B.",
+        "...BBB##S##BBB..",
+        "....B#######B...",
+        "...B#########B..",
+        "..B###########B.",
+        "..B###B###B###B.",
+        "...BBB.B#B.BBB..",
+        "......B###B.....",
+        "......BBBBB....."
     )
 
-    // [ID 217] Lopmon
+    // [ID 217] Lopmon (Canonical Chocolate Brown + Triple Horns & Pastel Pink Ear Tips)
     val LOPMON_ROM = arrayOf(
-        "....BB..........",
-        "..BBBTB.BB......",
-        "..BTBTTBTBB.....",
-        "..BTTTTTTTTB....",
-        "..BTWTTTBTTB....",
-        ".B##BTS#B#T#B...",
-        ".B#STB###TS#B...",
-        ".B#TB#BBTB##B...",
-        "..B#S##T#BBSB...",
-        "..BBB#T#S#BSSB..",
-        "..B##T####TBSB..",
-        ".BSBT####B#BSB..",
-        ".BBBSSSSSSBBSSB.",
-        "BSSBSSBBSSBSSSSB",
-        "BSSSBSB.BSBBSSSB",
-        ".BBBBBB.BBBBBBB."
+        "...B...B...B....",
+        "..BSB.BSB.BSB...",
+        "..BBBBSBBBBBB...",
+        ".BSSB#######BSSB",
+        "BSSSSB#####BSSSS",
+        "BSSSSB#####BSSSS",
+        ".B##BE#####EB##B",
+        ".B##B#######B##B",
+        "..BBB###S###BBB.",
+        "....B#######B...",
+        "...B#########B..",
+        "..B###########B.",
+        "..B###B###B###B.",
+        "...BBB.B#B.BBB..",
+        "......B###B.....",
+        "......BBBBB....."
     )
 
     // [ID 218] Impmon

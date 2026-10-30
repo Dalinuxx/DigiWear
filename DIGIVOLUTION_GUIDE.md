@@ -15,7 +15,7 @@
 
 | Stage | Species Count | Canonical Evolution Window | Key Branching Factors |
 | :--- | :---: | :--- | :--- |
-| **Baby I** | **16** | Hatch → 10 Mins (`600s`) | Starter Digi-Egg Selection (10 Lineages) |
+| **Baby I** | **16** | Hatch → 10 Mins (`600s`) | Starter Digi-Egg Selection (16 Lineages) |
 | **Baby II** | **34** | 6 Hours (`21,600s`) | Care Mistakes (`CM`), Training Effort (`EFF`), Weight (`G`) |
 | **Child** | **88** | 24 Hours (`86,400s`) | Care Mistakes (`CM`), Training Effort (`EFF`), Overfeed Count, Weight (`G`) |
 | **Adult** | **128** | 36 Hours (`129,600s`) | Battles (`≥ 10–15`), Win Ratio (`≥ 60%–80%`), Care Mistakes (`CM`), Effort (`EFF`) |
