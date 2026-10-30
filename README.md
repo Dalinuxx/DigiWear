@@ -2,7 +2,7 @@
 ### The authentic 90s Virtual Pet experience, rebuilt for your smartwatch & phone.
 
 [![Platform](https://img.shields.io/badge/Platform-Wear%20OS%203.0%2B%20%7C%20Android%2013%2B-blue?logo=android&logoColor=white)](https://developer.android.com/wear)
-[![Version](https://img.shields.io/badge/Version-v2.6.0-teal.svg)](RELEASE_NOTES_v2.6.md)
+[![Version](https://img.shields.io/badge/Version-v2.7.0-teal.svg)](RELEASE_NOTES_v2.7.md)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-purple?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Wear%20%2B%20M3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Protocol](https://img.shields.io/badge/Digimon%200nl1ne-100%25%20Compatible-00C853?logo=codersrank&logoColor=white)](https://github.com)
@@ -224,6 +224,19 @@ Pre-compiled, signed APKs are ready to install in the `release_bin/` directory a
 
 ---
 
+## 🆕 What's New in v2.7.0
+
+See the full [v2.7.0 Release Notes](RELEASE_NOTES_v2.7.md) for detailed technical breakdown:
+* **Wear OS Adventure & Radar Tile**: Glanceable sector progression, distance remaining to apex bosses, and 1-tap battle launch right from the wrist carousel.
+* **Calorie-Based Evolution Growth Acceleration**: Physical workouts convert active calories burned into real partner growth (+15m evolution progression per 50 kcal burned) with optional Health Connect sync.
+* **In-App Visual Saga Creator & Architect**: Design custom adventure sagas, pick environmental hazards, select boss encounters from all 550 monsters, and beam them to your watch over Wi-Fi.
+* **Adaptive Adventure Watch Face & Weather Hazards**: Ambient particle weather engine (dust storms, blizzard flakes, digital rain, solar flares) and a 360° radial bezel quest arc with pulsing boss ready beacon.
+* **16 Canonical Starter Digi-Eggs & Fixed Egg IDs**: Complete 16 starter eggs with authentic origins and fixed egg selection IDs (`#1101..#1113`).
+* **100% Hardware-Independent & Optional**: All fitness features, tiles, and Health Connect sync operate with seamless no-sensor fallbacks, ensuring complete playability on any watch model.
+* **Streamlined Release Pipeline**: Pruned generic duplicate APKs and introduced automated `syncReleaseBin` task for lean, battery-efficient distribution.
+
+---
+
 ## 🆕 What's New in v2.6.0
 
 See the full [v2.6.0 Release Notes](RELEASE_NOTES_v2.6.md) for detailed benchmarks and technical breakdown:
@@ -234,10 +247,6 @@ See the full [v2.6.0 Release Notes](RELEASE_NOTES_v2.6.md) for detailed benchmar
 * **Watch Face 12fps Loop Hardening**: 30-second TTL battery percentage caching and zero-allocation scratch rect re-use eliminate Binder IPC overhead and GC pauses.
 * **Cryo-Vault Tile & Widget Fallbacks**: Phone widget and Wear OS tile gracefully fall back to Cryo-Vault stasis status when disconnected, preventing default Botamon resets.
 * **Embedded Direct Sideloading**: Companion app includes built-in release APKs for 1-tap wireless watch flashing over Wi-Fi without a PC.
-* **Dedicated Wear OS Adventure & Radar Tile**: Glanceable sector progression, distance remaining to apex bosses, and 1-tap battle launch right from the wrist carousel.
-* **Calorie-Based Evolution Growth Acceleration**: Physical workouts convert active calories burned into real partner growth (+15m evolution progression per 50 kcal burned) with optional Health Connect sync.
-* **In-App Visual Saga Creator & Architect**: Design custom adventure sagas, pick environmental hazards, select boss encounters from all 550 monsters, and beam them to your watch over Wi-Fi.
-* **100% Hardware-Independent & Optional**: All fitness features, tiles, and Health Connect sync operate with seamless no-sensor fallbacks, ensuring complete playability on any watch model.
 
 ---
 

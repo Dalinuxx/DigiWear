@@ -46,6 +46,7 @@
 | M8 | Health Connect & Workout Engine 2.0 | Calorie burn evolution acceleration (+15m growth per 50 kcal), Room workout_history migration v6, HealthConnectManager | M6 | DONE |
 | M9 | Visual Campaign & Saga Creator | In-app visual node architect in companion app, 550-monster boss selector, schema validator, wireless beam to watch | M5, M6 | DONE |
 | M10 | Live Real-Time Multiplayer Duel Hub | WebSocket/WebRTC room-based matchmaking lobby for real-time QTE duels | M1, M6 | DEFERRED |
+| M11 | DigiWear v2.7.0 Release & Distribution Pipeline | Adaptive Adventure UI (bezel quest arc, biome weather hazards, expedition pill), 16 starter eggs & egg ID fix, automated syncReleaseBin pipeline | M7, M8, M9 | DONE |
 
 ## Interface Contracts
 
