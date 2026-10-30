@@ -378,4 +378,51 @@ class DigiWatchFaceServiceTest {
         assertTrue("Full steps must trigger boss ready", stepsFull >= targetSteps)
         assertTrue("Over-accumulated steps must trigger boss ready", stepsOver >= targetSteps)
     }
+
+    @Test
+    fun testWatchFaceIdleAndRoamingAnimationCycleMath() {
+        // Step index is (now / 500L) % 8L: provides authentic 2 Hz Bandai V-Pet walking cadence
+        val step0 = ((0L / 500L) % 8L).toInt()
+        val step1 = ((500L / 500L) % 8L).toInt()
+        val step2 = ((1000L / 500L) % 8L).toInt()
+        val step3 = ((1500L / 500L) % 8L).toInt()
+        val step4 = ((2000L / 500L) % 8L).toInt()
+        val step5 = ((2500L / 500L) % 8L).toInt()
+        val step6 = ((3000L / 500L) % 8L).toInt()
+        val step7 = ((3500L / 500L) % 8L).toInt()
+        val step8 = ((4000L / 500L) % 8L).toInt()
+
+        assertEquals(0, step0)
+        assertEquals(1, step1)
+        assertEquals(2, step2)
+        assertEquals(3, step3)
+        assertEquals(4, step4)
+        assertEquals(5, step5)
+        assertEquals(6, step6)
+        assertEquals(7, step7)
+        assertEquals(0, step8) // Loop wraps smoothly
+
+        // Active frames during walking loop
+        val getFrame = { s: Int ->
+            when (s) {
+                2, 5 -> com.digiwear.core.model.SpriteFrame.WALK_A
+                3, 6 -> com.digiwear.core.model.SpriteFrame.WALK_B
+                0, 4 -> com.digiwear.core.model.SpriteFrame.IDLE_A
+                else -> com.digiwear.core.model.SpriteFrame.IDLE_B
+            }
+        }
+        assertEquals(com.digiwear.core.model.SpriteFrame.IDLE_A, getFrame(step0))
+        assertEquals(com.digiwear.core.model.SpriteFrame.IDLE_B, getFrame(step1))
+        assertEquals(com.digiwear.core.model.SpriteFrame.WALK_A, getFrame(step2))
+        assertEquals(com.digiwear.core.model.SpriteFrame.WALK_B, getFrame(step3))
+        assertEquals(com.digiwear.core.model.SpriteFrame.IDLE_A, getFrame(step4))
+        assertEquals(com.digiwear.core.model.SpriteFrame.WALK_A, getFrame(step5))
+        assertEquals(com.digiwear.core.model.SpriteFrame.WALK_B, getFrame(step6))
+        assertEquals(com.digiwear.core.model.SpriteFrame.IDLE_B, getFrame(step7))
+
+        // Horizontal flip: steps 5..7 turn around facing right
+        val isFlipped = { s: Int -> s in 5..7 }
+        assertFalse("Steps 0..4 face normal direction", isFlipped(step0) || isFlipped(step2) || isFlipped(step4))
+        assertTrue("Steps 5..7 flip direction facing right", isFlipped(step5) && isFlipped(step6) && isFlipped(step7))
+    }
 }

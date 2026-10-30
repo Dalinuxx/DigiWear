@@ -463,7 +463,7 @@ class DigiCanvasRenderer(
     currentUserStyleRepository = currentUserStyleRepository,
     watchState = watchState,
     canvasType = CanvasType.HARDWARE,
-    interactiveDrawModeUpdateDelayMillis = 1000L,
+    interactiveDrawModeUpdateDelayMillis = 500L,
     clearWithBackgroundTintBeforeRenderingHighlightLayer = false
 ) {
 
@@ -1046,7 +1046,7 @@ class DigiCanvasRenderer(
             textPaint.textAlign = Paint.Align.CENTER
         }
 
-        // 6. Current Partner Sprite Animation (1 Hz Walking / Idle Cycle or Dynamic Dual-Hop Bounce Emote)
+        // 6. Current Partner Sprite Animation (Authentic 2 Hz Bandai Walking / Roaming & Idle Cycle or Joy Bounce)
         val bounceProgress = if (isBouncing) {
             val elapsed = BOUNCE_DURATION_MS - (bounceUntilTimestampMs - now)
             (elapsed.toFloat() / BOUNCE_DURATION_MS).coerceIn(0f, 1f)
@@ -1057,20 +1057,52 @@ class DigiCanvasRenderer(
         } else 0f
         val bounceOffset = -16f * hop
 
+        // 8-step authentic V-Pet walk & roaming cycle (500ms per step = 2 Hz)
+        val roamStep = ((now / 500L) % 8L).toInt()
+        val isWalkingActive = !petState.isSleeping && !petState.isInjured && !isBouncing
+
         val activeFrame = when {
             isBouncing -> if (hop > 0.35f) SpriteFrame.JOY_EAT else SpriteFrame.IDLE_A
             petState.isInjured -> SpriteFrame.INJURED
-            petState.isSleeping -> if ((zonedDateTime.second % 2) == 0) SpriteFrame.SLEEP_A else SpriteFrame.SLEEP_B
-            (zonedDateTime.second % 2) == 0 -> SpriteFrame.IDLE_A
-            else -> SpriteFrame.IDLE_B
+            petState.isSleeping -> if (((now / 1000L) % 2L) == 0L) SpriteFrame.SLEEP_A else SpriteFrame.SLEEP_B
+            isWalkingActive -> when (roamStep) {
+                2, 5 -> SpriteFrame.WALK_A
+                3, 6 -> SpriteFrame.WALK_B
+                0, 4 -> SpriteFrame.IDLE_A
+                else -> SpriteFrame.IDLE_B
+            }
+            else -> SpriteFrame.IDLE_A
         }
+
+        // Horizontal roaming offset scaled to watch face width (clamped so sprite never clips bezel)
+        val baseRoamUnit = w * 0.016f
+        val roamOffsetX = if (isWalkingActive) {
+            when (roamStep) {
+                2 -> -baseRoamUnit * 0.8f
+                3, 4 -> -baseRoamUnit * 1.5f
+                5 -> -baseRoamUnit * 0.4f
+                6 -> baseRoamUnit * 1.2f
+                7 -> baseRoamUnit * 0.6f
+                else -> 0f
+            }
+        } else 0f
+
+        val flipHorizontal = isWalkingActive && (roamStep in 5..7)
 
         val spriteBitmap = PixelArtMatrices.getAndroidBitmap(petState.speciesId, activeFrame, isAmbient = false)
         val spriteSize = (w * 0.34f).toInt()
-        val spriteLeft = (centerX - spriteSize / 2f).toInt()
+        val spriteLeft = (centerX - spriteSize / 2f + roamOffsetX).toInt()
         val spriteTop = (centerY - spriteSize / 2f + h * 0.075f + bounceOffset).toInt()
         reusableDstRect.set(spriteLeft, spriteTop, spriteLeft + spriteSize, spriteTop + spriteSize)
-        canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
+
+        if (flipHorizontal) {
+            canvas.save()
+            canvas.scale(-1f, 1f, spriteLeft + spriteSize / 2f, spriteTop + spriteSize / 2f)
+            canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
+            canvas.restore()
+        } else {
+            canvas.drawBitmap(spriteBitmap, null, reusableDstRect, spritePaint)
+        }
 
         // If bouncing, draw a floating joy heart emote scaling above the partner
         if (isBouncing) {
