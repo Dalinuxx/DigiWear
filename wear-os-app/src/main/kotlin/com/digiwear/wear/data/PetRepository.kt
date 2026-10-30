@@ -37,6 +37,10 @@ import java.util.concurrent.TimeUnit
 
 import com.digiwear.core.model.CustomThemeConfig
 import com.digiwear.core.model.SoundpackProfile
+import com.google.android.gms.wearable.PutDataMapRequest
+import com.google.android.gms.wearable.Wearable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class PetRepository private constructor(context: Context) {
 
@@ -587,12 +591,26 @@ class PetRepository private constructor(context: Context) {
         com.digiwear.wear.tile.DigiWearAdventureTileService.requestUpdate(appContext)
     }
 
+    private val dataLayerJson = Json { ignoreUnknownKeys = true }
+
+    fun publishPetStateToDataLayer(state: PetState) {
+        try {
+            val putDataMapReq = PutDataMapRequest.create("/sync/active_pet_state").apply {
+                dataMap.putString("pet_state_json", dataLayerJson.encodeToString(state))
+                dataMap.putLong("timestamp", System.currentTimeMillis())
+            }
+            val request = putDataMapReq.asPutDataRequest().setUrgent()
+            Wearable.getDataClient(appContext).putDataItem(request)
+        } catch (_: Exception) {}
+    }
+
     suspend fun savePetState(state: PetState) = withContext(Dispatchers.IO) {
         dao.insertOrUpdatePet(PetEntity.fromDomain(state))
         setHasActiveEgg(true)
         val discovered = (com.digiwear.core.engine.EvolutionEngine.findEggLineagePath(state.speciesId) + state.speciesId).toIntArray()
         recordDiscoveredSpecies(*discovered)
         notifySurfaceUpdates()
+        publishPetStateToDataLayer(state)
     }
 
     suspend fun clearActivePet() = withContext(Dispatchers.IO) {

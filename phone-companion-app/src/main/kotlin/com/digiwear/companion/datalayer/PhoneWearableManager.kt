@@ -1,10 +1,12 @@
 package com.digiwear.companion.datalayer
 
 import android.content.Context
+import android.net.Uri
 import com.digiwear.core.engine.PetSimulationEngine
 import com.digiwear.core.model.PetState
 import com.google.android.gms.tasks.Tasks
 import com.google.android.gms.wearable.Asset
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import com.google.android.gms.wearable.Wearable
@@ -205,11 +207,37 @@ class PhoneWearableManager(private val context: Context) {
     }
 
     /**
+     * Reads the asynchronously replicated pet state DataItem from Google Play Services DataClient.
+     */
+    suspend fun getReplicatedPetStateFromDataClient(): PetState? = withContext(Dispatchers.IO) {
+        try {
+            val uri = Uri.parse("wear://*/sync/active_pet_state")
+            val dataClient = Wearable.getDataClient(context)
+            val dataItems = Tasks.await(dataClient.getDataItems(uri))
+            dataItems?.use { buffer ->
+                for (item in buffer) {
+                    if (item.uri.path == "/sync/active_pet_state") {
+                        val mapItem = DataMapItem.fromDataItem(item)
+                        val jsonStr = mapItem.dataMap.getString("pet_state_json")
+                        if (!jsonStr.isNullOrBlank()) {
+                            return@withContext json.decodeFromString<PetState>(jsonStr)
+                        }
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        null
+    }
+
+    /**
      * Sends `/sync/request_pet_state` to the paired Wear OS or AOSP smartwatch and awaits `/sync/response_pet_state`.
+     * Falls back to replicated DataClient state if RPC message is delayed.
      */
     suspend fun requestPetStateFromWatch(): PetState? = withContext(Dispatchers.IO) {
         val nodes = getConnectedWatchNodes()
-        if (nodes.isEmpty()) return@withContext null
+        if (nodes.isEmpty()) {
+            return@withContext getReplicatedPetStateFromDataClient()
+        }
 
         // Check AOSP LAN node first if present
         val aospNode = nodes.firstOrNull { it.startsWith(AOSP_NODE_PREFIX) }
@@ -217,13 +245,16 @@ class PhoneWearableManager(private val context: Context) {
             val ip = aospNode.removePrefix(AOSP_NODE_PREFIX)
             val resp = sendTcpCommandToAospWatch(ip, "/sync/request_pet_state", "")
             if (!resp.isNullOrBlank()) {
-                runCatching { return@withContext json.decodeFromString<PetState>(resp) }
+                val parsed = runCatching { json.decodeFromString<PetState>(resp) }.getOrNull()
+                if (parsed != null) return@withContext parsed
             }
         }
 
         val wearNodes = nodes.filterNot { it.startsWith(AOSP_NODE_PREFIX) }
-        val mc = messageClient ?: return@withContext null
-        if (wearNodes.isEmpty()) return@withContext null
+        val mc = messageClient
+        if (mc == null || wearNodes.isEmpty()) {
+            return@withContext getReplicatedPetStateFromDataClient()
+        }
 
         val deferred = CompletableDeferred<PetState?>()
         val listener = MessageClient.OnMessageReceivedListener { event ->
@@ -246,11 +277,12 @@ class PhoneWearableManager(private val context: Context) {
                     Tasks.await(mc.sendMessage(node, "/sync/request_pet_state", emptyPayload))
                 } catch (_: Exception) {}
             }
-            withTimeoutOrNull(2500L) {
+            val liveState = withTimeoutOrNull(6500L) {
                 deferred.await()
             }
+            liveState ?: getReplicatedPetStateFromDataClient()
         } catch (_: Exception) {
-            null
+            getReplicatedPetStateFromDataClient()
         } finally {
             try {
                 Tasks.await(mc.removeListener(listener))
@@ -320,7 +352,7 @@ class PhoneWearableManager(private val context: Context) {
                     Tasks.await(mc.sendMessage(node, "/sync/request_settings", emptyPayload))
                 } catch (_: Exception) {}
             }
-            val result = withTimeoutOrNull(2500L) {
+            val result = withTimeoutOrNull(6500L) {
                 deferred.await()
             }
             if (result != null) {
@@ -378,7 +410,7 @@ class PhoneWearableManager(private val context: Context) {
                     mc.sendMessage(node, "/sync/request_memorials", ByteArray(0))
                 } catch (_: Exception) {}
             }
-            withTimeoutOrNull(2500L) {
+            withTimeoutOrNull(6500L) {
                 deferred.await()
             }
         } catch (_: Exception) {
@@ -500,7 +532,7 @@ class PhoneWearableManager(private val context: Context) {
                     Tasks.await(mc.sendMessage(node, "/sync/remote_care_action", payload))
                 } catch (_: Exception) {}
             }
-            withTimeoutOrNull(2500L) {
+            withTimeoutOrNull(6500L) {
                 deferred.await()
             }
         } catch (_: Exception) {

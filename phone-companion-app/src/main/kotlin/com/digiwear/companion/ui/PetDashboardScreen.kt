@@ -109,13 +109,12 @@ fun PetDashboardScreen(
         val latest = db.phoneDao().getLatestSnapshot()
         if (latest != null) {
             petState = latest.toDomain()
-        } else {
-            // Attempt auto-sync from watch if connected
-            val liveWatchState = wearableManager.requestPetStateFromWatch()
-            if (liveWatchState != null) {
-                petState = liveWatchState
-                persistPhoneSnapshot(liveWatchState)
-            }
+        }
+        // Attempt background auto-sync from watch to keep state fresh
+        val liveWatchState = wearableManager.requestPetStateFromWatch()
+        if (liveWatchState != null) {
+            petState = liveWatchState
+            persistPhoneSnapshot(liveWatchState)
         }
     }
 
@@ -192,9 +191,15 @@ fun PetDashboardScreen(
                                     if (liveWatchState != null) {
                                         petState = liveWatchState
                                         persistPhoneSnapshot(liveWatchState)
-                                        syncStatus = "Synced live partner from Smartwatch!"
+                                        val syncedSpecies = PetSpecies.getById(liveWatchState.speciesId)
+                                        syncStatus = "Synced live #${syncedSpecies.id} ${syncedSpecies.name} from Smartwatch!"
                                     } else {
-                                        syncStatus = "No active partner received. Ensure DigiWear is running on your smartwatch."
+                                        val nodes = wearableManager.getConnectedWatchNodes()
+                                        syncStatus = if (nodes.isEmpty()) {
+                                            "No watch connected. Ensure Bluetooth is active in Galaxy Wearable / Pixel Watch app."
+                                        } else {
+                                            "Watch node connected, but sync timed out. Tap SYNC FROM SMARTWATCH again."
+                                        }
                                     }
                                     isSyncing = false
                                 }
@@ -305,9 +310,15 @@ fun PetDashboardScreen(
                                     if (liveWatchState != null) {
                                         petState = liveWatchState
                                         persistPhoneSnapshot(liveWatchState)
-                                        syncStatus = "Synced live ${currentSpecies.name} from Smartwatch!"
+                                        val syncedSpecies = PetSpecies.getById(liveWatchState.speciesId)
+                                        syncStatus = "Synced live #${syncedSpecies.id} ${syncedSpecies.name} from Smartwatch!"
                                     } else {
-                                        syncStatus = "Connected watch node responded, but returned no state."
+                                        val nodes = wearableManager.getConnectedWatchNodes()
+                                        syncStatus = if (nodes.isEmpty()) {
+                                            "No watch connected. Ensure Bluetooth is active in Galaxy Wearable / Pixel Watch app."
+                                        } else {
+                                            "Watch node connected, but sync timed out. Tap SYNC WATCH again."
+                                        }
                                     }
                                     isSyncing = false
                                 }

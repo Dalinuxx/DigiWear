@@ -17,6 +17,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -33,15 +34,18 @@ class WearDataSyncService : WearableListenerService() {
 
         when (messageEvent.path) {
             "/sync/request_pet_state" -> {
-                scope.launch {
-                    val state = repo.getPetState()
-                    val payload = json.encodeToString(state).toByteArray(Charsets.UTF_8)
-                    Wearable.getMessageClient(applicationContext)
-                        .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload)
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val state = repo.getPetState()
+                        repo.publishPetStateToDataLayer(state)
+                        val payload = json.encodeToString(state).toByteArray(Charsets.UTF_8)
+                        Tasks.await(Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload))
+                    } catch (_: Exception) {}
                 }
             }
             "/sync/update_pet_state" -> {
-                scope.launch {
+                runBlocking(Dispatchers.IO) {
                     try {
                         val str = String(messageEvent.data, Charsets.UTF_8)
                         val incomingState = json.decodeFromString<PetState>(str)
@@ -52,22 +56,26 @@ class WearDataSyncService : WearableListenerService() {
                 }
             }
             "/sync/request_settings" -> {
-                scope.launch {
-                    val settingsPayload = json.encodeToString(repo.getSettingsMap()).toByteArray(Charsets.UTF_8)
-                    Wearable.getMessageClient(applicationContext)
-                        .sendMessage(messageEvent.sourceNodeId, "/sync/response_settings", settingsPayload)
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val settingsPayload = json.encodeToString(repo.getSettingsMap()).toByteArray(Charsets.UTF_8)
+                        Tasks.await(Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_settings", settingsPayload))
+                    } catch (_: Exception) {}
                 }
             }
             "/sync/request_memorials" -> {
-                scope.launch {
-                    val list = repo.getMemorials()
-                    val payload = json.encodeToString(list).toByteArray(Charsets.UTF_8)
-                    Wearable.getMessageClient(applicationContext)
-                        .sendMessage(messageEvent.sourceNodeId, "/sync/response_memorials", payload)
+                runBlocking(Dispatchers.IO) {
+                    try {
+                        val list = repo.getMemorials()
+                        val payload = json.encodeToString(list).toByteArray(Charsets.UTF_8)
+                        Tasks.await(Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_memorials", payload))
+                    } catch (_: Exception) {}
                 }
             }
             "/sync/update_settings" -> {
-                scope.launch {
+                runBlocking(Dispatchers.IO) {
                     try {
                         val str = String(messageEvent.data, Charsets.UTF_8)
                         val map = json.decodeFromString<Map<String, String>>(str)
@@ -129,7 +137,7 @@ class WearDataSyncService : WearableListenerService() {
                 }
             }
             "/sync/remote_care_action" -> {
-                scope.launch {
+                runBlocking(Dispatchers.IO) {
                     try {
                         val action = String(messageEvent.data, Charsets.UTF_8).trim()
                         val updatedState = when {
@@ -160,19 +168,19 @@ class WearDataSyncService : WearableListenerService() {
                             DigiWearTileService.requestUpdate(applicationContext)
                         }
                         val payload = json.encodeToString(updatedState).toByteArray(Charsets.UTF_8)
-                        Wearable.getMessageClient(applicationContext)
-                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload)
+                        Tasks.await(Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload))
                     } catch (_: Exception) {}
                 }
             }
             "/sync/jogress_trigger" -> {
-                scope.launch {
+                runBlocking(Dispatchers.IO) {
                     try {
                         val partnerId = String(messageEvent.data, Charsets.UTF_8).trim().toIntOrNull() ?: 0
                         val updatedState = repo.performRemoteJogress(partnerId) ?: repo.getPetState()
                         val payload = json.encodeToString(updatedState).toByteArray(Charsets.UTF_8)
-                        Wearable.getMessageClient(applicationContext)
-                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload)
+                        Tasks.await(Wearable.getMessageClient(applicationContext)
+                            .sendMessage(messageEvent.sourceNodeId, "/sync/response_pet_state", payload))
                     } catch (_: Exception) {}
                 }
             }
@@ -195,7 +203,7 @@ class WearDataSyncService : WearableListenerService() {
                 }
             }
             "/sync/upload_wallpaper" -> {
-                scope.launch {
+                runBlocking(Dispatchers.IO) {
                     try {
                         val bytes = messageEvent.data
                         if (bytes.isNotEmpty()) {
@@ -220,7 +228,7 @@ class WearDataSyncService : WearableListenerService() {
                 val dataMapItem = DataMapItem.fromDataItem(event.dataItem)
                 val asset = dataMapItem.dataMap.getAsset("wallpaper_asset")
                 if (asset != null) {
-                    scope.launch {
+                    runBlocking(Dispatchers.IO) {
                         try {
                             val fd = Tasks.await(Wearable.getDataClient(applicationContext).getFdForAsset(asset))
                             val bytes = fd?.inputStream?.use { input -> input.readBytes() }
