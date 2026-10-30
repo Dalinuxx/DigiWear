@@ -531,9 +531,10 @@ class DigiCanvasRenderer(
         isAntiAlias = false
     }
     private val textPaint = Paint().apply {
-        typeface = Typeface.MONOSPACE
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
+        setShadowLayer(4f, 0f, 1.5f, Color.argb(200, 0, 0, 0))
     }
     private val spritePaint = Paint().apply {
         isAntiAlias = false
@@ -704,6 +705,7 @@ class DigiCanvasRenderer(
 
         // 0. Calendar Date (Monochrome, above 7-segment digital time)
         val dateStr = dateFormatter.format(zonedDateTime).uppercase()
+        textPaint.clearShadowLayer()
         textPaint.color = tintColor
         textPaint.textAlign = Paint.Align.CENTER
         textPaint.textSize = (w * 0.040f).coerceIn(11f, 15f)
@@ -1014,9 +1016,10 @@ class DigiCanvasRenderer(
         } else {
             dateStr
         }
+        textPaint.setShadowLayer(4f, 0f, 1.5f, Color.argb(220, 0, 0, 0))
         textPaint.color = if (showBossBeacon && ((now / 600L) % 2L == 0L)) Color.parseColor("#FFD600") else darkPixelColor
         textPaint.textAlign = Paint.Align.CENTER
-        textPaint.textSize = (w * 0.040f).coerceIn(12f, 16f)
+        textPaint.textSize = (w * 0.044f).coerceIn(13f, 17f)
         val dateY = if (isRound) centerY - (h * 0.335f) else (w * 0.06f) + 32f
         canvas.drawText(displayText, centerX, dateY, textPaint)
 
@@ -1040,8 +1043,9 @@ class DigiCanvasRenderer(
         )
 
         if (amPmStr.isNotEmpty()) {
+            textPaint.setShadowLayer(3f, 0f, 1f, Color.argb(200, 0, 0, 0))
             textPaint.textAlign = Paint.Align.LEFT
-            textPaint.textSize = (w * 0.034f).coerceIn(10f, 14f)
+            textPaint.textSize = (w * 0.036f).coerceIn(11f, 15f)
             canvas.drawText(amPmStr, centerX + (clockWidth * 0.53f), clockY - (clockHeight * 0.1f), textPaint)
             textPaint.textAlign = Paint.Align.CENTER
         }
@@ -1127,7 +1131,8 @@ class DigiCanvasRenderer(
         )
         if (!hasBottomSlotData) {
             val bottomY = if (isRound) centerY + h * 0.415f else h - (w * 0.06f) - 8f
-            textPaint.textSize = (w * 0.038f).coerceIn(11f, 16f)
+            textPaint.setShadowLayer(3f, 0f, 1.2f, Color.argb(200, 0, 0, 0))
+            textPaint.textSize = (w * 0.040f).coerceIn(12f, 17f)
             textPaint.color = darkPixelColor
             textPaint.textAlign = Paint.Align.CENTER
             val bottomText = if (petState.isSleeping) {
@@ -1268,8 +1273,8 @@ class DigiCanvasRenderer(
     }
 
     private fun measureHeartRowWidth(label: String, screenW: Float): Float {
-        val textSize = (screenW * 0.034f).coerceIn(10f, 15f)
-        val heartRadius = (screenW * 0.014f).coerceIn(4.5f, 7f)
+        val textSize = (screenW * 0.036f).coerceIn(11f, 16f)
+        val heartRadius = (screenW * 0.015f).coerceIn(5f, 7.5f)
         val heartSpacing = heartRadius * 2.5f
         textPaint.textSize = textSize
         val labelWidth = textPaint.measureText(label)
@@ -1286,10 +1291,11 @@ class DigiCanvasRenderer(
         emptyColor: Int,
         screenW: Float
     ) {
-        val textSize = (screenW * 0.034f).coerceIn(10f, 15f)
-        val heartRadius = (screenW * 0.014f).coerceIn(4.5f, 7f)
+        val textSize = (screenW * 0.036f).coerceIn(11f, 16f)
+        val heartRadius = (screenW * 0.015f).coerceIn(5f, 7.5f)
         val heartSpacing = heartRadius * 2.5f
 
+        textPaint.setShadowLayer(3f, 0f, 1.2f, Color.argb(200, 0, 0, 0))
         textPaint.color = activeColor
         textPaint.textSize = textSize
         textPaint.textAlign = Paint.Align.LEFT
@@ -1320,13 +1326,13 @@ class DigiCanvasRenderer(
             // Shaded empty heart: authentic LCD ghost shaded fill + crisp stroke
             heartPaint.style = Paint.Style.FILL
             heartPaint.color = color
-            heartPaint.alpha = 65 // Clear shaded interior
+            heartPaint.alpha = 75 // Clear shaded interior
             canvas.drawPath(reusableHeartPath, heartPaint)
 
             heartPaint.style = Paint.Style.STROKE
-            heartPaint.strokeWidth = 1.4f
+            heartPaint.strokeWidth = 1.6f
             heartPaint.color = color
-            heartPaint.alpha = 190 // Crisp boundary outline
+            heartPaint.alpha = 220 // Crisp boundary outline
             canvas.drawPath(reusableHeartPath, heartPaint)
         }
     }
@@ -1384,9 +1390,10 @@ class RetroLcdCanvasComplication(
     private val reusableRectF = RectF()
 
     private val textPaint = Paint().apply {
-        typeface = Typeface.MONOSPACE
+        typeface = Typeface.create(Typeface.MONOSPACE, Typeface.BOLD)
         isAntiAlias = true
         textAlign = Paint.Align.CENTER
+        setShadowLayer(4f, 0f, 1.5f, Color.argb(200, 0, 0, 0))
     }
 
     private val framePaint = Paint().apply {

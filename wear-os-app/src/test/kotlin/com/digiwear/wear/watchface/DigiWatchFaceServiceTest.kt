@@ -425,4 +425,60 @@ class DigiWatchFaceServiceTest {
         assertFalse("Steps 0..4 face normal direction", isFlipped(step0) || isFlipped(step2) || isFlipped(step4))
         assertTrue("Steps 5..7 flip direction facing right", isFlipped(step5) && isFlipped(step6) && isFlipped(step7))
     }
+
+    @Test
+    fun testMenuButtonACyclingSkipsAttentionIndicator() {
+        // Authentic Bandai mechanics: Button [A] cycles 0..6 (Status..Meds) and skips 7 (Attention light)
+        var selectedIndex: Int? = null
+
+        val advanceA = { current: Int? -> if (current == null) 0 else (current + 1) % 7 }
+        val advancePrev = { current: Int? -> if (current == null) 6 else (current + 6) % 7 }
+
+        // Forward cycling sequence
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(0, selectedIndex) // STATUS
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(1, selectedIndex) // FEED
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(2, selectedIndex) // TRAIN
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(3, selectedIndex) // BATTLE
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(4, selectedIndex) // FLUSH
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(5, selectedIndex) // LIGHT
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(6, selectedIndex) // MEDS
+        selectedIndex = advanceA(selectedIndex)
+        assertEquals(0, selectedIndex) // Wraps back to STATUS, skipping ATTENTION (7)
+
+        // Backward cycling sequence
+        selectedIndex = advancePrev(null)
+        assertEquals(6, selectedIndex) // MEDS
+        selectedIndex = advancePrev(selectedIndex)
+        assertEquals(5, selectedIndex) // LIGHT
+        selectedIndex = advancePrev(selectedIndex)
+        assertEquals(4, selectedIndex) // FLUSH
+        selectedIndex = advancePrev(0)
+        assertEquals(6, selectedIndex) // From STATUS, wraps back to MEDS, skipping 7
+    }
+
+    @Test
+    fun test12HourClockFormatsAmPmCorrectly() {
+        val cal = java.util.Calendar.getInstance()
+        cal.set(2026, java.util.Calendar.OCTOBER, 29, 20, 15, 0) // 8:15 PM
+
+        val time12Fmt = java.text.SimpleDateFormat("h:mm", java.util.Locale.US)
+        val amPmFmt = java.text.SimpleDateFormat("a", java.util.Locale.US)
+        val time24Fmt = java.text.SimpleDateFormat("HH:mm", java.util.Locale.US)
+
+        val date = cal.time
+        val time12Str = time12Fmt.format(date)
+        val amPmStr = amPmFmt.format(date).uppercase(java.util.Locale.US)
+        val time24Str = time24Fmt.format(date)
+
+        assertEquals("8:15", time12Str)
+        assertEquals("PM", amPmStr)
+        assertEquals("20:15", time24Str)
+    }
 }

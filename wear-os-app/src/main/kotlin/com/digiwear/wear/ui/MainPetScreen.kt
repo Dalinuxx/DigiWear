@@ -401,13 +401,13 @@ fun MainPetScreen(
 
             when (button) {
                 VPetButton.A -> {
-                    // Cycle forward through the 8 menu icons
-                    selectedMenuIndex = if (selectedMenuIndex == null) 0 else (selectedMenuIndex!! + 1) % 8
+                    // Cycle forward through the 7 interactive care tools (0..6), skipping passive Call Indicator (7)
+                    selectedMenuIndex = if (selectedMenuIndex == null) 0 else (selectedMenuIndex!! + 1) % 7
                     hapticManager.playStepMilestone()
                 }
                 VPetButton.PREV -> {
-                    // Cycle backwards
-                    selectedMenuIndex = if (selectedMenuIndex == null) 7 else (selectedMenuIndex!! + 7) % 8
+                    // Cycle backwards through 7 tools (0..6)
+                    selectedMenuIndex = if (selectedMenuIndex == null) 6 else (selectedMenuIndex!! + 6) % 7
                     hapticManager.playStepMilestone()
                 }
                 VPetButton.B -> {
@@ -522,6 +522,7 @@ fun MainPetScreen(
                 actionFeedback = actionFeedback,
                 is24h = is24hFormat,
                 onSelectIcon = { index ->
+                    if (index >= 7) return@ThreeButtonPetView
                     if (selectedMenuIndex == index) {
                         selectedMenuIndex = null
                         executeMenuAction(index)
@@ -531,7 +532,7 @@ fun MainPetScreen(
                     }
                 },
                 onPressA = {
-                    selectedMenuIndex = if (selectedMenuIndex == null) 0 else (selectedMenuIndex!! + 1) % 8
+                    selectedMenuIndex = if (selectedMenuIndex == null) 0 else (selectedMenuIndex!! + 1) % 7
                     hapticManager.playStepMilestone()
                 },
                 onPressB = {
@@ -949,7 +950,7 @@ private fun LcdIconCell(
     height: Dp,
     fontSize: androidx.compose.ui.unit.TextUnit,
     isCircular: Boolean = false,
-    onClick: () -> Unit
+    onClick: (() -> Unit)? = null
 ) {
     val bgColor = when {
         isSelected -> Color(0xFF00B0FF)
@@ -969,13 +970,14 @@ private fun LcdIconCell(
             .size(width = width, height = height)
             .background(bgColor, cellShape)
             .border(borderWidth, borderColor, cellShape)
-            .clickable { onClick() },
+            .then(if (onClick != null) Modifier.clickable { onClick() } else Modifier),
         contentAlignment = Alignment.Center
     ) {
         val iconSize = (minOf(width, height) * 0.62f).coerceAtLeast(13.dp)
         DigiVectorIcon(
             type = item.iconType,
-            size = iconSize
+            size = iconSize,
+            tint = if (isCallActive) Color(0xFFFFEB3B) else Color.Unspecified
         )
     }
 }
@@ -1043,14 +1045,20 @@ private fun RoundDialPetView(
     val r = (diameter / 2f).dp
     val fontBase = (diameter * 0.036f).coerceAtLeast(7f)
 
-    // Live clock
-    val clockFormatter = remember(is24h) {
+    // Live clock with 12h AM/PM support
+    val timeFormatter = remember(is24h) {
         SimpleDateFormat(if (is24h) "HH:mm" else "h:mm", Locale.getDefault())
     }
-    var clockText by remember { mutableStateOf("") }
-    LaunchedEffect(clockFormatter) {
+    val amPmFormatter = remember(is24h) {
+        if (is24h) null else SimpleDateFormat("a", Locale.getDefault())
+    }
+    var clockTimeText by remember { mutableStateOf("") }
+    var clockAmPmText by remember { mutableStateOf("") }
+    LaunchedEffect(timeFormatter, amPmFormatter) {
         while (true) {
-            clockText = clockFormatter.format(Date())
+            val now = Date()
+            clockTimeText = timeFormatter.format(now)
+            clockAmPmText = amPmFormatter?.format(now)?.uppercase(Locale.getDefault()) ?: ""
             delay(15_000L)
         }
     }
@@ -1100,13 +1108,38 @@ private fun RoundDialPetView(
 
         // ---- Live Clock (top centre, comfortably under top menu icons) ----
         DialSlot(0.dp, -(r * 0.63f)) {
-            Text(
-                text = clockText,
-                fontSize = (diameter * 0.080f).sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFE0F2F1),
-                fontFamily = FontFamily.Monospace
-            )
+            Box(
+                modifier = Modifier
+                    .background(Color(0x7A030A10), RoundedCornerShape(10.dp))
+                    .border(0.75.dp, Color(0x3380CBC4), RoundedCornerShape(10.dp))
+                    .padding(horizontal = 8.dp, vertical = 2.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.Bottom,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = clockTimeText,
+                        fontSize = (diameter * 0.082f).sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFFE0F2F1),
+                        fontFamily = FontFamily.Monospace,
+                        letterSpacing = 0.5.sp
+                    )
+                    if (clockAmPmText.isNotEmpty()) {
+                        Spacer(modifier = Modifier.width(3.dp))
+                        Text(
+                            text = clockAmPmText,
+                            fontSize = (diameter * 0.040f).sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = Color(0xFF80CBC4),
+                            fontFamily = FontFamily.Monospace,
+                            modifier = Modifier.padding(bottom = 2.dp)
+                        )
+                    }
+                }
+            }
         }
 
         // ---- Quest & Settings utility chips along side boundary ----
@@ -1189,56 +1222,63 @@ private fun RoundDialPetView(
             val xb = r * (ringRadius * kotlin.math.sin(radBottom).toFloat())
             val yb = r * (ringRadius * kotlin.math.cos(radBottom).toFloat())
             val idx = 4 + k
+            val isAttentionLamp = (idx == 7)
             DialSlot(xb, yb) {
                 LcdIconCell(
                     index = idx,
                     item = VPetMenu.entries[idx],
-                    isSelected = selectedMenuIndex == idx,
-                    isCallActive = (idx == 7 && petState.attentionCallActive),
+                    isSelected = if (isAttentionLamp) false else (selectedMenuIndex == idx),
+                    isCallActive = (isAttentionLamp && petState.attentionCallActive),
                     width = iconDiameter,
                     height = iconDiameter,
                     fontSize = displayConfig.lcdIconFontSize,
                     isCircular = true,
-                    onClick = { onSelectIcon(idx) }
+                    onClick = if (isAttentionLamp) null else { { onSelectIcon(idx) } }
                 )
             }
         }
 
         // ---- Name / attribute / weight (upper chord, condensed under clock) ----
         DialSlot(0.dp, -(r * 0.47f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = species.name.take(if (diameter < 220f) 8 else 10),
-                    fontSize = fontBase.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFB9F6CA),
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1
-                )
-                Spacer(modifier = Modifier.width(3.dp))
-                Box(
-                    modifier = Modifier
-                        .background(attrColor.copy(alpha = 0.22f), RoundedCornerShape(3.dp))
-                        .border(0.5.dp, attrColor, RoundedCornerShape(3.dp))
-                        .padding(horizontal = 2.dp, vertical = 0.5.dp)
-                ) {
+            Box(
+                modifier = Modifier
+                    .background(Color(0x66050D12), RoundedCornerShape(4.dp))
+                    .padding(horizontal = 5.dp, vertical = 1.dp)
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = species.attribute.displayName.take(3).uppercase(),
-                        fontSize = (fontBase - 2f).coerceAtLeast(5.5f).sp,
+                        text = species.name.take(if (diameter < 220f) 8 else 10),
+                        fontSize = fontBase.sp,
                         fontWeight = FontWeight.Black,
-                        color = attrColor,
-                        fontFamily = FontFamily.Monospace
+                        color = Color(0xFFB9F6CA),
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(attrColor.copy(alpha = 0.22f), RoundedCornerShape(3.dp))
+                            .border(0.5.dp, attrColor, RoundedCornerShape(3.dp))
+                            .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                    ) {
+                        Text(
+                            text = species.attribute.displayName.take(3).uppercase(),
+                            fontSize = (fontBase - 2f).coerceAtLeast(5.5f).sp,
+                            fontWeight = FontWeight.Black,
+                            color = attrColor,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(3.dp))
+                    Text(
+                        text = "${petState.weight}g",
+                        fontSize = (fontBase - 1f).coerceAtLeast(6.5f).sp,
+                        fontWeight = FontWeight.Bold,
+                        color = Color(0xFFE0E0E0),
+                        fontFamily = FontFamily.Monospace,
+                        maxLines = 1
                     )
                 }
-                Spacer(modifier = Modifier.width(3.dp))
-                Text(
-                    text = "${petState.weight}g",
-                    fontSize = (fontBase - 1f).coerceAtLeast(6.5f).sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFFE0E0E0),
-                    fontFamily = FontFamily.Monospace,
-                    maxLines = 1
-                )
             }
         }
 
@@ -1562,16 +1602,17 @@ private fun ThreeButtonPetView(
         ) {
             for (i in 4..7) {
                 val item = VPetMenu.entries[i]
-                val isCall = (i == 7 && petState.attentionCallActive)
+                val isAttentionLamp = (i == 7)
+                val isCall = (isAttentionLamp && petState.attentionCallActive)
                 LcdIconCell(
                     index = i,
                     item = item,
-                    isSelected = selectedMenuIndex == i,
+                    isSelected = if (isAttentionLamp) false else (selectedMenuIndex == i),
                     isCallActive = isCall,
                     width = displayConfig.lcdIconWidth,
                     height = displayConfig.lcdIconHeight,
                     fontSize = displayConfig.lcdIconFontSize,
-                    onClick = { onSelectIcon(i) }
+                    onClick = if (isAttentionLamp) null else { { onSelectIcon(i) } }
                 )
             }
         }
