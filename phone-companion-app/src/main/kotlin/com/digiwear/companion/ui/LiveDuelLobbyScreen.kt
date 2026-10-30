@@ -1,6 +1,8 @@
 package com.digiwear.companion.ui
 
+import android.net.Uri
 import android.widget.Toast
+import com.digiwear.core.qrcode.QrMatrixGenerator
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -419,6 +421,7 @@ fun LiveDuelLobbyScreen(
     if (showConfigDialog) {
         var tempUrl by remember { mutableStateOf(configuredUrl) }
         var tempKey by remember { mutableStateOf(configuredKey) }
+        var showQrCode by remember { mutableStateOf(false) }
         var testResult by remember { mutableStateOf<String?>(null) }
         var isTesting by remember { mutableStateOf(false) }
 
@@ -467,6 +470,84 @@ fun LiveDuelLobbyScreen(
                             unfocusedTextColor = Color.White
                         )
                     )
+
+                    val inviteLink = "digiwear://relay?url=${Uri.encode(tempUrl.trim())}&key=${Uri.encode(tempKey.trim())}"
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = {
+                                clipboard.setText(AnnotatedString(inviteLink))
+                                Toast.makeText(context, "Copied invite link to clipboard!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, Color(0xFF00E676)),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        ) {
+                            Text("COPY LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val clipText = clipboard.getText()?.text?.trim() ?: ""
+                                val parsed = runCatching {
+                                    if (clipText.startsWith("digiwear://relay", ignoreCase = true)) {
+                                        val uri = Uri.parse(clipText)
+                                        val u = uri.getQueryParameter("url") ?: ""
+                                        val k = uri.getQueryParameter("key") ?: ""
+                                        if (u.isNotBlank()) Pair(u, k) else null
+                                    } else null
+                                }.getOrNull()
+
+                                if (parsed != null) {
+                                    tempUrl = parsed.first
+                                    tempKey = parsed.second
+                                    Toast.makeText(context, "Pasted & loaded invite config!", Toast.LENGTH_SHORT).show()
+                                } else {
+                                    Toast.makeText(context, "Clipboard has no digiwear://relay link", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        ) {
+                            Text("PASTE LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.DigiviceCyan, fontFamily = FontFamily.Monospace)
+                        }
+
+                        OutlinedButton(
+                            onClick = { showQrCode = !showQrCode },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(6.dp),
+                            border = BorderStroke(1.dp, DigiWearPalette.CrestGold),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        ) {
+                            Text(if (showQrCode) "HIDE QR" else "SHOW QR", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.CrestGold, fontFamily = FontFamily.Monospace)
+                        }
+                    }
+
+                    if (showQrCode && tempUrl.isNotBlank()) {
+                        val qrMatrix = remember(tempUrl, tempKey) {
+                            runCatching { QrMatrixGenerator.generateQrMatrix(inviteLink, 25) }.getOrNull()
+                        }
+                        if (qrMatrix != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .background(Color.White, RoundedCornerShape(8.dp))
+                                    .padding(8.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                QrCodeMatrixView(
+                                    matrix = qrMatrix,
+                                    modifier = Modifier.size(130.dp)
+                                )
+                            }
+                        }
+                    }
 
                     testResult?.let {
                         Text(

@@ -1,5 +1,6 @@
 package com.digiwear.companion.ui
 
+import android.net.Uri
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -2111,7 +2112,24 @@ fun BattleHubScreen(
                     scannerStatusError = null
                 },
                 onCodeScanned = { scannedCode ->
-                    if (!isAnimatingBattle) {
+                    if (scannedCode.startsWith("digiwear://relay", ignoreCase = true)) {
+                        try {
+                            val uri = Uri.parse(scannedCode)
+                            val u = uri.getQueryParameter("url") ?: ""
+                            val k = uri.getQueryParameter("key") ?: ""
+                            if (u.isNotBlank()) {
+                                wearableManager.setRelayServerUrl(u)
+                                wearableManager.setRelayServerKey(k)
+                                buzzerManager.playAttentionBeep()
+                                beamStatus = "[CONFIG] Configured Live Relay: $u!"
+                                selectedBattleMode = BattleMode.ONLINE_DUEL_LOBBY
+                                isCameraScannerOpen = false
+                                scannerStatusError = null
+
+                            }
+                        } catch (_: Exception) {}
+                    }
+                    else if (!isAnimatingBattle) {
                         if (selectedBattleMode == BattleMode.WILD_SCAN) {
                             try {
                                 val enc = WildScanEncounterGenerator.generateFromScan(
