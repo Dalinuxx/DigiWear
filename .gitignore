@@ -17,7 +17,9 @@ captures/
 *.class
 *.dm
 *.apk
-!release_bin/*release.apk
+!release_bin/DigiWear-WearOS-release.apk
+!release_bin/DigiWear-Companion-release.apk
+!release_bin/digiwear-aosp-standard-watch-release.apk
 
 # Sensitive Signing Keys & Release Keystores
 signing/

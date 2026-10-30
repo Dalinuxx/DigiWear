@@ -76,6 +76,19 @@ android {
     lint {
         abortOnError = false
     }
+
+    applicationVariants.all {
+        outputs.all {
+            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (output != null) {
+                if (buildType.name == "release") {
+                    output.outputFileName = "DigiWear-Companion-release.apk"
+                } else if (buildType.name == "debug") {
+                    output.outputFileName = "phone-companion-app-debug.apk"
+                }
+            }
+        }
+    }
 }
 
 dependencies {

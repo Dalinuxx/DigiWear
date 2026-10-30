@@ -72,6 +72,19 @@ android {
         disable += "InvalidWearFeatureAttribute"
         abortOnError = false
     }
+
+    applicationVariants.all {
+        outputs.all {
+            val output = this as? com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            if (output != null) {
+                if (buildType.name == "release") {
+                    output.outputFileName = "DigiWear-WearOS-release.apk"
+                } else if (buildType.name == "debug") {
+                    output.outputFileName = "wear-os-app-debug.apk"
+                }
+            }
+        }
+    }
 }
 
 dependencies {
