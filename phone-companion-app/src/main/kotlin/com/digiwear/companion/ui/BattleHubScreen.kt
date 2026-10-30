@@ -199,6 +199,24 @@ fun BattleHubScreen(
         ownMonsterId?.let { PetSpecies.getById(it) }
     }
 
+    val activeFighter = remember(ownMonsterId, ownSpecies, ownVictories, ownEffort, ownSeed) {
+        if (ownSpecies != null && ownMonsterId != null) {
+            BattleFighter(
+                id = "player",
+                speciesId = ownSpecies.id,
+                name = ownSpecies.name,
+                stage = ownSpecies.stage,
+                attribute = ownSpecies.attribute,
+                maxHp = ownSpecies.baseHp,
+                currentHp = ownSpecies.baseHp,
+                basePower = ownSpecies.basePower,
+                victories = ownVictories,
+                effort = ownEffort,
+                battleSeed = ownSeed
+            )
+        } else null
+    }
+
     // Handle NFC Tag or Watch-to-Phone NFC Tap
     LaunchedEffect(ownSpecies) {
         NfcBattleBridge.incomingCodeFlow.collect { scannedCode ->
@@ -521,6 +539,7 @@ fun BattleHubScreen(
                 Triple(BattleMode.NFC_TAP_DUEL, DigiIconType.NFC_WAVE, "NFC DUEL"),
                 Triple(BattleMode.WILD_SCAN, DigiIconType.RADAR_SCAN, "WILD SCAN"),
                 Triple(BattleMode.ACOM_DCOM_WIFICOM, DigiIconType.COMM_ANTENNA, "D-COM / WIFI"),
+                Triple(BattleMode.ONLINE_DUEL_LOBBY, DigiIconType.BEAM_ANTENNA, "LIVE DUEL"),
                 Triple(BattleMode.ADVENTURE, DigiIconType.TROPHY_CROWN, "COLOSSEUM")
             )
             Row(
@@ -1878,6 +1897,28 @@ fun BattleHubScreen(
                                 }
                             }
                         }
+                    }
+
+                    BattleMode.ONLINE_DUEL_LOBBY -> {
+                        LiveDuelLobbyScreen(
+                            wearableManager = wearableManager,
+                            activeFighter = activeFighter,
+                            onLaunchArena = { opponent, _ ->
+                                launchAnimatedBattle(
+                                    CommCodeCodec.encode128(
+                                        monsterId = opponent.speciesId,
+                                        stage = opponent.stage,
+                                        attribute = opponent.attribute,
+                                        basePowerHp = opponent.basePower,
+                                        historicalVictories = opponent.victories,
+                                        trainingEffort = opponent.effort,
+                                        battleRngSeed = opponent.battleSeed
+                                    ),
+                                    BattleMode.ONLINE_DUEL_LOBBY,
+                                    selectedEnvironment
+                                )
+                            }
+                        )
                     }
 
                     BattleMode.ADVENTURE -> {

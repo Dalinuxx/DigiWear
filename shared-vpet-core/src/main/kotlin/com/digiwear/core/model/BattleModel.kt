@@ -35,6 +35,12 @@ enum class BattleMode(
         displayName = "A-Com / D-Com / WiFiCom",
         shortLabel = "A-COM / WIFI",
         description = "DigiROM V1-XXXX / 0nl1ne Transceiver & NFC Phone Relay"
+    ),
+    ONLINE_DUEL_LOBBY(
+        code = "online_duel",
+        displayName = "Live Real-Time Multiplayer Duel Hub",
+        shortLabel = "LIVE DUEL",
+        description = "Encrypted Real-Time WebSocket / LAN Duel Matchmaking"
     );
 
     companion object {

@@ -12,6 +12,7 @@ const { WebSocketServer, WebSocket } = require('ws');
 const PORT = parseInt(process.env.PORT || '8080', 10);
 const HOST = process.env.HOST || '0.0.0.0';
 const SERVER_KEY = process.env.DIGIWEAR_SERVER_KEY ? process.env.DIGIWEAR_SERVER_KEY.trim() : '';
+const RELAY_PATH = (process.env.RELAY_PATH || '').trim();
 const MAX_PAYLOAD_BYTES = 32 * 1024; // 32 KB
 const MAX_CLIENTS_PER_IP = parseInt(process.env.MAX_CLIENTS_PER_IP || '15', 10);
 const PING_INTERVAL_MS = 25000;
@@ -62,6 +63,16 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD_BYTES 
 // Handle HTTP -> WebSocket Upgrade with Security Verification
 server.on('upgrade', (request, socket, head) => {
     const remoteIp = request.headers['x-forwarded-for']?.split(',')[0].trim() || socket.remoteAddress || 'unknown';
+
+    // 0. Secret URL Path check (stealth against automated web crawlers)
+    if (RELAY_PATH.length > 0) {
+        const urlObj = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
+        if (!urlObj.pathname.startsWith(RELAY_PATH)) {
+            socket.write('HTTP/1.1 404 Not Found\r\n\r\n');
+            socket.destroy();
+            return;
+        }
+    }
 
     // 1. Check IP connection rate limit
     const currentIpCount = ipCounts.get(remoteIp) || 0;

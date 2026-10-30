@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -18,6 +20,22 @@ android {
         versionName = "2.8.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        val localProps = Properties().apply {
+            val localPropsFile = rootProject.file("local.properties")
+            if (localPropsFile.exists()) {
+                localPropsFile.inputStream().use { load(it) }
+            }
+        }
+        val relayUrl = System.getenv("DIGIWEAR_RELAY_URL")
+            ?: localProps.getProperty("digiwear.relay.url")
+            ?: "wss://relay.digiwear-placeholder.net:8080"
+        val relayKey = System.getenv("DIGIWEAR_SERVER_KEY")
+            ?: localProps.getProperty("digiwear.relay.key")
+            ?: ""
+
+        buildConfigField("String", "DEFAULT_RELAY_URL", "\"$relayUrl\"")
+        buildConfigField("String", "DEFAULT_RELAY_KEY", "\"$relayKey\"")
 
         // ABI filtering moved to release buildType so debug builds include x86_64 native libraries
     }
@@ -141,6 +159,9 @@ dependencies {
 
     // Android Health Connect Client (Optional Opt-In Fitness Sync)
     implementation("androidx.health.connect:connect-client:1.1.0-alpha11")
+
+    // Real-Time Multiplayer WebSocket & Secure Relay
+    implementation(libs.okhttp)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.test.ext.junit)

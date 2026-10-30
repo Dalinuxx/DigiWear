@@ -67,6 +67,22 @@ class PhoneWearableManager(private val context: Context) {
         prefs.edit().putString("aosp_watch_ip", cleaned).apply()
     }
 
+    fun getRelayServerUrl(): String =
+        prefs.getString("relay_server_url", com.digiwear.companion.BuildConfig.DEFAULT_RELAY_URL)?.trim()
+            ?: com.digiwear.companion.BuildConfig.DEFAULT_RELAY_URL
+
+    fun setRelayServerUrl(url: String) {
+        prefs.edit().putString("relay_server_url", url.trim()).apply()
+    }
+
+    fun getRelayServerKey(): String =
+        prefs.getString("relay_server_key", com.digiwear.companion.BuildConfig.DEFAULT_RELAY_KEY)?.trim()
+            ?: com.digiwear.companion.BuildConfig.DEFAULT_RELAY_KEY
+
+    fun setRelayServerKey(key: String) {
+        prefs.edit().putString("relay_server_key", key.trim()).apply()
+    }
+
     fun getMaskUndiscoveredSpecies(): Boolean =
         prefs.getBoolean("mask_undiscovered_species", true)
 
