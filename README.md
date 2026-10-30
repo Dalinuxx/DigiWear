@@ -2,7 +2,7 @@
 ### The authentic 90s Virtual Pet experience, rebuilt for your smartwatch & phone.
 
 [![Platform](https://img.shields.io/badge/Platform-Wear%20OS%203.0%2B%20%7C%20Android%2013%2B-blue?logo=android&logoColor=white)](https://developer.android.com/wear)
-[![Version](https://img.shields.io/badge/Version-v2.7.0-teal.svg)](RELEASE_NOTES_v2.7.md)
+[![Version](https://img.shields.io/badge/Version-v2.8.0-teal.svg)](RELEASE_NOTES_v2.8.md)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-purple?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Wear%20%2B%20M3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Protocol](https://img.shields.io/badge/Digimon%200nl1ne-100%25%20Compatible-00C853?logo=codersrank&logoColor=white)](https://github.com)

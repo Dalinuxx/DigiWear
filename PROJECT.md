@@ -48,6 +48,7 @@
 | M9 | Visual Campaign & Saga Creator | In-app visual node architect in companion app, 550-monster boss selector, schema validator, wireless beam to watch | M5, M6 | DONE |
 | M10 | Live Real-Time Multiplayer Duel Hub | WebSocket/WebRTC room-based matchmaking lobby for real-time QTE duels | M1, M6 | DEFERRED |
 | M11 | DigiWear v2.7.0 Release & Distribution Pipeline | Adaptive Adventure UI (bezel quest arc, biome weather hazards, expedition pill), 16 starter eggs & egg ID fix, automated syncReleaseBin pipeline | M7, M8, M9 | DONE |
+| M12 | DigiWear v2.8.0 Release & Authentic V-Pet Fidelity | Bundled 1:1 HD Digital World wallpapers & preset carousels, authentic Bandai baseline poop stage mechanics & walking overlay, 12h AM/PM high-contrast clock, passive call signal, watch face text drop shadows | M11 | DONE |
 
 ## Interface Contracts
 

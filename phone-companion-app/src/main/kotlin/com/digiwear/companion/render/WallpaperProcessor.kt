@@ -155,4 +155,12 @@ object WallpaperProcessor {
             null
         }
     }
+
+    fun loadPresetBitmap(context: Context, resId: Int): Bitmap? {
+        return try {
+            BitmapFactory.decodeResource(context.resources, resId)
+        } catch (_: Throwable) {
+            null
+        }
+    }
 }

@@ -48,6 +48,7 @@ import androidx.wear.watchface.complications.data.SmallImageComplicationData
 import androidx.wear.watchface.complications.data.WeightedElementsComplicationData
 import androidx.wear.watchface.style.CurrentUserStyleRepository
 import com.digiwear.core.model.BackgroundTheme
+import com.digiwear.wear.R
 import com.digiwear.core.model.CustomThemeConfig
 import com.digiwear.core.model.LcdPattern
 import com.digiwear.core.model.PetSpecies
@@ -895,7 +896,9 @@ class DigiCanvasRenderer(
                 val wpFile = File(context.filesDir, "custom_wallpaper.png")
                 cachedWallpaperBmp = if (wpFile.exists()) {
                     try { BitmapFactory.decodeFile(wpFile.absolutePath) } catch (_: Throwable) { null }
-                } else null
+                } else {
+                    try { BitmapFactory.decodeResource(context.resources, R.drawable.wp_cyber_metropolis) } catch (_: Throwable) { null }
+                }
                 wallpaperNeedsReload = false
             }
             val wp = cachedWallpaperBmp

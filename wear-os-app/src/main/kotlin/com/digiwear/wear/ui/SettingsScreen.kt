@@ -37,13 +37,20 @@ import androidx.wear.compose.foundation.lazy.rememberScalingLazyListState
 import androidx.wear.compose.material.Button
 import androidx.wear.compose.material.ButtonDefaults
 import androidx.wear.compose.material.Text
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import java.io.File
+import java.io.FileOutputStream
 import com.digiwear.core.model.BackgroundTheme
 import com.digiwear.core.model.PetSpecies
 import com.digiwear.core.model.SoundpackProfile
+import com.digiwear.wear.R
 import com.digiwear.wear.data.PetRepository
 import com.digiwear.wear.haptic.HapticManager
 import com.digiwear.wear.input.HardwareInputManager
 import com.digiwear.wear.input.VPetButton
+import com.digiwear.wear.model.WallpaperPresets
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -295,6 +302,74 @@ fun SettingsScreen(
                     colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF263238))
                 ) {
                     DigiVectorIcon(type = DigiIconType.ARROW_RIGHT, size = 12.dp, tint = Color.White)
+                }
+            }
+        }
+
+        if (currentTheme == BackgroundTheme.CUSTOM_WALLPAPER) {
+            item {
+                val currentPresetId = remember {
+                    val prefs = context.getSharedPreferences("digiwear_wallpaper_prefs", Context.MODE_PRIVATE)
+                    mutableStateOf(prefs.getString("active_preset_id", WallpaperPresets.ALL[0].id) ?: WallpaperPresets.ALL[0].id)
+                }
+                val activePresetIndex = WallpaperPresets.ALL.indexOfFirst { it.id == currentPresetId.value }.coerceAtLeast(0)
+                val activePreset = WallpaperPresets.ALL[activePresetIndex]
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Button(
+                        onClick = {
+                            val prevIdx = if (activePresetIndex > 0) activePresetIndex - 1 else WallpaperPresets.ALL.size - 1
+                            val chosen = WallpaperPresets.ALL[prevIdx]
+                            currentPresetId.value = chosen.id
+                            applyWatchPresetWallpaper(context, chosen.resId, chosen.id, repository)
+                            if (isVibrationEnabled) hapticManager.playStepMilestone()
+                        },
+                        modifier = Modifier.size(28.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1E2830))
+                    ) {
+                        DigiVectorIcon(type = DigiIconType.ARROW_LEFT, size = 10.dp, tint = Color.White)
+                    }
+
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier.weight(1f).padding(horizontal = 2.dp)
+                    ) {
+                        Text(
+                            text = "PRESET WALLPAPER",
+                            fontSize = 7.sp,
+                            fontFamily = FontFamily.Monospace,
+                            color = Color(0xFF80D8FF),
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = activePreset.title,
+                            fontSize = 8.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFFFD54F),
+                            textAlign = TextAlign.Center,
+                            maxLines = 1
+                        )
+                    }
+
+                    Button(
+                        onClick = {
+                            val nextIdx = (activePresetIndex + 1) % WallpaperPresets.ALL.size
+                            val chosen = WallpaperPresets.ALL[nextIdx]
+                            currentPresetId.value = chosen.id
+                            applyWatchPresetWallpaper(context, chosen.resId, chosen.id, repository)
+                            if (isVibrationEnabled) hapticManager.playStepMilestone()
+                        },
+                        modifier = Modifier.size(28.dp),
+                        colors = ButtonDefaults.buttonColors(backgroundColor = Color(0xFF1E2830))
+                    ) {
+                        DigiVectorIcon(type = DigiIconType.ARROW_RIGHT, size = 10.dp, tint = Color.White)
+                    }
                 }
             }
         }
@@ -1358,4 +1433,21 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+private fun applyWatchPresetWallpaper(context: Context, resId: Int, presetId: String, repository: PetRepository) {
+    try {
+        val bmp = BitmapFactory.decodeResource(context.resources, resId)
+        if (bmp != null) {
+            val file = File(context.filesDir, "custom_wallpaper.png")
+            FileOutputStream(file).use { out ->
+                bmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            }
+            context.getSharedPreferences("digiwear_wallpaper_prefs", Context.MODE_PRIVATE)
+                .edit()
+                .putString("active_preset_id", presetId)
+                .apply()
+            repository.notifyWallpaperUpdated()
+        }
+    } catch (_: Throwable) {}
 }

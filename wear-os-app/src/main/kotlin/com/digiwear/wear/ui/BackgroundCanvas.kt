@@ -19,6 +19,7 @@ import androidx.compose.ui.unit.IntSize
 import com.digiwear.core.model.BackgroundTheme
 import com.digiwear.core.model.CustomThemeConfig
 import com.digiwear.core.model.LcdPattern
+import com.digiwear.wear.R
 import java.io.File
 
 /**
@@ -53,7 +54,11 @@ fun BackgroundCanvas(
                 null
             }
         } else {
-            null
+            try {
+                BitmapFactory.decodeResource(context.resources, R.drawable.wp_cyber_metropolis)?.asImageBitmap()
+            } catch (_: Exception) {
+                null
+            }
         }
     }
 

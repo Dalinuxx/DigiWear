@@ -67,10 +67,17 @@ import androidx.compose.ui.graphics.PointMode
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import com.digiwear.companion.BuildConfig
 import com.digiwear.companion.data.PhoneDatabase
 import com.digiwear.companion.data.SyncedPetEntity
 import com.digiwear.companion.datalayer.PhoneWearableManager
+import com.digiwear.companion.model.WallpaperPresets
 import com.digiwear.companion.render.SpriteCanvasRenderer
 import com.digiwear.companion.render.WallpaperProcessor
 import com.digiwear.core.engine.PetSimulationEngine
@@ -908,6 +915,93 @@ fun SettingsScreen(
                             }
                         } else {
                             // === 2. PHOTO WALLPAPER ===
+                            Text(
+                                text = "DIGITAL WORLD PRESETS",
+                                fontSize = 10.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF80D8FF)
+                            )
+                            Spacer(modifier = Modifier.height(6.dp))
+
+                            LazyRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                items(WallpaperPresets.ALL) { preset ->
+                                    Card(
+                                        modifier = Modifier
+                                            .width(135.dp)
+                                            .clickable {
+                                                scope.launch {
+                                                    val bmp = WallpaperProcessor.loadPresetBitmap(context, preset.resId)
+                                                    if (bmp != null) {
+                                                        WallpaperProcessor.saveToInternalStorage(context, bmp)
+                                                        customWallpaperBitmap = bmp
+                                                        selectedTheme = BackgroundTheme.CUSTOM_WALLPAPER
+                                                        val pngBytes = WallpaperProcessor.compressToPngBytes(bmp)
+                                                        val sentAsset = wearableManager.sendWallpaperToWatch(pngBytes)
+                                                        val sentSettings = wearableManager.sendSettingsToWatch(
+                                                            themeId = CustomThemeConfig.WALLPAPER_THEME_ID,
+                                                            vibrationEnabled = vibrationEnabled,
+                                                            threeButtonMode = threeButtonMode,
+                                                            buttonPlacement = buttonPlacement,
+                                                            pendulumShakeMode = pendulumShakeMode,
+                                                            soundEnabled = soundEnabled,
+                                                            nfcBridgeMode = nfcBridgeMode,
+                                                            displayShapeOverride = displayShapeOverride,
+                                                            dailyStepGoal = dailyStepGoal,
+                                                            contrastLevel = contrastLevel,
+                                                            sleepSchedule = sleepSchedule,
+                                                            ambientStyle = ambientStyle,
+                                                            hazardAlertsEnabled = hazardAlertsEnabled,
+                                                            clockFormat24h = clockFormat24h,
+                                                            lifespanCanonicalEnabled = lifespanCanonicalEnabled,
+                                                            combatInjuriesEnabled = combatInjuriesEnabled,
+                                                            soundpack = soundpack.id,
+                                                            maskUndiscoveredSpecies = maskUndiscoveredSpecies
+                                                        )
+                                                        syncStatus = if (sentAsset || sentSettings) "Preset '${preset.title}' beamed to Watch!" else "Preset applied locally."
+                                                    }
+                                                }
+                                            },
+                                        shape = RoundedCornerShape(8.dp),
+                                        colors = CardDefaults.cardColors(containerColor = Color(0xFF142028)),
+                                        border = BorderStroke(1.dp, Color(0xFF00E5FF).copy(alpha = 0.5f))
+                                    ) {
+                                        Column(modifier = Modifier.padding(6.dp)) {
+                                            Image(
+                                                painter = painterResource(id = preset.resId),
+                                                contentDescription = preset.title,
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .height(75.dp)
+                                                    .clip(RoundedCornerShape(6.dp)),
+                                                contentScale = ContentScale.Crop
+                                            )
+                                            Spacer(modifier = Modifier.height(4.dp))
+                                            Text(
+                                                text = preset.title,
+                                                fontSize = 9.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = Color.White,
+                                                maxLines = 1
+                                            )
+                                            Text(
+                                                text = preset.subtitle,
+                                                fontSize = 7.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                color = Color.LightGray,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(10.dp))
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.Center,
