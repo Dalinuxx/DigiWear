@@ -118,9 +118,10 @@ fun TrainingMinigameView(
     var phase by remember { mutableStateOf(TrainingPhase.COUNTDOWN) }
     var countdownValue by remember { mutableIntStateOf(3) }
 
-    // QTE Power Gauge State
+    // QTE Power Gauge State (Dynamic randomized sweet spot)
     var punchRegistered by remember { mutableStateOf(false) }
     var punchGauge by remember { mutableFloatStateOf(0f) }
+    val targetCenter by remember { mutableFloatStateOf(Random.nextFloat() * 0.60f + 0.20f) }
 
     // Pendulum Shake State
     var shakeCount by remember { mutableIntStateOf(0) }
@@ -185,7 +186,7 @@ fun TrainingMinigameView(
         if (!punchRegistered) {
             punchRegistered = true
             punchGauge = gaugeVal
-            val res = TrainingEngine.evaluateQtePunch(gaugeVal)
+            val res = TrainingEngine.evaluateQtePunch(gaugeVal, targetCenter)
             executeBarrage(res)
         }
     }
@@ -656,21 +657,22 @@ fun TrainingMinigameView(
 
                     TrainingPhase.INPUT -> {
                         if (!isPendulumShakeMode) {
-                            // --- RETRO OSCILLATING POWER GAUGE (Bandai Ver. 2/20th) ---
+                            // --- RETRO OSCILLATING POWER GAUGE (Dynamic Sweet Spot) ---
+                            val targetPct = (targetCenter * 100).toInt()
                             Row(
                                 modifier = Modifier.fillMaxWidth(0.76f),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Text(
-                                    text = "PUNCH POWER",
+                                    text = "TARGET: ${targetPct}%",
                                     fontSize = 7.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF80D8FF),
                                     fontFamily = FontFamily.Monospace
                                 )
                                 Text(
-                                    text = "SWEET SPOT 75-100%",
+                                    text = "SWEET SPOT [±9%]",
                                     fontSize = 6.5.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676),
@@ -680,7 +682,7 @@ fun TrainingMinigameView(
 
                             Spacer(modifier = Modifier.height(2.dp))
 
-                            // Dynamic Oscillating Meter Bar (0 layout passes)
+                            // Dynamic Oscillating Meter Bar with Randomized Target Sweet Spot (0 layout passes)
                             Box(
                                 modifier = Modifier
                                     .fillMaxWidth(0.76f)
@@ -688,34 +690,65 @@ fun TrainingMinigameView(
                                     .background(if (isLcdTheme) Color(0x44142012) else Color(0xFF263238), RoundedCornerShape(5.dp))
                                     .border(1.dp, if (isLcdTheme) Color(0xFF142012) else Color.White, RoundedCornerShape(5.dp))
                             ) {
-                                // Sweet spot highlight marker (75% to 100%)
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.25f)
-                                        .fillMaxHeight()
-                                        .align(Alignment.CenterEnd)
-                                        .background(
-                                            if (isLcdTheme) Color(0x66142012) else Color(0x6600E676),
-                                            RoundedCornerShape(topEnd = 5.dp, bottomEnd = 5.dp)
-                                        )
-                                )
-
                                 // Sweeping Indicator Bar
                                 Box(
                                     modifier = Modifier
                                         .fillMaxSize()
                                         .drawWithContent {
+                                            val r = 5.dp.toPx()
                                             val gauge = animatedGaugeState?.value ?: 0f
-                                            val barColor = when {
-                                                gauge >= 0.75f -> if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676)
-                                                gauge >= 0.40f -> if (isLcdTheme) Color(0xFF2E462C) else Color(0xFFFFD54F)
+
+                                            // 1. Draw outer good hit tolerance band (amber/lcd tint)
+                                            val goodStart = (targetCenter - 0.20f).coerceAtLeast(0f) * size.width
+                                            val goodEnd = (targetCenter + 0.20f).coerceAtMost(1f) * size.width
+                                            drawRoundRect(
+                                                color = if (isLcdTheme) Color(0x28142012) else Color(0x33FFD54F),
+                                                topLeft = Offset(goodStart, 0f),
+                                                size = Size((goodEnd - goodStart).coerceAtLeast(0f), size.height),
+                                                cornerRadius = CornerRadius(r, r)
+                                            )
+
+                                            // 2. Draw inner sweet spot highlight (neon green/lcd punch)
+                                            val sweetStart = (targetCenter - 0.09f).coerceAtLeast(0f) * size.width
+                                            val sweetEnd = (targetCenter + 0.09f).coerceAtMost(1f) * size.width
+                                            drawRoundRect(
+                                                color = if (isLcdTheme) Color(0x66142012) else Color(0x6600E676),
+                                                topLeft = Offset(sweetStart, 0f),
+                                                size = Size((sweetEnd - sweetStart).coerceAtLeast(0f), size.height),
+                                                cornerRadius = CornerRadius(r, r)
+                                            )
+
+                                            // 3. Draw center target notch
+                                            val centerX = targetCenter * size.width
+                                            drawLine(
+                                                color = if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676),
+                                                start = Offset(centerX, 0f),
+                                                end = Offset(centerX, size.height),
+                                                strokeWidth = 1.5.dp.toPx()
+                                            )
+
+                                            // 4. Draw power trail behind needle
+                                            val needleX = gauge.coerceIn(0f, 1f) * size.width
+                                            drawRoundRect(
+                                                color = if (isLcdTheme) Color(0x33142012) else Color(0x2200E5FF),
+                                                topLeft = Offset(0f, 0f),
+                                                size = Size(needleX, size.height),
+                                                cornerRadius = CornerRadius(r, r)
+                                            )
+
+                                            // 5. Draw active needle cursor with dynamic color
+                                            val delta = kotlin.math.abs(gauge - targetCenter)
+                                            val needleColor = when {
+                                                delta <= 0.09f -> if (isLcdTheme) Color(0xFF142012) else Color(0xFF00E676)
+                                                delta <= 0.20f -> if (isLcdTheme) Color(0xFF2E462C) else Color(0xFFFFD54F)
                                                 else -> if (isLcdTheme) Color(0xFF556644) else Color(0xFFFF5252)
                                             }
-                                            val r = 5.dp.toPx()
+                                            val needleWidth = 3.5.dp.toPx()
                                             drawRoundRect(
-                                                color = barColor,
-                                                size = Size(size.width * gauge.coerceIn(0f, 1f), size.height),
-                                                cornerRadius = CornerRadius(r, r)
+                                                color = needleColor,
+                                                topLeft = Offset((needleX - needleWidth / 2f).coerceIn(0f, (size.width - needleWidth).coerceAtLeast(0f)), 0f),
+                                                size = Size(needleWidth, size.height),
+                                                cornerRadius = CornerRadius(1.5.dp.toPx(), 1.5.dp.toPx())
                                             )
                                         }
                                 )

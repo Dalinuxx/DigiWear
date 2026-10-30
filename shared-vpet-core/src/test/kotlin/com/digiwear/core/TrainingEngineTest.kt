@@ -63,4 +63,25 @@ class TrainingEngineTest {
         assertFalse(miss.won)
         assertFalse(miss.isMegaHit)
     }
+
+    @Test
+    fun testDynamicTargetCenterQtePunchEvaluation() {
+        val target = 0.50f
+        // Direct hit inside sweet spot (±0.09f)
+        val mega = TrainingEngine.evaluateQtePunch(0.53f, targetCenter = target)
+        assertTrue(mega.won)
+        assertTrue(mega.isMegaHit)
+        assertEquals(5, mega.hits)
+
+        // Near hit inside good tolerance (±0.20f)
+        val good = TrainingEngine.evaluateQtePunch(0.65f, targetCenter = target)
+        assertTrue(good.won)
+        assertFalse(good.isMegaHit)
+        assertEquals(3, good.hits)
+
+        // Far miss (>0.20f)
+        val miss = TrainingEngine.evaluateQtePunch(0.85f, targetCenter = target)
+        assertFalse(miss.won)
+        assertFalse(miss.isMegaHit)
+    }
 }

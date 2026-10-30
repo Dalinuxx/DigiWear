@@ -27,6 +27,28 @@ class TrainingMinigameLogicTest {
     }
 
     @Test
+    fun testDynamicQteSweetSpotHits() {
+        val target = 0.35f
+        val mega = TrainingEngine.evaluateQtePunch(0.38f, targetCenter = target)
+        assertTrue(mega.won)
+        assertTrue(mega.isMegaHit)
+        assertEquals(5, mega.hits)
+
+        val good = TrainingEngine.evaluateQtePunch(0.50f, targetCenter = target)
+        assertTrue(good.won)
+        assertFalse(good.isMegaHit)
+        assertEquals(3, good.hits)
+
+        val nearMiss = TrainingEngine.evaluateQtePunch(0.10f, targetCenter = target)
+        assertFalse(nearMiss.won)
+        assertEquals(1, nearMiss.hits)
+
+        val farMiss = TrainingEngine.evaluateQtePunch(0.90f, targetCenter = target)
+        assertFalse(farMiss.won)
+        assertEquals(0, farMiss.hits)
+    }
+
+    @Test
     fun testPendulumShakeHits() {
         // Vaccine optimal is 5..7
         val vaccineMega = TrainingEngine.evaluateShakeTraining(ElementalAttribute.VACCINE, 6)

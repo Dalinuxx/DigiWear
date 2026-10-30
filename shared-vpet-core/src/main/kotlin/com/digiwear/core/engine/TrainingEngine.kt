@@ -68,9 +68,48 @@ object TrainingEngine {
     }
 
     /**
-     * Evaluates timing gauge punch in classic QTE mode.
+     * Evaluates timing gauge punch in QTE mode.
+     * When [targetCenter] is specified (e.g. dynamic randomized sweet spot),
+     * evaluates accuracy distance between [gauge] and [targetCenter].
+     * If [targetCenter] is null (legacy fixed mode), evaluates against the classic >= 0.75f range.
      */
-    fun evaluateQtePunch(gauge: Float): TrainingResult {
+    fun evaluateQtePunch(
+        gauge: Float,
+        targetCenter: Float? = null,
+        sweetSpotTolerance: Float = 0.09f,
+        goodHitTolerance: Float = 0.20f
+    ): TrainingResult {
+        if (targetCenter != null) {
+            val delta = kotlin.math.abs(gauge - targetCenter)
+            return when {
+                delta <= sweetSpotTolerance -> TrainingResult(
+                    won = true,
+                    isMegaHit = true,
+                    feedbackMessage = "MEGA HIT! 5/5 SMASHED! (+1 Effort)",
+                    hits = 5
+                )
+                delta <= goodHitTolerance -> TrainingResult(
+                    won = true,
+                    isMegaHit = false,
+                    feedbackMessage = "GOOD HIT! 3/5 SMASHED! (+1 Effort)",
+                    hits = 3
+                )
+                delta <= goodHitTolerance + 0.15f -> TrainingResult(
+                    won = false,
+                    isMegaHit = false,
+                    feedbackMessage = "MISS! 1/5 Hit (Try Again)",
+                    hits = 1
+                )
+                else -> TrainingResult(
+                    won = false,
+                    isMegaHit = false,
+                    feedbackMessage = "MISS! 0/5 Hit (Try Again)",
+                    hits = 0
+                )
+            }
+        }
+
+        // Legacy / default fallback (Classic fixed 75%-100% end meter)
         return when {
             gauge >= 0.75f -> TrainingResult(
                 won = true,
