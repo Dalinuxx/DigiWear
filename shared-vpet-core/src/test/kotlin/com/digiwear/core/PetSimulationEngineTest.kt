@@ -5,6 +5,7 @@ import com.digiwear.core.model.PetStage
 import com.digiwear.core.model.PetState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.time.ZoneOffset
@@ -350,5 +351,27 @@ class PetSimulationEngineTest {
         assertEquals(180, afterBattleWin.vitalPoints)
         val (afterBattleLoss, _) = PetSimulationEngine.processBattleOutcome(afterBattleWin, won = false)
         assertEquals(190, afterBattleLoss.vitalPoints)
+    }
+
+    @Test
+    fun testLightsOutClearsAndSuppressesAllAttentionCalls() {
+        val callingState = PetState(
+            speciesId = 201,
+            hunger = 0,
+            strength = 0,
+            attentionCallActive = true,
+            attentionCallTimestampUtc = 1000L,
+            lightsOff = false
+        )
+        // Turning lights out must immediately extinguish active call signal
+        val afterLightsOut = PetSimulationEngine.toggleLights(callingState, 1010L)
+        assertTrue(afterLightsOut.lightsOff)
+        assertFalse(afterLightsOut.attentionCallActive)
+        assertNull(afterLightsOut.attentionCallTimestampUtc)
+
+        // Further decay while lights are out must never trigger attention call
+        val decayedInDark = PetSimulationEngine.processDelta(afterLightsOut, 1010L + 3600L, ZoneOffset.UTC)
+        assertFalse(decayedInDark.attentionCallActive)
+        assertNull(decayedInDark.attentionCallTimestampUtc)
     }
 }

@@ -889,6 +889,13 @@ class PetRepository private constructor(context: Context) {
             val current = processDecayLocked(currentUtc)
             val updated = PetSimulationEngine.toggleLights(current, currentUtc)
             savePetState(updated)
+            if (updated.lightsOff) {
+                try {
+                    val nm = appContext.getSystemService(android.content.Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager
+                    nm?.cancel(1001) // NOTIFICATION_ID_ATTENTION
+                    prefs.edit().remove("last_notified_call_utc").apply()
+                } catch (_: Exception) {}
+            }
             updated
         }
     }

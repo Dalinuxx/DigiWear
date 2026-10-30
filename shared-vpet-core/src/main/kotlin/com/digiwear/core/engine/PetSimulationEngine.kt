@@ -162,8 +162,13 @@ object PetSimulationEngine {
         }
 
         // Attention Call logic:
-        // Triggered by: empty hunger/strength meter when awake, or unextinguished lights during sleep window
-        val needsAttention = (!inSleepWindow && (currentHunger == 0 || currentStrength == 0)) || (inSleepWindow && !effectiveLightsOff)
+        // When lights are off, pet is resting in the dark -> attention call must never trigger.
+        // When lights are on: triggers if awake with empty hunger/strength, or during sleep window requesting lights out.
+        val needsAttention = if (effectiveLightsOff) {
+            false
+        } else {
+            (!inSleepWindow && (currentHunger == 0 || currentStrength == 0)) || inSleepWindow
+        }
 
         var callActive = currentState.attentionCallActive
         var callTimestamp = currentState.attentionCallTimestampUtc
@@ -356,6 +361,8 @@ object PetSimulationEngine {
         val newLightsOff = !state.lightsOff
         val updated = state.copy(
             lightsOff = newLightsOff,
+            attentionCallActive = if (newLightsOff) false else state.attentionCallActive,
+            attentionCallTimestampUtc = if (newLightsOff) null else state.attentionCallTimestampUtc,
             lastProcessedTimestampUtc = currentTimestampUtc
         )
         return resolveAttentionCall(updated, currentTimestampUtc)
@@ -392,8 +399,19 @@ object PetSimulationEngine {
     }
 
     private fun resolveAttentionCall(state: PetState, currentTimestampUtc: Long): PetState {
+        if (state.lightsOff) {
+            return if (state.attentionCallActive) {
+                state.copy(
+                    attentionCallActive = false,
+                    attentionCallTimestampUtc = null,
+                    lastProcessedTimestampUtc = currentTimestampUtc
+                )
+            } else {
+                state
+            }
+        }
         val inSleep = state.isSleeping
-        val needsAttention = (!inSleep && (state.hunger == 0 || state.strength == 0)) || (inSleep && !state.lightsOff)
+        val needsAttention = (!inSleep && (state.hunger == 0 || state.strength == 0)) || inSleep
 
         return if (!needsAttention && state.attentionCallActive) {
             state.copy(

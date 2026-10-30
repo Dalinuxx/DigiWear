@@ -94,6 +94,9 @@ class PetDecayWorkerTest {
 
         val attentionState = healthyState.copy(attentionCallActive = true)
         assertTrue("Active attention call must trigger distress", PetDecayWorker.evaluateDistress(attentionState))
+
+        val lightsOffDistress = starvingState.copy(lightsOff = true)
+        assertFalse("Lights off must suppress distress alert", PetDecayWorker.evaluateDistress(lightsOffDistress))
     }
 
     @Test

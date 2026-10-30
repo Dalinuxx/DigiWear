@@ -181,9 +181,9 @@ fun MainPetScreen(
         }
     }
 
-    // Play haptic & buzzer alert if attention call active
-    LaunchedEffect(petState.attentionCallActive) {
-        if (petState.attentionCallActive) {
+    // Play haptic & buzzer alert if attention call active and lights are on
+    LaunchedEffect(petState.attentionCallActive, petState.lightsOff) {
+        if (petState.attentionCallActive && !petState.lightsOff) {
             hapticManager.playAttentionAlert()
             buzzerManager.playAttentionBeep()
         }
@@ -288,7 +288,7 @@ fun MainPetScreen(
             }
 
             VPetMenu.ATTENTION -> {
-                if (petState.attentionCallActive) {
+                if (petState.attentionCallActive && !petState.lightsOff) {
                     val needReason = when {
                         petState.hunger == 0 -> {
                             selectedMenuIndex = 1 // Auto-select FEED
@@ -1228,7 +1228,7 @@ private fun RoundDialPetView(
                     index = idx,
                     item = VPetMenu.entries[idx],
                     isSelected = if (isAttentionLamp) false else (selectedMenuIndex == idx),
-                    isCallActive = (isAttentionLamp && petState.attentionCallActive),
+                    isCallActive = (isAttentionLamp && petState.attentionCallActive && !petState.lightsOff),
                     width = iconDiameter,
                     height = iconDiameter,
                     fontSize = displayConfig.lcdIconFontSize,
@@ -1342,7 +1342,7 @@ private fun RoundDialPetView(
                 val promptText = if (selectedMenuIndex != null) {
                     "[ ${VPetMenu.entries[selectedMenuIndex].label} ]"
                 } else actionFeedback ?: when {
-                    petState.attentionCallActive -> "! CALL SIGNAL !"
+                    petState.attentionCallActive && !petState.lightsOff -> "! CALL SIGNAL !"
                     petState.isSleeping -> "ZZZ... SLEEPING"
                     else -> null
                 }
@@ -1351,7 +1351,7 @@ private fun RoundDialPetView(
                     Box(
                         modifier = Modifier
                             .background(
-                                if (petState.attentionCallActive && selectedMenuIndex == null) Color(0xCCD50000) else Color(0x66091016),
+                                if (petState.attentionCallActive && !petState.lightsOff && selectedMenuIndex == null) Color(0xCCD50000) else Color(0x66091016),
                                 RoundedCornerShape(4.dp)
                             )
                             .padding(horizontal = 4.dp, vertical = 0.5.dp)
@@ -1602,7 +1602,7 @@ private fun ThreeButtonPetView(
             for (i in 4..7) {
                 val item = VPetMenu.entries[i]
                 val isAttentionLamp = (i == 7)
-                val isCall = (isAttentionLamp && petState.attentionCallActive)
+                val isCall = (isAttentionLamp && petState.attentionCallActive && !petState.lightsOff)
                 LcdIconCell(
                     index = i,
                     item = item,
@@ -1770,7 +1770,7 @@ private fun ThreeButtonPetView(
                         }
                     }
 
-                    if (petState.attentionCallActive) {
+                    if (petState.attentionCallActive && !petState.lightsOff) {
                         Box(
                             modifier = Modifier
                                 .background(Color(0xCCD50000), RoundedCornerShape(3.dp))
@@ -1990,8 +1990,8 @@ fun AmbientPetScreen(
 
             val statusLabel = when {
                 petState.isDeceased -> "[RIP]"
+                petState.isSleeping || petState.lightsOff -> "ZZZ"
                 petState.attentionCallActive -> "[CALL]"
-                petState.isSleeping -> "ZZZ"
                 ambientStyle == "DIMMED_LCD" -> "H:${petState.hunger}/4 S:${petState.strength}/4"
                 else -> "OK"
             }

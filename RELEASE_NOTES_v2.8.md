@@ -23,6 +23,7 @@
 ### 🚨 Authentic Passive Call Signal Distress Indicator
 - **Decoupled Distress Lamp**: Icon 7 is decoupled from physical [A] button cycling and touch focus, preventing accidental manual triggering.
 - **Passive Attention Alert**: Functions authentically as a distress lamp that illuminates when the pet requires care (hunger, injury, bedtime, neglect) and auto-clears upon fulfilling needs.
+- **Lights-Out Call Signal Suppression**: Turning lights off immediately extinguishes active call signals and cancels attention notifications; background decay and distress workers strictly suppress calls, buzzers, and vibration alerts while lights are out or partner is resting.
 
 ### 👆 Watch Face Gesture Optimization & Documentation
 - **Tuned Double-Tap Window**: Relaxed double-tap threshold from 380ms to 500ms for easier app launching from the watch face.

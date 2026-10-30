@@ -350,7 +350,7 @@ class PetDecayWorker(
          * Evaluates whether the pet state requires an attention call distress signal.
          */
         fun evaluateDistress(state: PetState): Boolean {
-            if (state.isDeceased || state.isFrozen) return false
+            if (state.isDeceased || state.isFrozen || state.lightsOff || (state.isSleeping && state.lightsOff)) return false
             return state.attentionCallActive ||
                     state.hunger == 0 ||
                     state.wasteCount >= 4 ||

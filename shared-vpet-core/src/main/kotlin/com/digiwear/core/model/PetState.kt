@@ -49,5 +49,5 @@ data class PetState(
         get() = strength == 0
 
     val isDistressed: Boolean
-        get() = attentionCallActive || isInjured || wasteCount >= 4
+        get() = !lightsOff && !isSleeping && (attentionCallActive || isInjured || wasteCount >= 4)
 }

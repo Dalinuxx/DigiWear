@@ -752,8 +752,8 @@ class DigiCanvasRenderer(
         textPaint.textSize = w * 0.055f
         val statusText = when {
             petState.isDeceased -> "[RIP]"
+            petState.isSleeping || petState.lightsOff -> "ZZZ"
             petState.attentionCallActive -> "[CALL]"
-            petState.isSleeping -> "ZZZ"
             else -> "H:${petState.hunger}/4  S:${petState.strength}/4"
         }
         canvas.drawText(statusText, centerX, centerY + h * 0.28f, textPaint)
