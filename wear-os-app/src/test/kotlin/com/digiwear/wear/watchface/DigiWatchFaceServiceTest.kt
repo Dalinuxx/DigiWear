@@ -50,13 +50,13 @@ class DigiWatchFaceServiceTest {
 
     @Test
     fun testDoubleTapThresholdWindow() {
-        val threshold = 380L
+        val threshold = 500L
         val t0 = 1000L
-        val tDoubleTap = 1200L // 200ms delta <= 380ms -> valid double tap
-        val tSingleTap = 1500L // 500ms delta > 380ms -> two separate single taps
+        val tDoubleTap = 1300L // 300ms delta <= 500ms -> valid double tap
+        val tSingleTap = 1600L // 600ms delta > 500ms -> two separate single taps
 
-        assertTrue("Tap within 380ms must be recognized as double tap", (tDoubleTap - t0) < threshold)
-        assertFalse("Tap after 380ms must be recognized as separate single tap", (tSingleTap - t0) < threshold)
+        assertTrue("Tap within 500ms must be recognized as double tap", (tDoubleTap - t0) < threshold)
+        assertFalse("Tap after 500ms must be recognized as separate single tap", (tSingleTap - t0) < threshold)
     }
 
     @Test

@@ -27,6 +27,14 @@ DigiWear brings the full 1997 classic virtual pet experience to modern smartwatc
 - 🚶 **Step-Powered Adventure Sagas**: 114 sectors across 5 storyline sagas where your real-world walking steps unlock bosses, rare eggs, and crests.
 - 📱 **Direct Wireless Sideloading**: Update your watch app straight from the phone companion app over Wi-Fi—no PC or terminal needed!
 
+### ⌚ Watch Face Touch Controls & Gestures
+
+| Gesture | Action |
+|---|---|
+| **Double Tap** | **Launch DigiWear App** (`MainActivity`) directly from your watch face into full care, training, and adventure modes. |
+| **Single Tap** | Triggers partner dual-hop joy bounce emote, floating heart, and authentic attention chime. |
+| **Complication Tap** | Launches assigned Wear OS complication provider (Heart Rate, Steps, Weather, Battery). |
+
 ---
 
 ## 🧬 Evolution & DNA Jogress Guide (All 550 Species)
@@ -231,6 +239,7 @@ See the full [v2.7.0 Release Notes](RELEASE_NOTES_v2.7.md) for detailed technica
 * **Calorie-Based Evolution Growth Acceleration**: Physical workouts convert active calories burned into real partner growth (+15m evolution progression per 50 kcal burned) with optional Health Connect sync.
 * **In-App Visual Saga Creator & Architect**: Design custom adventure sagas, pick environmental hazards, select boss encounters from all 550 monsters, and beam them to your watch over Wi-Fi.
 * **Adaptive Adventure Watch Face & Weather Hazards**: Ambient particle weather engine (dust storms, blizzard flakes, digital rain, solar flares) and a 360° radial bezel quest arc with pulsing boss ready beacon.
+* **Watch Face Touch Gestures**: Double-tap anywhere to instantly launch the full DigiWear App; single-tap for partner joy bounce emote & chime.
 * **16 Canonical Starter Digi-Eggs & Fixed Egg IDs**: Complete 16 starter eggs with authentic origins and fixed egg selection IDs (`#1101..#1113`).
 * **100% Hardware-Independent & Optional**: All fitness features, tiles, and Health Connect sync operate with seamless no-sensor fallbacks, ensuring complete playability on any watch model.
 * **Streamlined Release Pipeline**: Pruned generic duplicate APKs and introduced automated `syncReleaseBin` task for lean, battery-efficient distribution.

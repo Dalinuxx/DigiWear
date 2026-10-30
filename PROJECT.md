@@ -32,6 +32,7 @@
 | 15 | Multi-Module Test Infrastructure | testOptions.unitTests.isReturnDefaultValues = true and test suites in :wear-os-app and :phone-companion-app | M4 | R3 Survey |
 | 16 | Full Test Suite 100% Green | Verification of all unit and integration tests across :shared-vpet-core, :wear-os-app, :phone-companion-app | M4 | Acceptance Criteria |
 | 17 | Wireless ADB Watch Sideloading | Direct phone-to-watch installation over Wi-Fi without PC, RSA key generation, live terminal logs | M5 | User Request |
+| 18 | Watch Face Double-Tap App Launch & Gestures | Double-tap (500ms window) opens MainActivity; single-tap triggers joy bounce; settings guide & docs | M11 | User Request |
 
 ## Milestones
 | # | Name | Scope | Dependencies | Status |

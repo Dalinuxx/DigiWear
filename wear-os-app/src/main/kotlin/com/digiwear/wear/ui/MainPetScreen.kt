@@ -1282,7 +1282,17 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Pet (central stage with generous roaming headroom) ----
+        // ---- Authentic V-Pet Waste on the floor plane (Bandai faithful: placed on right floor, mon walks over it) ----
+        if (petState.wasteCount > 0) {
+            DialSlot(r * 0.22f, r * 0.18f) {
+                VPetWasteRow(
+                    wasteCount = petState.wasteCount,
+                    iconSize = (diameter * 0.095f).dp.coerceIn(20.dp, 28.dp)
+                )
+            }
+        }
+
+        // ---- Pet (central stage with generous roaming headroom, walks right over waste) ----
         DialSlot(0.dp, -(r * 0.05f)) {
             Box(
                 modifier = Modifier
@@ -1305,19 +1315,8 @@ private fun RoundDialPetView(
             }
         }
 
-        // ---- Authentic V-Pet Waste on the floor below the pet (never clipped by roaming) ----
-        if (petState.wasteCount > 0) {
-            DialSlot(0.dp, r * 0.30f) {
-                VPetWasteRow(
-                    wasteCount = petState.wasteCount,
-                    iconSize = (fontBase + 1.5f).dp
-                )
-            }
-        }
-
         // ---- Prompt / feedback / RIP (comfortably below waste and pet) ----
-        val promptOffsetY = if (petState.wasteCount > 0) r * 0.44f else r * 0.38f
-        DialSlot(0.dp, promptOffsetY) {
+        DialSlot(0.dp, r * 0.38f) {
             if (petState.isDeceased) {
                 Box(
                     modifier = Modifier
@@ -1749,12 +1748,6 @@ private fun ThreeButtonPetView(
                                 )
                             }
                         }
-                        if (petState.wasteCount > 0) {
-                            VPetWasteRow(
-                                wasteCount = petState.wasteCount,
-                                iconSize = (displayConfig.telemetryFontSize.value + 2f).dp
-                            )
-                        }
                         Box(
                             modifier = Modifier
                                 .background(Color(0x55000000), RoundedCornerShape(3.dp))
@@ -1804,6 +1797,20 @@ private fun ThreeButtonPetView(
                             .fillMaxWidth(),
                         contentAlignment = Alignment.Center
                     ) {
+                        // Authentic V-Pet floor waste (drawn before sprite so mon walks over it)
+                        if (petState.wasteCount > 0) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.BottomEnd)
+                                    .padding(end = 12.dp, bottom = 4.dp)
+                            ) {
+                                VPetWasteRow(
+                                    wasteCount = petState.wasteCount,
+                                    iconSize = (displayConfig.telemetryFontSize.value * 2.2f).coerceIn(18f, 26f).dp
+                                )
+                            }
+                        }
+
                         Box(
                             modifier = Modifier
                                 .size(displayConfig.mainSpriteSize)

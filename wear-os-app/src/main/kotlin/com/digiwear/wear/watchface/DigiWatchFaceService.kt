@@ -352,7 +352,7 @@ class DigiWatchFaceService : WatchFaceService() {
     }
 
     companion object {
-        private const val DOUBLE_TAP_THRESHOLD_MS = 380L
+        private const val DOUBLE_TAP_THRESHOLD_MS = 500L
         const val SLOT_TOP_ID = 100
         const val SLOT_BOTTOM_ID = 101
         const val SLOT_LEFT_ID = 102

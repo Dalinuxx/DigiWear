@@ -195,6 +195,37 @@ fun SettingsScreen(
             }
         }
 
+        item {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = displayConfig.horizontalPadding, vertical = 2.dp)
+                    .background(Color(0x33004D40), RoundedCornerShape(8.dp))
+                    .border(0.75.dp, Color(0x664DB6AC), RoundedCornerShape(8.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(
+                        text = "WATCH FACE GESTURES",
+                        fontSize = 7.5.sp,
+                        fontWeight = FontWeight.Black,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color(0xFF69F0AE)
+                    )
+                    Spacer(modifier = Modifier.height(2.dp))
+                    Text(
+                        text = "• Double Tap: Open DigiWear App\n• Single Tap: Partner Joy Bounce",
+                        fontSize = 7.sp,
+                        fontWeight = FontWeight.Medium,
+                        fontFamily = FontFamily.Monospace,
+                        color = Color(0xFFE0F2F1),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        }
+
         // ==========================================
         // 1. Shell & LCD Theme Selector
         // ==========================================

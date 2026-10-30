@@ -191,14 +191,14 @@ fun VPetMeterBar(
 @Composable
 fun VPetWasteRow(
     wasteCount: Int,
-    iconSize: Dp = 11.dp,
+    iconSize: Dp = 22.dp,
     modifier: Modifier = Modifier
 ) {
     val count = wasteCount.coerceIn(0, 4)
     if (count <= 0) return
     Row(
         modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         repeat(count) {
@@ -684,26 +684,52 @@ private fun DrawScope.drawAttentionBeaconIcon(w: Float, h: Float, s: Float, colo
 }
 
 private fun DrawScope.drawCoiledWasteIcon(w: Float, h: Float, s: Float, hasTint: Boolean, tint: Color) {
-    // Classic 1997 Bandai V-Pet 3-Tier Coiled Poop Sprite
-    val bodyColor = if (hasTint) tint else Color(0xFF8D6E63)
-    val shadeColor = if (hasTint) tint.copy(alpha = 0.7f) else Color(0xFF5D4037)
-    val highlight = Color(0xFFD7CCC8)
+    // Classic 1997 Bandai V-Pet 3-Tier Coiled Poop Sprite with crisp outline
+    val bodyColor = if (hasTint) tint else Color(0xFFD97706) // Rich golden amber
+    val shadeColor = if (hasTint) tint.copy(alpha = 0.7f) else Color(0xFF92400E) // Deep caramel shade
+    val highlight = Color(0xFFFEF3C7) // Specular highlight shine
+    val outlineColor = Color(0xFF1E0E04) // Dark retro outline for maximum contrast
 
-    // Bottom coil
+    // 1. Outline underlay for crisp separation from backgrounds
+    drawRoundRect(
+        color = outlineColor,
+        topLeft = Offset(w * 0.11f, h * 0.63f),
+        size = Size(w * 0.78f, h * 0.28f),
+        cornerRadius = CornerRadius(s * 0.12f, s * 0.12f)
+    )
+    drawRoundRect(
+        color = outlineColor,
+        topLeft = Offset(w * 0.19f, h * 0.43f),
+        size = Size(w * 0.62f, h * 0.28f),
+        cornerRadius = CornerRadius(s * 0.12f, s * 0.12f)
+    )
+    drawRoundRect(
+        color = outlineColor,
+        topLeft = Offset(w * 0.31f, h * 0.25f),
+        size = Size(w * 0.38f, h * 0.26f),
+        cornerRadius = CornerRadius(s * 0.11f, s * 0.11f)
+    )
+    val tipOutline = Path().apply {
+        moveTo(w * 0.41f, h * 0.30f)
+        lineTo(w * 0.52f, h * 0.10f)
+        lineTo(w * 0.63f, h * 0.30f)
+        close()
+    }
+    drawPath(tipOutline, color = outlineColor)
+
+    // 2. Body fill coils
     drawRoundRect(
         color = shadeColor,
         topLeft = Offset(w * 0.14f, h * 0.66f),
         size = Size(w * 0.72f, h * 0.22f),
         cornerRadius = CornerRadius(s * 0.10f, s * 0.10f)
     )
-    // Middle coil
     drawRoundRect(
         color = bodyColor,
         topLeft = Offset(w * 0.22f, h * 0.46f),
         size = Size(w * 0.56f, h * 0.22f),
         cornerRadius = CornerRadius(s * 0.10f, s * 0.10f)
     )
-    // Top coil & tip
     drawRoundRect(
         color = bodyColor,
         topLeft = Offset(w * 0.34f, h * 0.28f),
@@ -717,8 +743,9 @@ private fun DrawScope.drawCoiledWasteIcon(w: Float, h: Float, s: Float, hasTint:
         close()
     }
     drawPath(tip, color = bodyColor)
-    // Pixel shine
-    drawCircle(highlight, radius = s * 0.045f, center = Offset(w * 0.36f, h * 0.55f))
+
+    // 3. Specular shine dot
+    drawCircle(highlight, radius = s * 0.06f, center = Offset(w * 0.36f, h * 0.53f))
 }
 
 private fun DrawScope.drawHeartIcon(w: Float, h: Float, s: Float, filled: Boolean, color: Color) {
