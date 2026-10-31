@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="DigiWearTheme" parent="@android:style/Theme.DeviceDefault.NoActionBar">
+        <!-- Disable system window manager edge-swipe dismiss so MainActivity can handle back navigation & Button C -->
+        <item name="android:windowSwipeToDismiss">false</item>
+    </style>
+</resources>

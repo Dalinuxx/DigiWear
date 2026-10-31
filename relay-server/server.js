@@ -20,6 +20,10 @@ const PING_INTERVAL_MS = 25000;
 // State in RAM
 const rooms = new Map(); // roomId -> { hostWs, guestWs, createdAt, lastActivity }
 const ipCounts = new Map(); // ip -> count
+const failedAttempts = new Map(); // ip -> { count, firstFailedAt }
+const jailedIps = new Map(); // ip -> bannedUntilTimestamp
+const seenNonces = new Map(); // nonce -> receivedAtTimestamp
+const BAN_DURATION_MS = 15 * 60 * 1000; // 15-minute ban for repeated failed handshakes
 
 function generateRoomCode() {
     const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Base32 unambiguous
@@ -64,7 +68,15 @@ const wss = new WebSocketServer({ noServer: true, maxPayload: MAX_PAYLOAD_BYTES 
 server.on('upgrade', (request, socket, head) => {
     const remoteIp = request.headers['x-forwarded-for']?.split(',')[0].trim() || socket.remoteAddress || 'unknown';
 
-    // 0. Secret URL Path check (stealth against automated web crawlers)
+    // 0. Auto-Jail Check (Fail2Ban for brute-force prevention)
+    const banExpiry = jailedIps.get(remoteIp);
+    if (banExpiry && banExpiry > Date.now()) {
+        socket.write('HTTP/1.1 403 Forbidden\r\nContent-Type: text/plain\r\n\r\nIP temporarily banned\r\n');
+        socket.destroy();
+        return;
+    }
+
+    // 1. Secret URL Path check (stealth against automated web crawlers)
     if (RELAY_PATH.length > 0) {
         const urlObj = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
         if (!urlObj.pathname.startsWith(RELAY_PATH)) {
@@ -74,7 +86,7 @@ server.on('upgrade', (request, socket, head) => {
         }
     }
 
-    // 1. Check IP connection rate limit
+    // 2. Check IP connection rate limit
     const currentIpCount = ipCounts.get(remoteIp) || 0;
     if (currentIpCount >= MAX_CLIENTS_PER_IP) {
         socket.write('HTTP/1.1 429 Too Many Requests\r\n\r\n');
@@ -82,7 +94,7 @@ server.on('upgrade', (request, socket, head) => {
         return;
     }
 
-    // 2. Pre-Shared Key Authentication check
+    // 3. Pre-Shared Key & App Attestation Authentication check
     if (SERVER_KEY.length > 0) {
         const urlObj = new URL(request.url, `http://${request.headers.host || 'localhost'}`);
         const queryKey = urlObj.searchParams.get('key');
@@ -90,17 +102,66 @@ server.on('upgrade', (request, socket, head) => {
         const authHeader = request.headers['authorization'];
         const bearerKey = authHeader?.startsWith('Bearer ') ? authHeader.slice(7).trim() : null;
 
-        const providedKey = (queryKey || headerKey || bearerKey || '').trim();
+        // Dynamic Ephemeral Replay-Proof Token Headers
+        const clientTimestamp = parseInt(request.headers['x-digiwear-timestamp'] || '0', 10);
+        const clientNonce = request.headers['x-digiwear-nonce'];
+        const clientToken = request.headers['x-digiwear-token'];
 
-        // Constant-time comparison to prevent timing attacks
-        const expectedBuf = Buffer.from(SERVER_KEY, 'utf-8');
-        const providedBuf = Buffer.from(providedKey, 'utf-8');
+        let isAuthenticated = false;
 
-        if (expectedBuf.length !== providedBuf.length || !crypto.timingSafeEqual(expectedBuf, providedBuf)) {
-            socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Type: text/plain\r\n\r\nInvalid DigiWear Server Key\r\n');
+        // Method A: Dynamic HMAC-SHA256 Token (Replay-Proof)
+        if (clientTimestamp && clientNonce && clientToken) {
+            const now = Date.now();
+            if (Math.abs(now - clientTimestamp) <= 60000 && !seenNonces.has(clientNonce)) {
+                seenNonces.set(clientNonce, now);
+                const hmac = crypto.createHmac('sha256', SERVER_KEY);
+                hmac.update(`${clientTimestamp}:${clientNonce}`);
+                const expectedDigest = hmac.digest('hex');
+
+                const expBuf = Buffer.from(expectedDigest, 'utf-8');
+                const provBuf = Buffer.from(clientToken, 'utf-8');
+                if (expBuf.length === provBuf.length && crypto.timingSafeEqual(expBuf, provBuf)) {
+                    isAuthenticated = true;
+                }
+            }
+        }
+
+        // Method B: Direct PSK Key
+        if (!isAuthenticated) {
+            const providedKey = (queryKey || headerKey || bearerKey || '').trim();
+            const expectedBuf = Buffer.from(SERVER_KEY, 'utf-8');
+            const providedBuf = Buffer.from(providedKey, 'utf-8');
+            if (expectedBuf.length === providedBuf.length && crypto.timingSafeEqual(expectedBuf, providedBuf)) {
+                isAuthenticated = true;
+            }
+        }
+
+        if (!isAuthenticated) {
+            // Track failed attempts for auto-jail
+            const now = Date.now();
+            const record = failedAttempts.get(remoteIp) || { count: 0, firstFailedAt: now };
+            if (now - record.firstFailedAt > 120000) {
+                record.count = 1;
+                record.firstFailedAt = now;
+            } else {
+                record.count++;
+            }
+
+            if (record.count >= 3) {
+                jailedIps.set(remoteIp, now + BAN_DURATION_MS);
+                failedAttempts.delete(remoteIp);
+                console.warn(`[SECURITY] Auto-Jailed IP ${remoteIp} for 15m after 3 failed handshakes.`);
+            } else {
+                failedAttempts.set(remoteIp, record);
+            }
+
+            socket.write('HTTP/1.1 401 Unauthorized\r\nContent-Type: text/plain\r\n\r\nInvalid DigiWear Authentication\r\n');
             socket.destroy();
             return;
         }
+
+        // Clear failed attempts upon successful authentication
+        failedAttempts.delete(remoteIp);
     }
 
     wss.handleUpgrade(request, socket, head, (ws) => {

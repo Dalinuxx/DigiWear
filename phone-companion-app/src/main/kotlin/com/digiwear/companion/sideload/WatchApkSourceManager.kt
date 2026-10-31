@@ -28,7 +28,7 @@ data class WatchApkInfo(
             return "${DecimalFormat("#,##0.00").format(mb)} MB"
         }
 
-    /** Human readable "v2.5.0 (code 15)" or empty when the APK version could not be read. */
+    /** Human readable "v0.9.0 (code 22)" or empty when the APK version could not be read. */
     val versionLabel: String
         get() = if (versionName.isNotEmpty()) "v$versionName (code $versionCode)" else ""
 }

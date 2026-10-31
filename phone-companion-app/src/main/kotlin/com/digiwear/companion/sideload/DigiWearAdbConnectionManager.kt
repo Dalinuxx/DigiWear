@@ -302,7 +302,7 @@ class DigiWearAdbConnectionManager(
 
         val installedVersion = if (isInstalled) {
             val dumpsys = runCatching { execShell("dumpsys package com.digiwear.wear | grep -i versionName") }.getOrDefault("")
-            dumpsys.substringAfter("versionName=").substringBefore("\n").trim().ifEmpty { "v1.0" }
+            dumpsys.substringAfter("versionName=").substringBefore("\n").trim().ifEmpty { "v0.1.0" }
         } else ""
 
         val batteryOutput = parts.getOrNull(7) ?: ""

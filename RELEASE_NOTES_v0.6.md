@@ -1,4 +1,4 @@
-# DigiWear v2.6.0 Release Notes
+# DigiWear v0.6.0 Release Notes
 
 ### Core Architecture & Performance Optimizations
 - **O(1) Indexed Recipe Lookups**: Added pre-indexed lookup maps (`RECIPES_BY_TARGET` and `RECIPES_BY_ANY_SPECIES`) in `JogressEngine` and optimized `DigiDexEngine` species unlock hints, reducing species list rendering overhead from O(N) to O(1).
@@ -15,4 +15,4 @@
 - **Home Screen AppWidget Vault Fallback**: Updated `DigiWearAppWidgetProvider` to fall back to the stored partner in Cryo-Vault when no active smartwatch has synced, preventing default Botamon resets on phone-only installs.
 - **System Status Bar Insets**: Forced light status-bar icons (`isAppearanceLightStatusBars = false`) across dark application bars and added `.statusBarsPadding()` to the full-screen Wireless ADB Sideloader modal.
 - **Responsive Theme Swatch & Shell Grids**: Replaced horizontal-scroll strips in `SettingsScreen` with a 2-column theme grid and single-row equal-weight color swatches, and converted the 6-shell selector in `PetDashboardScreen` into a responsive 2x3 grid.
-- **Embedded Sideload Binaries**: Recompiled R8-minified, release-signed watch binaries (`versionCode = 19`, `versionName = "2.6.0"`) and synchronized them to `release_bin/` and `phone-companion-app` assets for direct Wi-Fi watch installation without a PC.
+- **Embedded Sideload Binaries**: Recompiled R8-minified, release-signed watch binaries (`versionCode = 19`, `versionName = "0.6.0"`) and synchronized them to `release_bin/` and `phone-companion-app` assets for direct Wi-Fi watch installation without a PC.

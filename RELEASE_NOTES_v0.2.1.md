@@ -1,7 +1,7 @@
-# DigiWear v2.1.0 Official Release Notes
+# DigiWear v0.2.1 Official Release Notes
 
 ### Complete Overview
-DigiWear v2.1.0 delivers a comprehensive cross-app consistency overhaul, introducing resolution-independent custom vector assets, full 16-key hardware and simulation settings parity between smartwatch and phone, minute-precision sleep scheduling, streamlined companion navigation, persistent adventure campaign progress, and refined high-contrast cyber retro styling.
+DigiWear v0.2.1 delivers a comprehensive cross-app consistency overhaul, introducing resolution-independent custom vector assets, full 16-key hardware and simulation settings parity between smartwatch and phone, minute-precision sleep scheduling, streamlined companion navigation, persistent adventure campaign progress, and refined high-contrast cyber retro styling.
 
 ---
 
@@ -39,7 +39,7 @@ DigiWear v2.1.0 delivers a comprehensive cross-app consistency overhaul, introdu
 ---
 
 ### Release Binaries (`release_bin/`)
-- `DigiWear-WearOS-release.apk` (Wear OS 3.0+ Signed Release, v2.1.0)
-- `DigiWear-Companion-release.apk` (Android Phone Companion Signed Release, v2.1.0)
-- `digiwear-aosp-standard-watch-release.apk` (Standalone AOSP / Full Android Watch Signed Release, v2.1.0)
-- `wear-os-app-debug.apk` & `phone-companion-app-debug.apk` (Development Debug builds, v2.1.0)
+- `DigiWear-WearOS-release.apk` (Wear OS 3.0+ Signed Release, v0.2.1)
+- `DigiWear-Companion-release.apk` (Android Phone Companion Signed Release, v0.2.1)
+- `digiwear-aosp-standard-watch-release.apk` (Standalone AOSP / Full Android Watch Signed Release, v0.2.1)
+- `wear-os-app-debug.apk` & `phone-companion-app-debug.apk` (Development Debug builds, v0.2.1)

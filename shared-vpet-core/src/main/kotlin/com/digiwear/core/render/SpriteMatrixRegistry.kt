@@ -448,7 +448,7 @@ object SpriteMatrixRegistry {
         "..BBB......BBB..",
         ".BB#BB....BB#BB.",
         ".B###BBBBBB###B.",
-        "..B##########B..",
+        "..B##S####S##B..",
         "..B#WT####TW#B..",
         "..B#TB####BT#B..",
         "..B##SSSSSS##B..",
@@ -485,21 +485,21 @@ object SpriteMatrixRegistry {
     // [ID 117] Gummymon
     val GUMMYMON_ROM = arrayOf(
         "......B.........",
-        ".....BTB........",
-        "....BTTTBBB.....",
-        "...BBTTTWTTB....",
-        ".BBTTBBBTTTTBB..",
-        "B####TS###T##SBB",
-        "B#BSTB###BS#B#TB",
-        ".BBTBB#SBB###BB.",
-        "..B#S##T###SSB..",
-        "..B###BBS##SSB..",
-        "...B#T####TSB...",
-        "....BB###TBB....",
-        "....BSSSSSSB....",
-        "....BSSSSSSB....",
-        "...BSSBSSBSSB...",
-        "...BBBBBBBBBB..."
+        ".....B#B........",
+        "....B###B.......",
+        "...BB###BB......",
+        "..B#######B.....",
+        ".B#########B....",
+        "B###########B...",
+        "B##E#####E##B...",
+        "B###########B...",
+        ".B####T####B....",
+        ".B#########B....",
+        "..B#######B.....",
+        "..B#######B.....",
+        "...B#####B......",
+        "....B###B.......",
+        ".....BBB........"
     )
 
     // [ID 118] Chocomon
@@ -765,20 +765,20 @@ object SpriteMatrixRegistry {
     // [ID 207] Palmon
     val PALMON_ROM = arrayOf(
         ".....BBBB.......",
-        "..BBBB##SBBBB...",
-        ".BS#GB#GBG#SSB..",
-        "..BB#GGGG#BBB...",
-        ".B##GBG#BG##SB..",
-        ".BSSBBSSBBSSSB..",
-        "..BBTTBBTTBBB...",
-        "...BTTGGGTTTB...",
-        "...BTBGGGBTTB...",
-        "...BGGGGGGTTB...",
-        "..BGBTTTTTTBGB..",
-        "..BTGBBBBBBGTB..",
-        "..BTBTGGGTTBTB..",
-        "...BBGGGTTBBB...",
-        "..BGTBBBBBTTGB..",
+        "..BBBBSSSBBBB...",
+        ".BSSSSESSSSEESB.",
+        "..BBSSSSSSSSBBB.",
+        ".BSSSSSS#SSSSSB.",
+        ".BSSBBSSSSBBSSB.",
+        "..BB##BB##BBB...",
+        "...B######TTB...",
+        "...B##TTT###B...",
+        "...B########B...",
+        "..B#B######B#B..",
+        "..B#GBBBBBB#GB..",
+        "..B#B#GGG##B#B..",
+        "...BBGGG##BBB...",
+        "..B##BBBBB##GB..",
         "..BBBBB..BBBBB.."
     )
 
@@ -904,82 +904,82 @@ object SpriteMatrixRegistry {
 
     // [ID 214] Guilmon
     val GUILMON_ROM = arrayOf(
-        "................",
-        ".....BBB.BBBBBB.",
-        "....BBBBBBTTTTB.",
-        "...BTTTTTTTTTB..",
-        "..BBTTTWBTTBB...",
-        ".B###TS#BBT#B...",
-        ".B#SB##BBBS##B..",
-        ".BBBBB#ST###BB..",
-        "..B#S##T###BB...",
-        "...BBBT#BB#B..BB",
-        "..B#BT#B##TSBBSB",
-        "..BBB##BBBBSBBSB",
-        "....BSSSSSSSBSB.",
-        "..BBBBSSSBBBSB..",
-        ".BSBSBBBBSBSBSB.",
-        ".BBBBBB.BBBBBBB."
+        ".....BBB........",
+        "....BT##BB......",
+        "...BTT####BBB...",
+        "..BTT#####E##B..",
+        "...BB###T#####B.",
+        "....B###SS####B.",
+        "....B##SSSS##B..",
+        "...B###SS##BB...",
+        "..B####SS#B.....",
+        "..B#####S##B....",
+        "..B##BB###SSB...",
+        ".B##B..B####B...",
+        "B###B..B####B...",
+        "B##B....B##B....",
+        ".BB......BB.....",
+        "................"
     )
 
     // [ID 215] Renamon
     val RENAMON_ROM = arrayOf(
-        "..BBBB....BBBBBB",
-        "..B.WTBBBBTTW..B",
-        "...B#B##TTTTTWB.",
-        "....BTTTTTBBBB..",
-        "...BTTTTTTTTB..B",
-        "..BTTTTBBBBTB.BB",
-        "..BTTTBBTBTTTBWB",
-        ".BTTTTTTTTTTBT.B",
-        ".BSS#TTBBBBBTTTB",
-        "..BBBBB.WWBBBTTB",
-        "...B#TBBBBB#TB#B",
-        "..B.SBWWB.STSBB.",
-        "..BTBB..BTSSBB..",
-        "..BBBTBTBBBBBB..",
-        ".BSBWWTBBSBSBSB.",
-        ".BBBBBB.BBBBBBB."
+        "..B...B.........",
+        ".B#B.B#B........",
+        ".BSB.BSB........",
+        ".B##B##B........",
+        "..B#E##B........",
+        "...B####B.......",
+        "..B#S##S#B......",
+        ".BT#SSSS#TB.....",
+        ".BT##SS##TB.....",
+        "..B##SS##B...B..",
+        "...B####B...B#B.",
+        "...B####B..B##B.",
+        "...B#BB#B..B#SB.",
+        "..B##B.B##B.BSB.",
+        "..B#B...B#B..BB.",
+        "..BB.....BB....."
     )
 
-    // [ID 216] Terriermon (Canonical Cream White Puppy + Emerald Green Ear Bands & Horn)
+    // [ID 216] Terriermon (Canonical Cream White Puppy + Single Green Horn & Long Floppy Ears)
     val TERRIERMON_ROM = arrayOf(
-        ".......B........",
-        "......BSB.......",
-        "...BBBBSBBBB....",
-        "..BSSB#####BSSB.",
-        ".BSSSSB###BSSSSB",
-        ".BSSSSB###BSSSSB",
-        "..B##BE###EB##B.",
-        "..B##B#####B##B.",
-        "...BBB##S##BBB..",
-        "....B#######B...",
-        "...B#########B..",
-        "..B###########B.",
-        "..B###B###B###B.",
-        "...BBB.B#B.BBB..",
-        "......B###B.....",
-        "......BBBBB....."
+        "......B.........",
+        ".....BSB........",
+        "...BBB#BBBB.....",
+        "..BSB#####BSB...",
+        ".BSSB#####BSSB..",
+        ".BSSB#E#E#BSSB..",
+        "..B##B###B##B...",
+        "..B##B#B#B##B...",
+        "...BB#####BB....",
+        "....B#####B.....",
+        "...B#######B....",
+        "..B###B#B###B...",
+        "..B#########B.B.",
+        "...B#######BBB..",
+        "....B#BBB#B.....",
+        "....BB...BB....."
     )
 
     // [ID 217] Lopmon (Canonical Chocolate Brown + Triple Horns & Pastel Pink Ear Tips)
     val LOPMON_ROM = arrayOf(
-        "...B...B...B....",
-        "..BSB.BSB.BSB...",
-        "..BBBBSBBBBBB...",
-        ".BSSB#######BSSB",
-        "BSSSSB#####BSSSS",
-        "BSSSSB#####BSSSS",
-        ".B##BE#####EB##B",
-        ".B##B#######B##B",
-        "..BBB###S###BBB.",
-        "....B#######B...",
-        "...B#########B..",
-        "..B###########B.",
-        "..B###B###B###B.",
-        "...BBB.B#B.BBB..",
-        "......B###B.....",
-        "......BBBBB....."
+        "..B...B...B.....",
+        ".BSB.BSB.BSB....",
+        ".BBB#BBB#BBB....",
+        "..BSB#####BSB...",
+        ".BSSB#####BSSB..",
+        ".BSSB#E#E#BSSB..",
+        "..B##B###B##B...",
+        "..B##B#B#B##B...",
+        "...BB#####BB....",
+        "....B#####B.....",
+        "...B#######B....",
+        "..B###B#B###B...",
+        "..B#########B.B.",
+        "...B#######BBB..",
+        "....B#BBB#B.....",
+        "....BB...BB....."
     )
 
     // [ID 218] Impmon
@@ -1025,20 +1025,20 @@ object SpriteMatrixRegistry {
     // [ID 220] BlackGabumon
     val BLACKGABUMON_ROM = arrayOf(
         ".BBB............",
-        ".BTTBBBBBBB.....",
-        "..BBBWWWT#TBB...",
-        ".BBWWTTRRTTTTBB.",
-        "BWWTTTRT.T#BBT#B",
-        "BWTT#TSSSTTB.BBB",
-        ".BBBBT#TTT##B...",
-        ".BTTTBBT#WT#B...",
-        "..BBTTTBBWTTB.BB",
-        "..BTBBTTB#TTTBTB",
-        ".BTTBTTTBTTB#BTB",
-        ".BTTBRTTBT#BTTBB",
-        "BT##BCRB##TBTTBB",
-        "BTTTBRCBTTTBBBB.",
-        "BT#B.BB#TSBB.B.B",
+        ".B##BBBBBBB.....",
+        "..BBBWWW#T#BB...",
+        ".BBWW##RR####BB.",
+        "BWW###R#.#TBB#TB",
+        "BW##T#SSS##B.BBB",
+        ".BBBB#T###TTB...",
+        ".B###BB#TW#TB...",
+        "..BB###BBW##B.BB",
+        "..B#BB##BT###B#B",
+        ".B##B###B##BTB#B",
+        ".B##BR##B#TB##BB",
+        "B#TTBCRBTT#B##BB",
+        "B###BRCB###BBBB.",
+        "B#TB.BBT#SBB.B.B",
         ".BBBBBBBBBBBBBBB"
     )
 
@@ -1395,10 +1395,10 @@ object SpriteMatrixRegistry {
         "..BWWWTTBBBBWWTB",
         ".BWBBBBBWWTBBBB.",
         "BWTWWTWWTBCWBWWB",
-        "BTBTTTTTTBBCBBTB",
-        "BWBBTBBBBBSSB.BB",
-        ".BTBCTBTTTBBB..B",
-        "BTTBCTBTWTWWB...",
+        "BTB######BBCBBTB",
+        "BWBB#BBBBBSSB.BB",
+        ".BTBC#B###BBB..B",
+        "BTTBC#B#WTWWB...",
         "BBBBBB.BBBBBB..."
     )
 
@@ -1525,20 +1525,20 @@ object SpriteMatrixRegistry {
     // [ID 314] Seadramon
     val SEADRAMON_ROM = arrayOf(
         ".....BBBBB......",
-        "...BBTTTTTBBBBB.",
-        "..BTTTTBTTTTTB..",
-        ".BTTTBCTTTBBBBB.",
-        "BTTTTTTTTTTTB...",
-        "BTTTTTTTTBBBBB..",
-        ".BWWWWTTBSSSB...",
-        "..BBBBBBCCRTB...",
-        "......B#RRSB....",
-        ".....B#WCCSBBB..",
-        ".....BW#CSB#BRB.",
-        "....BW#TRTB##BCB",
-        "....B#W#CSSBBBCB",
-        "....BW#T#CRSSTCB",
-        ".....BT#T#T#CCB.",
+        "...BB#####BBBBB.",
+        "..B####B#####B..",
+        ".B###BC###BBBBB.",
+        "B###########B...",
+        "B########BBBBB..",
+        ".BWWWW##BSSSB...",
+        "..BBBBBBCCR#B...",
+        "......BTRRSB....",
+        ".....BTWCCSBBB..",
+        ".....BWTCSBTBRB.",
+        "....BWT#R#BTTBCB",
+        "....BTWTCSSBBBCB",
+        "....BWT#TCRSS#CB",
+        ".....B#T#T#TCCB.",
         "......BBBBBBBB.."
     )
 
@@ -1884,22 +1884,22 @@ object SpriteMatrixRegistry {
 
     // [ID 332] Flamedramon
     val FLAMEDRAMON_ROM = arrayOf(
-        "................",
-        "................",
-        "................",
-        "................",
-        "........B..B....",
-        "...TB..B..B.....",
-        "...WT.BTTBB.....",
-        "....WTTRTBB.....",
-        ".....TRBT#......",
-        "....T#BRTC......",
-        "....T.##T.......",
-        "......C#RC......",
-        "....TTBTT#TTB...",
-        "...BTTBWTSTTBC..",
-        "...TTRBCWSTB....",
-        "....TRT..TTS...."
+        ".......BBB......",
+        "......BTTTB.....",
+        ".....BTTTSSB....",
+        ".....BTSSSSSBB..",
+        "....BSSESSSSSSB.",
+        "...BSSSSSSSSSSB.",
+        "...BSSSSSSBBB...",
+        "..B##SSS######B.",
+        ".B####SS#######B",
+        ".B####WW######B.",
+        ".B#TBWWWWBB##TB.",
+        ".BTTB####B.BTTB.",
+        ".BTTB####B.BTTB.",
+        "..BBB####BBBBB..",
+        "....B#BB#B......",
+        "....BB..BB......"
     )
 
     // [ID 333] Stingmon
@@ -1964,22 +1964,22 @@ object SpriteMatrixRegistry {
 
     // [ID 336] Gargomon
     val GARGOMON_ROM = arrayOf(
-        "....BB..........",
-        "....BTBB........",
-        "....BTTTBB......",
-        "...BTWTTTTB.....",
-        "..BTBTTBTTTBB...",
-        ".BB#BTSB##TB#B..",
-        "B#BSTB###TS###B.",
-        ".BBTB#BST#BBBB..",
-        "..B#S##TBBBSB...",
-        ".B###BBBB#BBBB..",
-        "BB#BBTB#B#BSSB..",
-        "B#B#B#B#BBBSSSB.",
-        "BSBBSBSBSSBSSSB.",
-        ".BSBBSBSBBSBSB..",
-        "BSBSSB.BSSBSB...",
-        "BBBBBB.BBBBBB..."
+        ".....B#B........",
+        "..BB.B#B..BB....",
+        ".B#SBB#BBS#B....",
+        ".B#S#####S#B....",
+        ".B#S#E#E#S#B....",
+        "..B##S#S##B.....",
+        ".BB#SS#SS#BB....",
+        "BWW#SS#SS#WWB...",
+        "BWW########WWB..",
+        ".BB#TTTTTT#BB...",
+        "...BTTTTTTB.....",
+        "..BTTB##BTTB....",
+        "..BTTB##BTTB....",
+        "..BTTB..BTTB....",
+        "..B#TB..BT#B....",
+        "..BBBB..BBBB...."
     )
 
     // [ID 337] Wizardmon
@@ -2104,22 +2104,22 @@ object SpriteMatrixRegistry {
 
     // [ID 343] Sorcerymon
     val SORCERYMON_ROM = arrayOf(
-        "......BBBB......",
-        ".....BWWWWB.....",
-        "....BWWCCWWB....",
-        "...BWWCCCCWWB...",
-        "..BWWWWWWWWWWB..",
-        ".BBBBBBBBBBBBBB.",
-        "..B##CWBBWC##B..",
-        "..B###WWWW###B..",
-        ".BBWWWWWWWWWWBB.",
-        "BCWBWWCCCCWWBWCB",
-        "BCCBWWWWWWWWB.B.",
-        ".BCBWWTWWWTWB.C.",
-        "..B.BWWWWWWB.C..",
-        "....BWWBBWWB....",
-        "...BWWB..BWWB...",
-        "...BBBB..BBBB..."
+        ".......B........",
+        "......B#B.......",
+        ".....B###B......",
+        "....B#####B..B..",
+        "...BTTTTTTTB.BTB",
+        "...B##E#E##B.BTB",
+        "...B#######B.BTB",
+        "..B##SS#SS##BBTB",
+        ".B#S##SSS##SB#TB",
+        ".BSS#S#S#S#SSB#B",
+        "..BSSSSSSSSSBBTB",
+        "...BSSSSSSSB.BTB",
+        "...B#S###S#B.BTB",
+        "...B##B.B##B.BTB",
+        "...B#TB.BT#B.BTB",
+        "...BBBB.BBBB.BBB"
     )
 
     // [ID 344] Aquilamon
@@ -2645,20 +2645,20 @@ object SpriteMatrixRegistry {
     // [ID 421] SkullMamemon
     val SKULLMAMEMON_ROM = arrayOf(
         "......BBBBBB....",
-        ".BBB.BTBTTTTBB..",
-        ".BTTBTTTTTTTBTB.",
-        "..BTBTTTTTTTTTTB",
-        ".BBTBTBBTTRTTTTB",
-        "BTBTTBTBTTTTBTTB",
-        "BTBTTBTBTTTTBTTB",
-        "BTTBTBTBTTTBBTB.",
-        ".BBBB#BBBBBWBB..",
-        "BWSBSBRRBSWB#B..",
-        "BSWBBRBBBWSB#B..",
-        ".BBSWBWSSBB#BSB.",
-        "..BBBRBBBB#SBWB.",
-        ".BTBWBWS##BBSWBB",
-        "B#B#BBBBBB#B#B#B",
+        ".BBB.B#B####BB..",
+        ".B##B#######B#B.",
+        "..B#B##########B",
+        ".BB#B#BB##R####B",
+        "B#B##B#B####B##B",
+        "B#B##B#B####B##B",
+        "B##B#B#B###BB#B.",
+        ".BBBBTBBBBBWBB..",
+        "BWSBSBRRBSWBTB..",
+        "BSWBBRBBBWSBTB..",
+        ".BBSWBWSSBBTBSB.",
+        "..BBBRBBBBTSBWB.",
+        ".B#BWBWSTTBBSWBB",
+        "BTBTBBBBBBTBTBTB",
         "BBBBBB...BBBBBBB"
     )
 
@@ -2744,22 +2744,22 @@ object SpriteMatrixRegistry {
 
     // [ID 426] Rapidmon
     val RAPIDMON_ROM = arrayOf(
-        "..........BBBBB.",
-        "........BBTTTTB.",
-        "BB.....BTTTBBB..",
-        "BTBBBBBTWBBTTTB.",
-        ".BTBTTTBTTTBBB..",
-        "..B##BB#BBB.....",
-        "..BSBB##BBSB....",
-        "..BT###SB###B...",
-        "...BBBBTB##SB...",
-        ".BB###BBBBBB....",
-        "B#B##TB###TB....",
-        "B#B#T#B##TB.....",
-        ".BSBSSSBBB......",
-        "..BSBBBBSSB.....",
-        ".BSSSB.BSSSB....",
-        ".BBBBB.BBBBB...."
+        "......BSB.......",
+        ".....B#S#B......",
+        "...BBB###BBB....",
+        "..B#SB###BS#B...",
+        ".B#T#B#E#B#T#B..",
+        ".B#T#B###B#T#B..",
+        "..B##BB#BB##B...",
+        "..B#S#####S#B...",
+        ".BS#S#####S#SB..",
+        ".BSS#######SSB..",
+        "..BB#S###S#BB...",
+        "...B#######B....",
+        "...B##B#B##B....",
+        "..B#TB...BT#B...",
+        "..B#TB...BT#B...",
+        "..BBBB...BBBB..."
     )
 
     // [ID 427] Angewomon
@@ -2826,19 +2826,19 @@ object SpriteMatrixRegistry {
     val BLACKWEREGARURUMON_ROM = arrayOf(
         "....BB.....BB...",
         "...BWBBBB.BWB...",
-        "...BBTSTTBSWB...",
-        "...BWSBBBSTB....",
-        "BBBWTBTBTTBB....",
-        "BTTT#TT#WWWB....",
-        "B###T#STTTWB....",
-        ".BTBBB#STWB.....",
-        ".BTT####TTTB.BB.",
-        "..BBBBSTTTTTB#B.",
-        ".BSBTTTSSTBTBSB.",
-        ".B#BBBBBBBTTBTB.",
-        "..BBTTTTTBTTBB..",
-        ".BBBBBBBBTBBB...",
-        "BW#STB.BS#WTWB..",
+        "...BB#S##BSWB...",
+        "...BWSBBBS#B....",
+        "BBBW#B#B##BB....",
+        "B###T##TWWWB....",
+        "BTTT#TS###WB....",
+        ".B#BBBTS#WB.....",
+        ".B##TTTT###B.BB.",
+        "..BBBBS#####BTB.",
+        ".BSB###SS#B#BSB.",
+        ".BTBBBBBBB##B#B.",
+        "..BB#####B##BB..",
+        ".BBBBBBBB#BBB...",
+        "BWTS#B.BSTW#WB..",
         "BBBBBB.BBBBBBB.."
     )
 
@@ -2985,20 +2985,20 @@ object SpriteMatrixRegistry {
     // [ID 438] Zudomon
     val ZUDOMON_ROM = arrayOf(
         "BBB.............",
-        "BTWBB...........",
-        ".BTWWBBBB.BBB...",
-        "..BTWBTTTBBTB...",
-        "..BBBTTTTTSBBB..",
-        ".BTTTTTBTSSBTB..",
-        ".BBTTTBCS#BBBBB.",
-        ".BSTTTTS#BWTBTB.",
-        "BWBBBBBBBBTTTBB.",
-        "BWBTBTTBTBBTTB..",
-        "BTBWB##BWBTBTBBB",
-        ".BTBB#T#BBTTTBSB",
-        "..BBTTTT##TBBTTB",
-        ".BTSBTT##TSSTBB.",
-        "BWBWTBBBBWBWBWB.",
+        "B#WBB...........",
+        ".B#WWBBBB.BBB...",
+        "..B#WB###BB#B...",
+        "..BBB#####SBBB..",
+        ".B#####B#SSB#B..",
+        ".BB###BCSTBBBBB.",
+        ".BS####STBW#B#B.",
+        "BWBBBBBBBB###BB.",
+        "BWB#B##B#BB##B..",
+        "B#BWBTTBWB#B#BBB",
+        ".B#BBT#TBB###BSB",
+        "..BB####TT#BB##B",
+        ".B#SB##TT#SS#BB.",
+        "BWBW#BBBBWBWBWB.",
         "BBBBBB..BBBBBBB."
     )
 
@@ -3125,20 +3125,20 @@ object SpriteMatrixRegistry {
     // [ID 502] Machinedramon
     val MACHINEDRAMON_ROM = arrayOf(
         "...BBBBBBBBBBBBB",
-        "..BTTTTTBTTTBTTB",
-        ".BTTTTBTTBSBBBBB",
-        "BTTTTBBSSBBBBTB.",
-        "BTTTSSSSTBTTRBB.",
-        "BBBBBBSSSBTTRBBB",
-        ".BTTSSBSB#BBBRTB",
-        "..BBBBBB#BT##BTB",
-        ".BBBWW##BBBB#BTB",
-        "BWTBBBBBBWTGTBTB",
-        "BTWBTRTTB#WTBBB.",
-        ".BBBBBBBBBBB#BWB",
-        "...B####TTTBB##B",
-        ".BBBB##TTBBBBBBB",
-        "B#BSBBBBBSB#WB..",
+        "..B#####B###B##B",
+        ".B####B##BSBBBBB",
+        "B####BBSSBBBB#B.",
+        "B###SSSS#B##RBB.",
+        "BBBBBBSSSB##RBBB",
+        ".B##SSBSBTBBBR#B",
+        "..BBBBBBTB#TTB#B",
+        ".BBBWWTTBBBBTB#B",
+        "BW#BBBBBBW#G#B#B",
+        "B#WB#R##BTW#BBB.",
+        ".BBBBBBBBBBBTBWB",
+        "...BTTTT###BBTTB",
+        ".BBBBTT##BBBBBBB",
+        "BTBSBBBBBSBTWB..",
         "BBBBBB.BBBBBBB.."
     )
 
@@ -3422,44 +3422,44 @@ object SpriteMatrixRegistry {
         "....BBBB.BBBB..."
     )
 
-    // [ID 517] Sakuyamon
+    // [ID 517] Sakuyamon (Miko priestess holding golden Shakujo staff)
     val SAKUYAMON_ROM = arrayOf(
-        "....BBBBBBBB....",
-        "...BTTTTTTTTB...",
-        "..BT##WWWW##TB..",
-        "..BT#WB##BW#TB..",
-        "...B########B...",
-        "..BB##TTTT##BB..",
-        ".BSSB######BSSB.",
-        "BSS#B#TTTT#B#SSB",
-        "BSS##TTTTTT##SSB",
-        ".BB##SSSSSS##BB.",
-        "..B##S####S##B..",
-        ".B###B####B###B.",
-        ".BB..B#BB#B..BB.",
-        "....BT#B.B#TB...",
-        "....B##B.B##B...",
-        "....BBBB.BBBB..."
+        "....BBBBBBBB.TB.",
+        "...BTTTTTTTTBTB.",
+        "..BT##WWWW##TBTB",
+        "..BT#WB##BW#TBTB",
+        "...B########BBTB",
+        "..BB##TTTT##BBTB",
+        ".BSSB######BSSBT",
+        "BSS#B#TTTT#B#SBT",
+        "BSS##TTTTTT##SBT",
+        ".BB##SSSSSS##BBT",
+        "..B##S####S##BBT",
+        ".B###B####B###BT",
+        ".BB..B#BB#B..BBT",
+        "....BT#B.B#TB.BT",
+        "....B##B.B##B.BT",
+        "....BBBB.BBBB.BB"
     )
 
     // [ID 518] MegaGargomon
     val MEGAGARGOMON_ROM = arrayOf(
-        "......BBBB......",
-        "...BB.BTTTB.....",
-        "...BTBBBBBTB....",
-        "....BTTTTTBBBB..",
-        "...BTTTWBTBTTTB.",
-        "..BSBTBB#BBBBB..",
-        ".B#BT###BTSB##B.",
-        ".B#TBBBBB##B#TSB",
-        ".BT#B##TB##BSSSB",
-        ".B##B#B#B##BSSB.",
-        ".BBBSBBBSBBBBB..",
-        "B#SBSB##BB#SBSB.",
-        "BSSBBBSSBBSSBSB.",
-        ".BBBSBSSBSBBSB..",
-        ".BBSSBBBBSSBB...",
-        "BBBBBB..BBBBBB.."
+        ".BTB.......BTB..",
+        "BTSTB..B..BTSTB.",
+        "BSSSB.B#B.BSSSB.",
+        "BSSSB.B#B.BSSSB.",
+        ".BBB.B###B.BBB..",
+        "..B##B#E#B##B...",
+        "..B##B###B##B...",
+        ".B###SS#SS###B..",
+        ".B###########B..",
+        ".B##W##W##W##B..",
+        "..B#########B...",
+        "..B###BBB###B...",
+        "..B##B...B##B...",
+        ".B###B...B###B..",
+        ".B###B...B###B..",
+        ".BBBBB...BBBBB.."
     )
 
     // [ID 519] Beelzemon
@@ -3807,19 +3807,19 @@ object SpriteMatrixRegistry {
         "................",
         "................",
         "................",
-        ".........T......",
-        "....T.B#T.......",
-        ".....TSTBBBT....",
-        "....BBTRBTBTT...",
-        ".....TBBTTTTTB..",
-        ".....BTS#TBBTB..",
-        "....BBBTBTB#BTT.",
-        "...BTBBTBTTBBSTB",
-        "..BTTBBBBTTBTTW.",
-        ".BTBTBBBBTTBBTT.",
-        ".BBBTT#TRBTTTTB.",
-        "..BB###BRBTBBB..",
-        "...B#TBT.BT#TB.."
+        ".........#......",
+        "....#.BT#.......",
+        ".....#S#BBB#....",
+        "....BB#RB#B##...",
+        ".....#BB#####B..",
+        ".....B#ST#BB#B..",
+        "....BBB#B#BTB##.",
+        "...B#BB#B##BBS#B",
+        "..B##BBBB##B##W.",
+        ".B#B#BBBB##BB##.",
+        ".BBB##T#RB####B.",
+        "..BBTTTBRB#BBB..",
+        "...BT#B#.B#T#B.."
     )
 
     // [ID 537] Mastemon
@@ -5002,4 +5002,3 @@ object SpriteMatrixRegistry {
         }
     }
 }
-

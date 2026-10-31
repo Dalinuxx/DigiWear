@@ -2,7 +2,7 @@
 ### The authentic 90s Virtual Pet experience, rebuilt for your smartwatch & phone.
 
 [![Platform](https://img.shields.io/badge/Platform-Wear%20OS%203.0%2B%20%7C%20Android%2013%2B-blue?logo=android&logoColor=white)](https://developer.android.com/wear)
-[![Version](https://img.shields.io/badge/Version-v2.8.0-teal.svg)](RELEASE_NOTES_v2.8.md)
+[![Version](https://img.shields.io/badge/Version-v0.9.0-teal.svg)](RELEASE_NOTES_v0.9.md)
 [![Kotlin](https://img.shields.io/badge/Kotlin-1.9.22-purple?logo=kotlin&logoColor=white)](https://kotlinlang.org)
 [![Compose](https://img.shields.io/badge/Jetpack%20Compose-Wear%20%2B%20M3-4285F4?logo=jetpackcompose&logoColor=white)](https://developer.android.com/jetpack/compose)
 [![Protocol](https://img.shields.io/badge/Digimon%200nl1ne-100%25%20Compatible-00C853?logo=codersrank&logoColor=white)](https://github.com)
@@ -27,13 +27,14 @@ DigiWear brings the full 1997 classic virtual pet experience to modern smartwatc
 - 🚶 **Step-Powered Adventure Sagas**: 114 sectors across 5 storyline sagas where your real-world walking steps unlock bosses, rare eggs, and crests.
 - 📱 **Direct Wireless Sideloading**: Update your watch app straight from the phone companion app over Wi-Fi—no PC or terminal needed!
 
-### ⌚ Watch Face Touch Controls & Gestures
+### ⌚ Watch Face & App Touch Controls & Gestures
 
-| Gesture | Action |
-|---|---|
-| **Double Tap** | **Launch DigiWear App** (`MainActivity`) directly from your watch face into full care, training, and adventure modes. |
-| **Single Tap** | Triggers partner dual-hop joy bounce emote, floating heart, and authentic attention chime. |
-| **Complication Tap** | Launches assigned Wear OS complication provider (Heart Rate, Steps, Weather, Battery). |
+| Gesture | Context | Action |
+|---|---|---|
+| **Double Tap** | Watch Face | **Launch DigiWear App** (`MainActivity`) directly from your watch face into full care, training, and adventure modes. |
+| **Single Tap** | Watch Face | Triggers partner dual-hop joy bounce emote, floating heart, and authentic attention chime. |
+| **Rightward Back Swipe** | Watch App | **Sub-Screens**: Dismisses open modals/dialogs, or returns to previous screen via back-stack.<br>**Main Screen**: Acts authentically as Button C (cancels menu selection, closes pickers, or toggles lights off/on). |
+| **Complication Tap** | Watch Face | Launches assigned Wear OS complication provider (Heart Rate, Steps, Weather, Battery). |
 
 ---
 
@@ -232,9 +233,30 @@ Pre-compiled, signed APKs are ready to install in the `release_bin/` directory a
 
 ---
 
-## 🆕 What's New in v2.7.0
+## 🆕 What's New in v0.9.0
 
-See the full [v2.7.0 Release Notes](RELEASE_NOTES_v2.7.md) for detailed technical breakdown:
+See the full [v0.9.0 Release Notes](RELEASE_NOTES_v0.9.md) for detailed technical breakdown:
+* **Interactive Watch Face Walking & Roaming Animation**: Partners dynamically roam across the dial with authentic 2 Hz walking cycles (`WALK_A` / `WALK_B`), subtle bobbing, directional flips, and resting pauses, driven by a battery-safe AndroidX coroutine ticker that automatically sleeps in ambient mode or lights-out rest.
+* **Live Adventure Progress Telemetry & Radial Bezel HUD**: Real-time bottom-dial telemetry cycling every 3.5s between area node steps (`🗺️ AREA • Steps/Target`) and daily pedometer goals (`👟 Daily Steps / Goal`), complete with a flashing golden `⚔️ BOSS READY!` alert and rounded top sweep arc.
+* **Modal-First Rightward Back Swipes**: Custom edge gesture system with `windowSwipeToDismiss = false` that prioritizes closing in-screen popups (DigiDex cards, egg pickers, modal sheets) via V-Pet Button C before navigating backwards through the screen stack.
+* **Master 550-Species Canonical Sprite Audit**: 100% verified color and sprite matrix alignment against official Bandai V-Pet/Pendulum/Color assets, swapping inverted tertiary shading across 65+ species and regenerating master reference sheets.
+* **Live Real-Time Multiplayer Duel Hub & Secure Micro-Relay**: WebSocket room matchmaking server with ephemeral ECDH key exchange, AES-256-GCM authenticated encryption, temporal anti-cheat, and commit-reveal fair RNG.
+
+---
+
+## 🆕 What's New in v0.8.0
+
+See the full [v0.8.0 Release Notes](RELEASE_NOTES_v0.8.md) for detailed technical breakdown:
+* **Bundled 1:1 HD Digital World Wallpapers**: 4 pre-packaged high-contrast wallpapers (Cyber Metropolis, Gear Savannah, Cyberspace Grid, Magma Core) with on-watch cycling and companion app presets.
+* **Faithful Bandai Poop Stage Floor Placement**: Waste positioning shifted down to the authentic baseline with partner walking overlay and dark backing silhouettes.
+* **Ultra-Bold 12h Clock & Legibility Drop Shadows**: High-contrast typography with dynamic `AM`/`PM` indicator badges and hardware-accelerated text drop shadows.
+* **Authentic Passive Call Signal**: Icon 7 decoupled from manual cycling, functioning as an authentic distress beacon that auto-clears upon fulfilling needs and sleeps during lights-out.
+
+---
+
+## 🆕 What's New in v0.7.0
+
+See the full [v0.7.0 Release Notes](RELEASE_NOTES_v0.7.md) for detailed technical breakdown:
 * **Wear OS Adventure & Radar Tile**: Glanceable sector progression, distance remaining to apex bosses, and 1-tap battle launch right from the wrist carousel.
 * **Calorie-Based Evolution Growth Acceleration**: Physical workouts convert active calories burned into real partner growth (+15m evolution progression per 50 kcal burned) with optional Health Connect sync.
 * **In-App Visual Saga Creator & Architect**: Design custom adventure sagas, pick environmental hazards, select boss encounters from all 550 monsters, and beam them to your watch over Wi-Fi.
@@ -246,9 +268,9 @@ See the full [v2.7.0 Release Notes](RELEASE_NOTES_v2.7.md) for detailed technica
 
 ---
 
-## 🆕 What's New in v2.6.0
+## 🆕 What's New in v0.6.0
 
-See the full [v2.6.0 Release Notes](RELEASE_NOTES_v2.6.md) for detailed benchmarks and technical breakdown:
+See the full [v0.6.0 Release Notes](RELEASE_NOTES_v0.6.md) for detailed benchmarks and technical breakdown:
 * **Circular Bezel Safe-Zone Geometry**: List headers, complication controls, and action buttons inset safely inside round watch bezels (`horizPad = 14.dp`, `vertPad = 26.dp`) with zero edge clipping.
 * **Bilateral Touch Symmetry**: Turning the button rail `OFF` repositions `Quest` to 9 o'clock and `Settings` to 3 o'clock, creating a balanced 10-button perimeter ring and expanding pet walking headroom.
 * **O(1) Indexed Jogress & DigiDex Lookups**: Pre-indexed target species lookups eliminate list lag across all 85+ fusion recipes and 550 species.

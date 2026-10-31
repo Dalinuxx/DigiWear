@@ -117,7 +117,7 @@ class WirelessAdbSideloadTest {
             sdkVersion = 34,
             wearPlatform = "Wear OS 5.0",
             isDigiWearInstalled = true,
-            installedVersionName = "v2.0.0",
+            installedVersionName = "v0.9.0",
             batteryPercent = "92%"
         )
 
@@ -127,7 +127,7 @@ class WirelessAdbSideloadTest {
         assertEquals(34, details.sdkVersion)
         assertEquals("Wear OS 5.0", details.wearPlatform)
         assertTrue(details.isDigiWearInstalled)
-        assertEquals("v2.0.0", details.installedVersionName)
+        assertEquals("v0.9.0", details.installedVersionName)
         assertEquals("92%", details.batteryPercent)
     }
 

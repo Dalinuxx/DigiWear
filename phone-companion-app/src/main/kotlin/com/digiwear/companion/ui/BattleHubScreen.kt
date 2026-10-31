@@ -2118,8 +2118,9 @@ fun BattleHubScreen(
                             val u = uri.getQueryParameter("url") ?: ""
                             val k = uri.getQueryParameter("key") ?: ""
                             if (u.isNotBlank()) {
-                                wearableManager.setRelayServerUrl(u)
-                                wearableManager.setRelayServerKey(k)
+                                wearableManager.setRelayMode(PhoneWearableManager.RelayMode.CUSTOM_SERVER)
+                                wearableManager.setCustomRelayUrl(u)
+                                wearableManager.setCustomRelayKey(k)
                                 buzzerManager.playAttentionBeep()
                                 beamStatus = "[CONFIG] Configured Live Relay: $u!"
                                 selectedBattleMode = BattleMode.ONLINE_DUEL_LOBBY

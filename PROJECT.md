@@ -42,14 +42,15 @@
 | M3 | Notification Quick-Care Actions | PetDecayWorker distress triggers, Wear OS NotificationQuickCareReceiver, 1-tap feed/flush actions, complication/tile refresh, companion widget fix | M2 | DONE |
 | M4 | E2E Testing, Adversarial Hardening & Audit | JVM unit test config across all modules, unit/integration test suites for M1-M3, full ./gradlew test verification, Challenger verification, Forensic Audit | M1, M2, M3 | DONE |
 | M5 | Wireless ADB Watch Sideloading | Direct socket ADB client engine (dadb 2.0.0), AdbKeyManager, WatchApkSourceManager, WatchSideloadScreen, real-time logs | M1, M4 | DONE |
-| M6 | UI Safe-Zone Architecture, Performance Audit & v2.6.0 Release | Circular bezel geometry, O(1) recipe indexing, 12-frame animation matrix, widget Cryo-Vault fallback, release_bin sync | M4, M5 | DONE |
+| M6 | UI Safe-Zone Architecture, Performance Audit & v0.6.0 Release | Circular bezel geometry, O(1) recipe indexing, 12-frame animation matrix, widget Cryo-Vault fallback, release_bin sync | M4, M5 | DONE |
 | M7 | Wear OS Adventure & Radar Tile | Dedicated glanceable ProtoLayout radar tile, sector distance remaining, boss encounter ready indicator | M3, M6 | DONE |
 | M8 | Health Connect & Workout Engine 2.0 | Calorie burn evolution acceleration (+15m growth per 50 kcal), Room workout_history migration v6, HealthConnectManager | M6 | DONE |
 | M9 | Visual Campaign & Saga Creator | In-app visual node architect in companion app, 550-monster boss selector, schema validator, wireless beam to watch | M5, M6 | DONE |
-| M10 | Live Real-Time Multiplayer Duel Hub & Secure Micro-Relay | WebSocket room-based matchmaking lobby, zero-trust fighter stat validation, commit-reveal fair RNG, ephemeral ECDH AES-256-GCM E2EE, temporal anti-cheat, turnkey <20MB Docker micro-relay | M1, M6 | IN PROGRESS |
-| M11 | DigiWear v2.7.0 Release & Distribution Pipeline | Adaptive Adventure UI (bezel quest arc, biome weather hazards, expedition pill), 16 starter eggs & egg ID fix, automated syncReleaseBin pipeline | M7, M8, M9 | DONE |
-| M12 | DigiWear v2.8.0 Release & Authentic V-Pet Fidelity | Bundled 1:1 HD Digital World wallpapers & preset carousels, authentic Bandai baseline poop stage mechanics & walking overlay, 12h AM/PM high-contrast clock, passive call signal, watch face text drop shadows | M11 | DONE |
-| M13 | Master Sprite Matrix Audit & Canonical Alignment | Comprehensive sprite audit against official Bandai 16x16 / 24x24 assets, secondary color bounds validation, master sprite sheet regeneration | M1, M12 | IN PROGRESS |
+| M10 | Live Real-Time Multiplayer Duel Hub & Secure Micro-Relay | WebSocket room-based matchmaking lobby, zero-trust fighter stat validation, commit-reveal fair RNG, ephemeral ECDH AES-256-GCM E2EE, temporal anti-cheat, turnkey <20MB Docker micro-relay | M1, M6 | DONE |
+| M11 | DigiWear v0.7.0 Release & Distribution Pipeline | Adaptive Adventure UI (bezel quest arc, biome weather hazards, expedition pill), 16 starter eggs & egg ID fix, automated syncReleaseBin pipeline | M7, M8, M9 | DONE |
+| M12 | DigiWear v0.8.0 Release & Authentic V-Pet Fidelity | Bundled 1:1 HD Digital World wallpapers & preset carousels, authentic Bandai baseline poop stage mechanics & walking overlay, 12h AM/PM high-contrast clock, passive call signal, watch face text drop shadows | M11 | DONE |
+| M13 | Master Sprite Matrix Audit & Canonical Alignment | Comprehensive sprite audit against official Bandai 16x16 / 24x24 assets, secondary color bounds validation, master sprite sheet regeneration | M1, M12 | DONE |
+| M14 | DigiWear v0.9.0 Release: Watch Face Animation & Navigation | 2 Hz walking/roaming animation ticker, live adventure HUD cycling & rounded sweep arc, modal-first rightward back swipes, navigation back-stack, Button C fallback | M12, M13 | DONE |
 
 ## Interface Contracts
 

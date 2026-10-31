@@ -1,4 +1,4 @@
-# DigiWear v2.4.0 Release Notes
+# DigiWear v0.4.0 Release Notes
 
 ### UI polish & fixes
 - V-Pet page: removed redundant Watch Settings / Fusion Lab cards (use the top gear and the Vault tab).

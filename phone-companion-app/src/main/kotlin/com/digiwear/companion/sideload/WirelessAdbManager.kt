@@ -470,7 +470,7 @@ class WirelessAdbManager(private val context: Context) {
 
         val installedVersion = if (isInstalled) {
             val dumpsys = dadb.shell("dumpsys package com.digiwear.wear | grep -i versionName").output.trim()
-            dumpsys.substringAfter("versionName=").substringBefore("\n").trim().ifEmpty { "v1.0" }
+            dumpsys.substringAfter("versionName=").substringBefore("\n").trim().ifEmpty { "v0.1.0" }
         } else ""
 
         val batteryOutput = dadb.shell("dumpsys battery | grep -i level").output.trim()

@@ -65,6 +65,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import java.time.ZonedDateTime
@@ -138,15 +139,12 @@ class DigiWatchFaceService : WatchFaceService() {
             bounds = ComplicationSlotBounds(RectF(0.24f, 0.05f, 0.76f, 0.17f))
         ).build()
 
-        // Slot Bottom (101): Step counter / Goal Progress
+        // Slot Bottom (101): Step counter / Goal Progress (optional complication)
         val bottomSlot = ComplicationSlot.createRoundRectComplicationSlotBuilder(
             id = SLOT_BOTTOM_ID,
             canvasComplicationFactory = defaultCanvasComplicationFactory,
             supportedTypes = supportedTypes,
-            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(
-                SystemDataSources.DATA_SOURCE_STEP_COUNT,
-                ComplicationType.SHORT_TEXT
-            ),
+            defaultDataSourcePolicy = DefaultComplicationDataSourcePolicy(),
             bounds = ComplicationSlotBounds(RectF(0.24f, 0.81f, 0.76f, 0.95f))
         ).build()
 
@@ -297,8 +295,38 @@ class DigiWatchFaceService : WatchFaceService() {
                 val ratio = (current.toFloat() / targetSteps.toFloat()).coerceIn(0f, 1f)
                 val isReady = current >= targetSteps
                 val hazard = activeNode?.environmentEffect?.takeIf { !it.equals("clear", ignoreCase = true) }
-                renderer.updateAdventureOverlay(overlayEnabled, ratio, isReady, hazard)
+                val nodeTitle = activeNode?.name ?: ""
+                val campaignTitle = story.title
+                renderer.updateAdventureOverlay(
+                    enabled = overlayEnabled,
+                    progress = ratio,
+                    bossReady = isReady,
+                    hazard = hazard,
+                    nodeIndex = nodeIdx,
+                    totalNodes = totalNodes,
+                    currentNodeSteps = current,
+                    targetNodeSteps = targetSteps,
+                    nodeTitle = nodeTitle,
+                    campaignTitle = campaignTitle
+                )
                 renderer.invalidate()
+            }
+        }
+
+        // 2 Hz Walking & Roaming Animation Ticker (runs only while watch is visible & not ambient)
+        serviceScope.launch {
+            kotlinx.coroutines.flow.combine(
+                watchState.isVisible,
+                watchState.isAmbient
+            ) { isVisible, isAmbient ->
+                (isVisible == true) && (isAmbient != true)
+            }.collectLatest { isInteractiveActive ->
+                if (isInteractiveActive) {
+                    while (isActive) {
+                        renderer.invalidate()
+                        delay(500L)
+                    }
+                }
             }
         }
 
@@ -504,6 +532,24 @@ class DigiCanvasRenderer(
     @Volatile
     private var activeHazardName: String? = null
 
+    @Volatile
+    private var advNodeIndex: Int = 0
+
+    @Volatile
+    private var advTotalNodes: Int = 1
+
+    @Volatile
+    private var advCurrentNodeSteps: Int = 0
+
+    @Volatile
+    private var advTargetNodeSteps: Int = 1000
+
+    @Volatile
+    private var advNodeTitle: String = ""
+
+    @Volatile
+    private var advCampaignTitle: String = ""
+
     private var cachedWallpaperBmp: android.graphics.Bitmap? = null
     private var wallpaperNeedsReload: Boolean = true
 
@@ -596,11 +642,28 @@ class DigiCanvasRenderer(
         elementContrast = contrast
     }
 
-    fun updateAdventureOverlay(enabled: Boolean, progress: Float, bossReady: Boolean, hazard: String?) {
+    fun updateAdventureOverlay(
+        enabled: Boolean,
+        progress: Float,
+        bossReady: Boolean,
+        hazard: String?,
+        nodeIndex: Int = 0,
+        totalNodes: Int = 1,
+        currentNodeSteps: Int = 0,
+        targetNodeSteps: Int = 1000,
+        nodeTitle: String = "",
+        campaignTitle: String = ""
+    ) {
         adventureOverlayEnabled = enabled
         adventureNodeProgress = progress
         isBossReady = bossReady
         activeHazardName = hazard
+        advNodeIndex = nodeIndex
+        advTotalNodes = totalNodes
+        advCurrentNodeSteps = currentNodeSteps
+        advTargetNodeSteps = targetNodeSteps
+        advNodeTitle = nodeTitle
+        advCampaignTitle = campaignTitle
     }
 
     fun invalidateWallpaper() {
@@ -750,24 +813,25 @@ class DigiCanvasRenderer(
         // 3. Status Line
         textPaint.color = tintColor
         textPaint.textSize = w * 0.055f
+        val isPartnerAsleep = petState.isSleeping || petState.lightsOff
         val statusText = when {
             petState.isDeceased -> "[RIP]"
-            petState.isSleeping || petState.lightsOff -> "ZZZ"
+            isPartnerAsleep -> "ZZZ"
             petState.attentionCallActive -> "[CALL]"
             else -> "H:${petState.hunger}/4  S:${petState.strength}/4"
         }
         canvas.drawText(statusText, centerX, centerY + h * 0.28f, textPaint)
 
-        // Minimal battery / steps (omitted when bottom complication slot is populated)
-        val hasBottomSlotData = DigiWatchFaceService.hasDisplayableData(
-            complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
-        )
-        if (!hasBottomSlotData) {
-            val batteryPct = getCachedBatteryPercentage(zonedDateTime.toInstant().toEpochMilli())
-            textPaint.color = Color.DKGRAY
-            textPaint.textSize = w * 0.045f
-            canvas.drawText("${currentSteps}st • ${batteryPct}%", centerX, centerY + h * 0.38f, textPaint)
+        // Minimal battery / steps & adventure telemetry
+        val batteryPct = getCachedBatteryPercentage(zonedDateTime.toInstant().toEpochMilli())
+        textPaint.color = Color.DKGRAY
+        textPaint.textSize = (w * 0.040f).coerceIn(11f, 15f)
+        val ambientBottom = if (adventureOverlayEnabled && advTargetNodeSteps > 0) {
+            "${currentSteps}st • ADV N${advNodeIndex + 1} • ${batteryPct}%"
+        } else {
+            "${currentSteps}st • ${batteryPct}%"
         }
+        canvas.drawText(ambientBottom, centerX, centerY + h * 0.38f, textPaint)
     }
 
     private fun getOrBuildBackgroundBitmap(
@@ -929,14 +993,18 @@ class DigiCanvasRenderer(
                     framePaint.color = if (pulse) Color.parseColor("#FFD600") else Color.parseColor("#FF9100")
                     framePaint.alpha = 255
                     framePaint.strokeWidth = 5.5f
+                    framePaint.strokeCap = Paint.Cap.ROUND
                     canvas.drawArc(reusableScratchRectF, -90f, 360f, false, framePaint)
+                    framePaint.strokeCap = Paint.Cap.BUTT
                 } else if (adventureNodeProgress > 0f) {
                     // Sweep arc from 12 o'clock (-90 degrees)
                     framePaint.color = darkPixelColor
                     framePaint.alpha = if (isOled) 220 else 255
                     framePaint.strokeWidth = 4.5f
+                    framePaint.strokeCap = Paint.Cap.ROUND
                     val sweepAngle = (adventureNodeProgress * 360f).coerceIn(4f, 360f)
                     canvas.drawArc(reusableScratchRectF, -90f, sweepAngle, false, framePaint)
+                    framePaint.strokeCap = Paint.Cap.BUTT
                 }
             } else {
                 framePaint.color = darkPixelColor
@@ -1066,12 +1134,13 @@ class DigiCanvasRenderer(
 
         // 8-step authentic V-Pet walk & roaming cycle (500ms per step = 2 Hz)
         val roamStep = ((now / 500L) % 8L).toInt()
-        val isWalkingActive = !petState.isSleeping && !petState.isInjured && !isBouncing
+        val isPartnerAsleep = petState.isSleeping || petState.lightsOff
+        val isWalkingActive = !isPartnerAsleep && !petState.isInjured && !isBouncing
 
         val activeFrame = when {
             isBouncing -> if (hop > 0.35f) SpriteFrame.JOY_EAT else SpriteFrame.IDLE_A
             petState.isInjured -> SpriteFrame.INJURED
-            petState.isSleeping -> if (((now / 1000L) % 2L) == 0L) SpriteFrame.SLEEP_A else SpriteFrame.SLEEP_B
+            isPartnerAsleep -> if (((now / 1000L) % 2L) == 0L) SpriteFrame.SLEEP_A else SpriteFrame.SLEEP_B
             isWalkingActive -> when (roamStep) {
                 2, 5 -> SpriteFrame.WALK_A
                 3, 6 -> SpriteFrame.WALK_B
@@ -1118,7 +1187,7 @@ class DigiCanvasRenderer(
         }
 
         // 7. Physiological Hearts (Hunger & Strength) - Mathematically centered
-        val metersY = centerY + h * 0.325f
+        val metersY = centerY + h * 0.315f
         val hgrWidth = measureHeartRowWidth("HGR", w)
         val strWidth = measureHeartRowWidth("STR", w)
         val midGap = w * 0.045f
@@ -1128,23 +1197,40 @@ class DigiCanvasRenderer(
         drawHeartRow(canvas, metersStartX, metersY, "HGR", petState.hunger.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
         drawHeartRow(canvas, metersStartX + hgrWidth + midGap, metersY, "STR", petState.strength.coerceIn(0, 4), darkPixelColor, gridDotColor, w)
 
-        // 8. Centered Steps Telemetry (drawn when bottom complication slot is empty)
-        val hasBottomSlotData = DigiWatchFaceService.hasDisplayableData(
-            complicationSlotsManager[DigiWatchFaceService.SLOT_BOTTOM_ID]?.complicationData?.value
-        )
-        if (!hasBottomSlotData) {
-            val bottomY = if (isRound) centerY + h * 0.415f else h - (w * 0.06f) - 8f
-            textPaint.setShadowLayer(3f, 0f, 1.2f, Color.argb(200, 0, 0, 0))
-            textPaint.textSize = (w * 0.040f).coerceIn(12f, 17f)
-            textPaint.color = darkPixelColor
-            textPaint.textAlign = Paint.Align.CENTER
-            val bottomText = if (petState.isSleeping) {
-                "ZZZ • 👟 ${currentSteps} STEPS"
-            } else {
+        // 8. Bottom Telemetry: Adventure Progression & Daily Step Goal
+        val bottomY = if (isRound) centerY + h * 0.402f else h - (w * 0.06f) - 6f
+        textPaint.setShadowLayer(4f, 0f, 1.5f, Color.argb(220, 0, 0, 0))
+        textPaint.textSize = (w * 0.038f).coerceIn(11.5f, 16f)
+        textPaint.textAlign = Paint.Align.CENTER
+
+        val cycleAdv = ((now / 3500L) % 2L) == 0L
+        val bottomText = when {
+            isPartnerAsleep -> {
+                if (adventureOverlayEnabled && advTargetNodeSteps > 0) {
+                    "ZZZ • 🗺️ N${advNodeIndex + 1} (${advCurrentNodeSteps}/${advTargetNodeSteps})"
+                } else {
+                    "ZZZ • 👟 ${currentSteps} STEPS"
+                }
+            }
+            isBossReady && adventureOverlayEnabled -> {
+                val bossPulse = ((now / 500L) % 2L) == 0L
+                if (bossPulse) "⚔️ BOSS READY! • TAP APP" else "⚔️ BOSS READY! (${advCurrentNodeSteps}/${advTargetNodeSteps})"
+            }
+            adventureOverlayEnabled && cycleAdv -> {
+                val areaLabel = if (advNodeTitle.isNotBlank()) advNodeTitle.take(10).uppercase() else "AREA ${advNodeIndex + 1}"
+                "🗺️ $areaLabel • ${advCurrentNodeSteps}/${advTargetNodeSteps}"
+            }
+            else -> {
                 "👟 ${currentSteps} / ${dailyStepGoal} STEPS"
             }
-            canvas.drawText(bottomText, centerX, bottomY, textPaint)
         }
+
+        textPaint.color = if (isBossReady && adventureOverlayEnabled) {
+            Color.parseColor("#FFD600")
+        } else {
+            darkPixelColor
+        }
+        canvas.drawText(bottomText, centerX, bottomY, textPaint)
     }
 
     /**
@@ -1458,8 +1544,8 @@ class RetroLcdCanvasComplication(
     ) {
         val data = complicationData
         if (!DigiWatchFaceService.hasDisplayableData(data)) return
-        // Top slot is natively reserved for top-center battery percent
-        if (slotId == DigiWatchFaceService.SLOT_TOP_ID) return
+        // Top slot is natively reserved for top-center battery percent, bottom slot is natively reserved for adventure & step telemetry
+        if (slotId == DigiWatchFaceService.SLOT_TOP_ID || slotId == DigiWatchFaceService.SLOT_BOTTOM_ID) return
 
         val isAmbient = renderParameters.drawMode == DrawMode.AMBIENT
         val (darkColor, gridColor) = colorProvider()

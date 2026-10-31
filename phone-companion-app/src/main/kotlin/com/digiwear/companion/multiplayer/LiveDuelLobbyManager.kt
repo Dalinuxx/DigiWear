@@ -104,8 +104,19 @@ class LiveDuelLobbyManager(
 
         val requestBuilder = Request.Builder().url(normalizedUrl)
         if (serverKey.isNotBlank()) {
-            requestBuilder.addHeader("X-DigiWear-Key", serverKey.trim())
-            requestBuilder.addHeader("Authorization", "Bearer ${serverKey.trim()}")
+            val keyClean = serverKey.trim()
+            requestBuilder.addHeader("X-DigiWear-Key", keyClean)
+            requestBuilder.addHeader("Authorization", "Bearer $keyClean")
+
+            // Replay-Proof HMAC-SHA256 App Attestation Token
+            val timestamp = System.currentTimeMillis()
+            val nonce = java.util.UUID.randomUUID().toString()
+            val hmacKey = SecretKeySpec(keyClean.toByteArray(Charsets.UTF_8), "HmacSHA256")
+            val token = DuelSecurityEngine.signDuelReceipt("$timestamp:$nonce", hmacKey)
+
+            requestBuilder.addHeader("X-DigiWear-Timestamp", timestamp.toString())
+            requestBuilder.addHeader("X-DigiWear-Nonce", nonce)
+            requestBuilder.addHeader("X-DigiWear-Token", token)
         }
 
         try {

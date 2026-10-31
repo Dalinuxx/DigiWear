@@ -1,4 +1,4 @@
-# DigiWear v2.8.0 Release Notes
+# DigiWear v0.8.0 Release Notes
 
 ### 🖼️ Bundled 1:1 Digital World Wallpapers & Preset Gallery
 - **4 Built-in HD Wallpapers**: Bundled directly into both the Wear OS and Phone Companion applications with zero external downloads required:

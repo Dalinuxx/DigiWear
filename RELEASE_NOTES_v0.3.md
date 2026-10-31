@@ -1,7 +1,7 @@
-# DigiWear v2.3.0 Official Release Notes
+# DigiWear v0.3.0 Official Release Notes
 
 ### Complete Overview
-DigiWear v2.3.0 is a milestone release delivering wrist immersion and audio authenticity:
+DigiWear v0.3.0 is a milestone release delivering wrist immersion and audio authenticity:
 1. A **Standalone Wear OS Interactive Watch Face** (`DigiWatchFaceService`) with authentic 7-segment digital time, wandering partner animations, dynamic touch reactions, and low-power AOD ambient mode.
 2. **Interactive ProtoLayout Tiles** on Wear OS allowing instant wrist quick-care actions (`[FEED]`, `[CLEAN]`, `[LIGHTS]`) straight from the tile swipe without opening the full activity.
 3. An **Authentic Soundpack Audio Engine** with sub-Hz precision supporting original 1997 Bandai square-wave piezo beeps, 1999 Digivice tri-tone anime chimes, and retro 8-bit chiptune synthesizer.

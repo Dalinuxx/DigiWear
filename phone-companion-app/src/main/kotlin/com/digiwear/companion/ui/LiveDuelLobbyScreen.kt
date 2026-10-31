@@ -79,8 +79,9 @@ fun LiveDuelLobbyScreen(
     val errorMessage by lobbyManager.errorMessage.collectAsState()
 
     var showConfigDialog by remember { mutableStateOf(false) }
-    var configuredUrl by remember { mutableStateOf(wearableManager.getRelayServerUrl()) }
-    var configuredKey by remember { mutableStateOf(wearableManager.getRelayServerKey()) }
+    var relayMode by remember { mutableStateOf(wearableManager.getRelayMode()) }
+    var configuredUrl by remember { mutableStateOf(wearableManager.getActiveRelayUrl()) }
+    var configuredKey by remember { mutableStateOf(wearableManager.getActiveRelayKey()) }
     var joinRoomCodeInput by remember { mutableStateOf("") }
     var myTamerTag by remember { mutableStateOf("Tamer_${activeFighter?.speciesId ?: 101}") }
 
@@ -146,7 +147,7 @@ fun LiveDuelLobbyScreen(
 
             Spacer(modifier = Modifier.height(6.dp))
             Text(
-                text = "Host URL: $configuredUrl",
+                text = if (relayMode == PhoneWearableManager.RelayMode.OFFICIAL_NETWORK) "Server: Official DigiWear Network (Preloaded)" else "Server: Custom ($configuredUrl)",
                 fontSize = 8.5.sp,
                 color = Color(0xFF78909C),
                 fontFamily = FontFamily.Monospace,
@@ -419,8 +420,9 @@ fun LiveDuelLobbyScreen(
 
     // Server Configuration & Security Key Dialog
     if (showConfigDialog) {
-        var tempUrl by remember { mutableStateOf(configuredUrl) }
-        var tempKey by remember { mutableStateOf(configuredKey) }
+        var tempMode by remember { mutableStateOf(relayMode) }
+        var tempCustomUrl by remember { mutableStateOf(wearableManager.getCustomRelayUrl()) }
+        var tempCustomKey by remember { mutableStateOf(wearableManager.getCustomRelayKey()) }
         var showQrCode by remember { mutableStateOf(false) }
         var testResult by remember { mutableStateOf<String?>(null) }
         var isTesting by remember { mutableStateOf(false) }
@@ -437,115 +439,196 @@ fun LiveDuelLobbyScreen(
                 )
             },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(
-                        text = "Your private relay host and password are stored securely on your phone and NEVER committed or leaked to GitHub.",
+                        text = "Choose your network profile. The Official Network connects automatically, or configure your own self-hosted relay.",
                         fontSize = 9.sp,
                         color = Color.LightGray,
                         lineHeight = 13.sp
                     )
 
-                    OutlinedTextField(
-                        value = tempUrl,
-                        onValueChange = { tempUrl = it },
-                        label = { Text("Relay WebSocket URL", fontSize = 10.sp) },
-                        placeholder = { Text("wss://relay.yourdomain.com:8080", fontSize = 9.sp) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    OutlinedTextField(
-                        value = tempKey,
-                        onValueChange = { tempKey = it },
-                        label = { Text("Pre-Shared Server Key (DIGIWEAR_SERVER_KEY)", fontSize = 10.sp) },
-                        placeholder = { Text("Leave blank if server auth disabled", fontSize = 9.sp) },
-                        singleLine = true,
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = OutlinedTextFieldDefaults.colors(
-                            focusedTextColor = Color.White,
-                            unfocusedTextColor = Color.White
-                        )
-                    )
-
-                    val inviteLink = "digiwear://relay?url=${Uri.encode(tempUrl.trim())}&key=${Uri.encode(tempKey.trim())}"
-
+                    // Profile Selector Tabs
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = {
-                                clipboard.setText(AnnotatedString(inviteLink))
-                                Toast.makeText(context, "Copied invite link to clipboard!", Toast.LENGTH_SHORT).show()
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, Color(0xFF00E676)),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        val isOfficial = tempMode == PhoneWearableManager.RelayMode.OFFICIAL_NETWORK
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (isOfficial) Color(0xFF00E676).copy(alpha = 0.2f) else Color(0xFF141C24), RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isOfficial) Color(0xFF00E676) else Color(0xFF37474F), RoundedCornerShape(8.dp))
+                                .clickable { tempMode = PhoneWearableManager.RelayMode.OFFICIAL_NETWORK }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("COPY LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                            Text("OFFICIAL NETWORK", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = if (isOfficial) Color(0xFF00E676) else Color.Gray, fontFamily = FontFamily.Monospace)
                         }
 
-                        OutlinedButton(
-                            onClick = {
-                                val clipText = clipboard.getText()?.text?.trim() ?: ""
-                                val parsed = runCatching {
-                                    if (clipText.startsWith("digiwear://relay", ignoreCase = true)) {
-                                        val uri = Uri.parse(clipText)
-                                        val u = uri.getQueryParameter("url") ?: ""
-                                        val k = uri.getQueryParameter("key") ?: ""
-                                        if (u.isNotBlank()) Pair(u, k) else null
-                                    } else null
-                                }.getOrNull()
-
-                                if (parsed != null) {
-                                    tempUrl = parsed.first
-                                    tempKey = parsed.second
-                                    Toast.makeText(context, "Pasted & loaded invite config!", Toast.LENGTH_SHORT).show()
-                                } else {
-                                    Toast.makeText(context, "Clipboard has no digiwear://relay link", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                        val isCustom = tempMode == PhoneWearableManager.RelayMode.CUSTOM_SERVER
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .background(if (isCustom) DigiWearPalette.DigiviceCyan.copy(alpha = 0.2f) else Color(0xFF141C24), RoundedCornerShape(8.dp))
+                                .border(1.dp, if (isCustom) DigiWearPalette.DigiviceCyan else Color(0xFF37474F), RoundedCornerShape(8.dp))
+                                .clickable { tempMode = PhoneWearableManager.RelayMode.CUSTOM_SERVER }
+                                .padding(vertical = 8.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            Text("PASTE LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.DigiviceCyan, fontFamily = FontFamily.Monospace)
-                        }
-
-                        OutlinedButton(
-                            onClick = { showQrCode = !showQrCode },
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(6.dp),
-                            border = BorderStroke(1.dp, DigiWearPalette.CrestGold),
-                            contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
-                        ) {
-                            Text(if (showQrCode) "HIDE QR" else "SHOW QR", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.CrestGold, fontFamily = FontFamily.Monospace)
+                            Text("CUSTOM SERVER", fontSize = 8.5.sp, fontWeight = FontWeight.Bold, color = if (isCustom) DigiWearPalette.DigiviceCyan else Color.Gray, fontFamily = FontFamily.Monospace)
                         }
                     }
 
-                    if (showQrCode && tempUrl.isNotBlank()) {
-                        val qrMatrix = remember(tempUrl, tempKey) {
-                            runCatching { QrMatrixGenerator.generateQrMatrix(inviteLink, 25) }.getOrNull()
-                        }
-                        if (qrMatrix != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .background(Color.White, RoundedCornerShape(8.dp))
-                                    .padding(8.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                QrCodeMatrixView(
-                                    matrix = qrMatrix,
-                                    modifier = Modifier.size(130.dp)
-                                )
+                    if (tempMode == PhoneWearableManager.RelayMode.OFFICIAL_NETWORK) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(Color(0xFF101722), RoundedCornerShape(8.dp))
+                                .border(1.dp, Color(0xFF1E2C3D), RoundedCornerShape(8.dp))
+                                .padding(10.dp)
+                        ) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text("PRELOADED OFFICIAL RELAY", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                                Text("Host: ${wearableManager.getOfficialRelayUrl()}", fontSize = 8.5.sp, color = Color.White, fontFamily = FontFamily.Monospace)
+                                Text("• Auto-authenticated via dynamic replay-proof HMAC app tokens.\n• Protected by edge proxy WAF & automated IP jail.\n• Zero setup required for regular tamers.", fontSize = 8.sp, color = Color.Gray, lineHeight = 11.sp)
                             }
+                        }
+
+                        Button(
+                            onClick = {
+                                isTesting = true
+                                testResult = "Testing official relay handshake..."
+                                lobbyManager.connect(wearableManager.getOfficialRelayUrl(), wearableManager.getOfficialRelayKey()) {
+                                    testResult = "OK: Official relay authenticated successfully!"
+                                    isTesting = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238))
+                        ) {
+                            Text("TEST OFFICIAL CONNECTION", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = Color(0xFF00E676))
+                        }
+                    } else {
+                        // Custom Self-Hosted Relay Form
+                        OutlinedTextField(
+                            value = tempCustomUrl,
+                            onValueChange = { tempCustomUrl = it },
+                            label = { Text("Custom Relay URL", fontSize = 10.sp) },
+                            placeholder = { Text("wss://relay.yourdomain.com:8080", fontSize = 9.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+
+                        OutlinedTextField(
+                            value = tempCustomKey,
+                            onValueChange = { tempCustomKey = it },
+                            label = { Text("Custom Server Key (PSK)", fontSize = 10.sp) },
+                            placeholder = { Text("Leave blank if server auth disabled", fontSize = 9.sp) },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedTextColor = Color.White,
+                                unfocusedTextColor = Color.White
+                            )
+                        )
+
+                        val inviteLink = "digiwear://relay?url=${Uri.encode(tempCustomUrl.trim())}&key=${Uri.encode(tempCustomKey.trim())}"
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            OutlinedButton(
+                                onClick = {
+                                    clipboard.setText(AnnotatedString(inviteLink))
+                                    Toast.makeText(context, "Copied invite link to clipboard!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, Color(0xFF00E676)),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                            ) {
+                                Text("COPY LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = Color(0xFF00E676), fontFamily = FontFamily.Monospace)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val clipText = clipboard.getText()?.text?.trim() ?: ""
+                                    val parsed = runCatching {
+                                        if (clipText.startsWith("digiwear://relay", ignoreCase = true)) {
+                                            val uri = Uri.parse(clipText)
+                                            val u = uri.getQueryParameter("url") ?: ""
+                                            val k = uri.getQueryParameter("key") ?: ""
+                                            if (u.isNotBlank()) Pair(u, k) else null
+                                        } else null
+                                    }.getOrNull()
+
+                                    if (parsed != null) {
+                                        tempCustomUrl = parsed.first
+                                        tempCustomKey = parsed.second
+                                        Toast.makeText(context, "Pasted & loaded custom config!", Toast.LENGTH_SHORT).show()
+                                    } else {
+                                        Toast.makeText(context, "Clipboard has no digiwear://relay link", Toast.LENGTH_SHORT).show()
+                                    }
+                                },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, DigiWearPalette.DigiviceCyan),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                            ) {
+                                Text("PASTE LINK", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.DigiviceCyan, fontFamily = FontFamily.Monospace)
+                            }
+
+                            OutlinedButton(
+                                onClick = { showQrCode = !showQrCode },
+                                modifier = Modifier.weight(1f),
+                                shape = RoundedCornerShape(6.dp),
+                                border = BorderStroke(1.dp, DigiWearPalette.CrestGold),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(vertical = 4.dp, horizontal = 2.dp)
+                            ) {
+                                Text(if (showQrCode) "HIDE QR" else "SHOW QR", fontSize = 8.sp, fontWeight = FontWeight.Bold, color = DigiWearPalette.CrestGold, fontFamily = FontFamily.Monospace)
+                            }
+                        }
+
+                        if (showQrCode && tempCustomUrl.isNotBlank()) {
+                            val qrMatrix = remember(tempCustomUrl, tempCustomKey) {
+                                runCatching { QrMatrixGenerator.generateQrMatrix(inviteLink, 25) }.getOrNull()
+                            }
+                            if (qrMatrix != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .background(Color.White, RoundedCornerShape(8.dp))
+                                        .padding(8.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    QrCodeMatrixView(
+                                        matrix = qrMatrix,
+                                        modifier = Modifier.size(130.dp)
+                                    )
+                                }
+                            }
+                        }
+
+                        Button(
+                            onClick = {
+                                isTesting = true
+                                testResult = "Testing custom connection to $tempCustomUrl..."
+                                lobbyManager.connect(tempCustomUrl, tempCustomKey) {
+                                    testResult = "OK: Connected and authenticated successfully!"
+                                    isTesting = false
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(6.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238))
+                        ) {
+                            Text("TEST CUSTOM HANDSHAKE", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = DigiWearPalette.DigiviceCyan)
                         }
                     }
 
@@ -557,31 +640,17 @@ fun LiveDuelLobbyScreen(
                             fontFamily = FontFamily.Monospace
                         )
                     }
-
-                    Button(
-                        onClick = {
-                            isTesting = true
-                            testResult = "Testing connection to $tempUrl..."
-                            lobbyManager.connect(tempUrl, tempKey) {
-                                testResult = "OK: Connected and authenticated successfully!"
-                                isTesting = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(6.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF263238))
-                    ) {
-                        Text("TEST HANDSHAKE", fontSize = 9.sp, fontFamily = FontFamily.Monospace, color = DigiWearPalette.DigiviceCyan)
-                    }
                 }
             },
             confirmButton = {
                 Button(
                     onClick = {
-                        wearableManager.setRelayServerUrl(tempUrl)
-                        wearableManager.setRelayServerKey(tempKey)
-                        configuredUrl = tempUrl
-                        configuredKey = tempKey
+                        wearableManager.setRelayMode(tempMode)
+                        wearableManager.setCustomRelayUrl(tempCustomUrl)
+                        wearableManager.setCustomRelayKey(tempCustomKey)
+                        relayMode = tempMode
+                        configuredUrl = wearableManager.getActiveRelayUrl()
+                        configuredKey = wearableManager.getActiveRelayKey()
                         showConfigDialog = false
                         Toast.makeText(context, "Saved Relay Server configuration!", Toast.LENGTH_SHORT).show()
                     },

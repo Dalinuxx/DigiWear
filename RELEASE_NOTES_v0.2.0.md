@@ -1,7 +1,7 @@
-# DigiWear v2.0 Official Release Notes
+# DigiWear v0.2.0 Official Release Notes
 
 ### Complete Overview
-DigiWear v2.0 represents a complete, exhaustive overhaul across both the standalone smartwatch application and the Android phone companion application, achieving 100% parity with historical Bandai virtual pets while leveraging modern wearable hardware, NFC, optical QR matchmaking, and wireless protocols.
+DigiWear v0.2.0 represents a complete, exhaustive overhaul across both the standalone smartwatch application and the Android phone companion application, achieving 100% parity with historical Bandai virtual pets while leveraging modern wearable hardware, NFC, optical QR matchmaking, and wireless protocols.
 
 ---
 

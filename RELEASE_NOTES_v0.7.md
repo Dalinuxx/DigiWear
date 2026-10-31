@@ -1,4 +1,4 @@
-# DigiWear v2.7.0 Release Notes
+# DigiWear v0.7.0 Release Notes
 
 ### 🧭 Wear OS Adventure & Radar Tile (Milestone 7)
 - **Dedicated ProtoLayout Radar Glanceable Tile**: Track live expedition sector progress directly from your Wear OS tile carousel without launching the app. Displays current biome/hazard, step progress toward sector boss, and instant 1-tap shortcut.

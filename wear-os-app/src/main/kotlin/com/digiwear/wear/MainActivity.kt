@@ -55,7 +55,88 @@ class MainActivity : ComponentActivity() {
     private lateinit var buzzerManager: com.digiwear.wear.sound.BuzzerManager
     private lateinit var stepTracker: StepTrackerManager
     private val activityScope = CoroutineScope(Dispatchers.Main + SupervisorJob())
-    private val requestedScreenState = androidx.compose.runtime.mutableStateOf(WearScreen.MAIN)
+    val currentScreenState = androidx.compose.runtime.mutableStateOf(WearScreen.MAIN)
+    private val navigationBackStack = mutableListOf<WearScreen>()
+
+    private var touchDownX = 0f
+    private var touchDownY = 0f
+    private var touchDownTimeMs = 0L
+    private var isVerticalDragging = false
+
+    fun navigateTo(screen: WearScreen) {
+        if (currentScreenState.value != screen) {
+            navigationBackStack.add(currentScreenState.value)
+            currentScreenState.value = screen
+        }
+    }
+
+    fun popScreen(): Boolean {
+        if (navigationBackStack.isNotEmpty()) {
+            val prev = navigationBackStack.removeAt(navigationBackStack.size - 1)
+            currentScreenState.value = prev
+            buzzerManager.playButtonBeep()
+            return true
+        } else if (currentScreenState.value != WearScreen.MAIN) {
+            currentScreenState.value = WearScreen.MAIN
+            buzzerManager.playButtonBeep()
+            return true
+        }
+        return false
+    }
+
+    fun handleBack(): Boolean {
+        // Check if active QTE is listening in battle/training before general back
+        val qte = HardwareInputManager.activeQteListener
+        if (qte != null && qte.invoke(VPetButton.C)) {
+            buzzerManager.playButtonBeep()
+            hapticManager.playStepMilestone()
+            return true
+        }
+
+        // Deliver VPetButton.C to active screen:
+        // - In screens with active modals/dialogs, dismisses the modal without popping screen.
+        // - In screens without modals, triggers onBack() which calls popScreen().
+        // - On MAIN, cancels menu selection or toggles lights off/on.
+        HardwareInputManager.onButtonDown(VPetButton.C)
+        buzzerManager.playButtonBeep()
+        return true
+    }
+
+    override fun dispatchTouchEvent(ev: MotionEvent): Boolean {
+        when (ev.actionMasked) {
+            MotionEvent.ACTION_DOWN -> {
+                touchDownX = ev.rawX
+                touchDownY = ev.rawY
+                touchDownTimeMs = System.currentTimeMillis()
+                isVerticalDragging = false
+            }
+            MotionEvent.ACTION_MOVE -> {
+                val dx = ev.rawX - touchDownX
+                val dy = kotlin.math.abs(ev.rawY - touchDownY)
+                if (dy > 30f && dy > kotlin.math.abs(dx)) {
+                    isVerticalDragging = true
+                }
+            }
+            MotionEvent.ACTION_UP -> {
+                val dx = ev.rawX - touchDownX
+                val dy = kotlin.math.abs(ev.rawY - touchDownY)
+                val duration = System.currentTimeMillis() - touchDownTimeMs
+                val screenW = resources.displayMetrics.widthPixels
+                // Rightward back swipe: dx >= 65px, dy < dx * 0.75, fast swipe (<750ms), started in left/center 75% of screen
+                if (!isVerticalDragging && dx > 65f && dy < dx * 0.75f && duration in 35..750 && touchDownX < (screenW * 0.75f)) {
+                    val handled = handleBack()
+                    if (handled) {
+                        return true
+                    }
+                }
+            }
+            MotionEvent.ACTION_CANCEL -> {
+                touchDownTimeMs = 0L
+                isVerticalDragging = false
+            }
+        }
+        return super.dispatchTouchEvent(ev)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -103,7 +184,10 @@ class MainActivity : ComponentActivity() {
                     repository = repository,
                     hapticManager = hapticManager,
                     buzzerManager = buzzerManager,
-                    requestedScreen = requestedScreenState.value
+                    currentScreen = currentScreenState.value,
+                    onNavigate = { screen -> navigateTo(screen) },
+                    onBack = { popScreen() },
+                    onBackGesture = { handleBack() }
                 )
             }
         }
@@ -178,14 +262,19 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun parseTargetScreen(intent: Intent?) {
-        when (intent?.getStringExtra("target_screen")) {
-            "ADVENTURE" -> requestedScreenState.value = WearScreen.ADVENTURE
-            "WORKOUT" -> requestedScreenState.value = WearScreen.WORKOUT
-            "BATTLE" -> requestedScreenState.value = WearScreen.BATTLE
-            "STATUS" -> requestedScreenState.value = WearScreen.STATUS
-            "SETTINGS" -> requestedScreenState.value = WearScreen.SETTINGS
-            "DIGIDEX" -> requestedScreenState.value = WearScreen.DIGIDEX
-            else -> {}
+        val target = when (intent?.getStringExtra("target_screen")) {
+            "ADVENTURE" -> WearScreen.ADVENTURE
+            "WORKOUT" -> WearScreen.WORKOUT
+            "BATTLE" -> WearScreen.BATTLE
+            "STATUS" -> WearScreen.STATUS
+            "SETTINGS" -> WearScreen.SETTINGS
+            "DIGIDEX" -> WearScreen.DIGIDEX
+            else -> null
+        }
+        if (target != null && target != currentScreenState.value) {
+            navigationBackStack.clear()
+            navigationBackStack.add(WearScreen.MAIN)
+            currentScreenState.value = target
         }
     }
 
@@ -236,12 +325,8 @@ class MainActivity : ComponentActivity() {
                 KeyEvent.KEYCODE_BUTTON_Y -> VPetButton.PREV
 
                 KeyEvent.KEYCODE_BACK -> {
-                    // Check if active QTE is listening before intercepting back
-                    val qte = HardwareInputManager.activeQteListener
-                    if (qte != null && qte.invoke(VPetButton.C)) {
-                        buzzerManager.playButtonBeep()
-                        return true
-                    }
+                    val handled = handleBack()
+                    if (handled) return true
                     null
                 }
 
@@ -285,21 +370,16 @@ fun WearNavigationHost(
     repository: PetRepository,
     hapticManager: HapticManager,
     buzzerManager: com.digiwear.wear.sound.BuzzerManager = remember { com.digiwear.wear.sound.BuzzerManager() },
-    requestedScreen: WearScreen = WearScreen.MAIN
+    currentScreen: WearScreen = WearScreen.MAIN,
+    onNavigate: (WearScreen) -> Unit = {},
+    onBack: () -> Unit = {},
+    onBackGesture: () -> Unit = onBack
 ) {
     val ambientState = LocalAmbientState.current
-    var currentScreen by remember { mutableStateOf(requestedScreen) }
 
-    LaunchedEffect(requestedScreen) {
-        if (requestedScreen != WearScreen.MAIN) {
-            currentScreen = requestedScreen
-        }
-    }
-
-    // Intercept system back gesture / back button on AOSP & Wear OS watches when on a sub-screen
-    androidx.activity.compose.BackHandler(enabled = currentScreen != WearScreen.MAIN) {
-        buzzerManager.playButtonBeep()
-        currentScreen = WearScreen.MAIN
+    // Intercept system back gesture / back button
+    androidx.activity.compose.BackHandler(enabled = true) {
+        onBackGesture()
     }
 
     LaunchedEffect(Unit) {
@@ -339,20 +419,20 @@ fun WearNavigationHost(
             repository = repository,
             hapticManager = hapticManager,
             buzzerManager = buzzerManager,
-            onNavigateBattle = { currentScreen = WearScreen.BATTLE },
-            onNavigateAdventure = { currentScreen = WearScreen.ADVENTURE },
-            onNavigateStatus = { currentScreen = WearScreen.STATUS },
-            onNavigateSettings = { currentScreen = WearScreen.SETTINGS },
+            onNavigateBattle = { onNavigate(WearScreen.BATTLE) },
+            onNavigateAdventure = { onNavigate(WearScreen.ADVENTURE) },
+            onNavigateStatus = { onNavigate(WearScreen.STATUS) },
+            onNavigateSettings = { onNavigate(WearScreen.SETTINGS) },
             onNavigateWorkout = { type ->
                 activeWorkoutType = type
-                currentScreen = WearScreen.WORKOUT
+                onNavigate(WearScreen.WORKOUT)
             }
         )
         WearScreen.BATTLE -> BattleScreen(
             repository = repository,
             hapticManager = hapticManager,
             buzzerManager = buzzerManager,
-            onBack = { currentScreen = WearScreen.MAIN }
+            onBack = { onBack() }
         )
         WearScreen.ADVENTURE -> AdventureScreen(
             repository = repository,
@@ -360,31 +440,30 @@ fun WearNavigationHost(
             buzzerManager = buzzerManager,
             onNavigateWorkout = {
                 activeWorkoutType = com.digiwear.core.workout.WorkoutType.EXPEDITION_TREK
-                currentScreen = WearScreen.WORKOUT
+                onNavigate(WearScreen.WORKOUT)
             },
-            onBack = { currentScreen = WearScreen.MAIN }
+            onBack = { onBack() }
         )
         WearScreen.STATUS -> StatusScreen(
             repository = repository,
-            onNavigateDigiDex = { currentScreen = WearScreen.DIGIDEX },
-            onBack = { currentScreen = WearScreen.MAIN }
+            onNavigateDigiDex = { onNavigate(WearScreen.DIGIDEX) },
+            onBack = { onBack() }
         )
         WearScreen.DIGIDEX -> com.digiwear.wear.ui.WatchDigiDexScreen(
             repository = repository,
-            onBack = { currentScreen = WearScreen.STATUS }
+            onBack = { onBack() }
         )
         WearScreen.SETTINGS -> SettingsScreen(
             repository = repository,
             hapticManager = hapticManager,
-            onBack = { currentScreen = WearScreen.MAIN }
+            onBack = { onBack() }
         )
         WearScreen.WORKOUT -> WorkoutScreen(
             repository = repository,
             hapticManager = hapticManager,
             buzzerManager = buzzerManager,
             workoutType = activeWorkoutType,
-            onFinish = { currentScreen = WearScreen.MAIN }
+            onFinish = { onBack() }
         )
     }
-
 }

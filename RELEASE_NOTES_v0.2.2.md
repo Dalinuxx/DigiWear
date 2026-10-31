@@ -1,7 +1,7 @@
-# DigiWear v2.2.0 Official Release Notes
+# DigiWear v0.2.2 Official Release Notes
 
 ### Complete Overview
-DigiWear v2.2.0 introduces custom sleep schedule time picking with 24-hour canonical rest duration validation, procedural custom LCD matrix themes, and custom photo wallpaper imports for smartwatches directly from your phone's photo gallery.
+DigiWear v0.2.2 introduces custom sleep schedule time picking with 24-hour canonical rest duration validation, procedural custom LCD matrix themes, and custom photo wallpaper imports for smartwatches directly from your phone's photo gallery.
 
 ---
 
